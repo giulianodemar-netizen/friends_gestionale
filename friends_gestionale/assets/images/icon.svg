@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <circle cx="50" cy="50" r="45" fill="#0073aa" stroke="#fff" stroke-width="3"/>
+  <g fill="#fff">
+    <!-- People icons -->
+    <circle cx="30" cy="35" r="8"/>
+    <path d="M30 45 Q25 50 25 55 L35 55 Q35 50 30 45"/>
+    
+    <circle cx="50" cy="30" r="9"/>
+    <path d="M50 42 Q44 48 44 54 L56 54 Q56 48 50 42"/>
+    
+    <circle cx="70" cy="35" r="8"/>
+    <path d="M70 45 Q65 50 65 55 L75 55 Q75 50 70 45"/>
+    
+    <!-- Heart at bottom -->
+    <path d="M50 80 L42 72 Q38 68 38 64 Q38 58 44 58 Q47 58 50 62 Q53 58 56 58 Q62 58 62 64 Q62 68 58 72 Z" fill="#dc3545"/>
+  </g>
+  
+  <!-- Plugin text -->
+  <text x="50" y="95" font-family="Arial, sans-serif" font-size="8" fill="#fff" text-anchor="middle" font-weight="bold">GESTIONALE</text>
+</svg>
