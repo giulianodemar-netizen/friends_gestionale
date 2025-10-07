@@ -1,0 +1,436 @@
+/* Friends Gestionale - Frontend Styles */
+
+/* General Styles */
+.fg-elenco-soci,
+.fg-elenco-raccolte,
+.fg-dashboard,
+.fg-filtro-soci {
+    margin: 20px 0;
+}
+
+/* Table Styles */
+.fg-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.fg-table thead {
+    background: #0073aa;
+    color: #fff;
+}
+
+.fg-table th,
+.fg-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.fg-table tbody tr:hover {
+    background: #f5f5f5;
+}
+
+.fg-table a {
+    color: #0073aa;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.fg-table a:hover {
+    text-decoration: underline;
+}
+
+/* Status Badge */
+.fg-stato {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.fg-stato-attivo {
+    background: #d4edda;
+    color: #155724;
+}
+
+.fg-stato-sospeso {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.fg-stato-scaduto {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.fg-stato-inattivo {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+/* Dettaglio Socio */
+.fg-dettaglio-socio {
+    background: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin: 20px 0;
+}
+
+.fg-dettaglio-socio h3 {
+    margin-top: 0;
+    color: #0073aa;
+    border-bottom: 2px solid #0073aa;
+    padding-bottom: 10px;
+}
+
+.fg-socio-info p {
+    margin: 10px 0;
+    line-height: 1.6;
+}
+
+.fg-socio-descrizione {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+/* Raccolte Fondi */
+.fg-elenco-raccolte {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.fg-raccolta-card {
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.fg-raccolta-card:hover {
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    transform: translateY(-5px);
+}
+
+.fg-raccolta-thumb {
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+}
+
+.fg-raccolta-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.fg-raccolta-content {
+    padding: 20px;
+}
+
+.fg-raccolta-content h3 {
+    margin: 0 0 10px;
+    font-size: 20px;
+}
+
+.fg-raccolta-content h3 a {
+    color: #333;
+    text-decoration: none;
+}
+
+.fg-raccolta-content h3 a:hover {
+    color: #0073aa;
+}
+
+.fg-raccolta-excerpt {
+    color: #666;
+    margin: 10px 0;
+    line-height: 1.6;
+}
+
+/* Progress Bar */
+.fg-raccolta-progress,
+.fg-progress-widget {
+    margin: 15px 0;
+}
+
+.fg-progress-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.fg-progress-bar-large {
+    height: 30px;
+}
+
+.fg-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0073aa 0%, #00a0d2 100%);
+    transition: width 0.3s ease;
+}
+
+.fg-progress-text {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: #666;
+    margin-top: 5px;
+}
+
+.fg-raccolto {
+    color: #46b450;
+    font-weight: 600;
+}
+
+.fg-obiettivo {
+    color: #0073aa;
+    font-weight: 600;
+}
+
+.fg-percentuale {
+    color: #666;
+}
+
+.fg-scadenza {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #888;
+}
+
+/* Button */
+.fg-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #0073aa;
+    color: #fff !important;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 600;
+    transition: background 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.fg-button:hover {
+    background: #005a87;
+}
+
+/* Dettaglio Raccolta */
+.fg-dettaglio-raccolta {
+    background: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin: 20px 0;
+}
+
+.fg-dettaglio-raccolta h2 {
+    margin-top: 0;
+    color: #0073aa;
+    border-bottom: 2px solid #0073aa;
+    padding-bottom: 10px;
+}
+
+.fg-raccolta-image {
+    margin: 20px 0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.fg-raccolta-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.fg-raccolta-progress-large {
+    margin: 30px 0;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.fg-progress-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 15px;
+    text-align: center;
+}
+
+.fg-stat {
+    padding: 15px;
+}
+
+.fg-stat-value {
+    display: block;
+    font-size: 28px;
+    font-weight: bold;
+    color: #0073aa;
+}
+
+.fg-stat-label {
+    display: block;
+    margin-top: 5px;
+    font-size: 14px;
+    color: #666;
+}
+
+.fg-raccolta-descrizione {
+    margin: 20px 0;
+    line-height: 1.8;
+    color: #333;
+}
+
+.fg-raccolta-info {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.fg-raccolta-info p {
+    margin: 10px 0;
+}
+
+/* Dashboard */
+.fg-dashboard {
+    background: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.fg-dashboard h2 {
+    margin-top: 0;
+    color: #0073aa;
+    border-bottom: 2px solid #0073aa;
+    padding-bottom: 10px;
+}
+
+.fg-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+}
+
+.fg-stat-box {
+    background: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    border: 2px solid #0073aa;
+}
+
+.fg-stat-icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+    opacity: 0.7;
+}
+
+.fg-stat-number {
+    font-size: 36px;
+    font-weight: bold;
+    color: #0073aa;
+    margin: 10px 0;
+}
+
+.fg-stat-label {
+    font-size: 14px;
+    color: #666;
+}
+
+.fg-export-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.fg-export-section h3 {
+    color: #0073aa;
+}
+
+/* Filtro Soci */
+.fg-filtro-soci {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin: 20px 0;
+}
+
+.fg-filter-form {
+    margin-bottom: 20px;
+}
+
+.fg-filter-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.fg-filter-field {
+    flex: 1;
+    min-width: 200px;
+}
+
+.fg-filter-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #333;
+}
+
+.fg-filter-field input,
+.fg-filter-field select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .fg-elenco-raccolte {
+        grid-template-columns: 1fr;
+    }
+    
+    .fg-progress-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .fg-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .fg-filter-row {
+        flex-direction: column;
+    }
+    
+    .fg-filter-field {
+        width: 100%;
+    }
+    
+    .fg-table {
+        font-size: 14px;
+    }
+    
+    .fg-table th,
+    .fg-table td {
+        padding: 8px 10px;
+    }
+}
