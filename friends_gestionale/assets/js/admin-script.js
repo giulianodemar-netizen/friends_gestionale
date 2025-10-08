@@ -289,6 +289,50 @@
             });
         }
         
+        // Photo Upload Handler for Socio
+        $('#fg_upload_foto_button').on('click', function(e) {
+            e.preventDefault();
+            
+            var custom_uploader = wp.media({
+                title: 'Seleziona Foto Socio',
+                button: {
+                    text: 'Usa questa foto'
+                },
+                multiple: false,
+                library: {
+                    type: 'image'
+                }
+            });
+            
+            custom_uploader.on('select', function() {
+                var attachment = custom_uploader.state().get('selection').first().toJSON();
+                
+                // Update hidden field
+                $('#fg_foto_id').val(attachment.id);
+                
+                // Show preview
+                var previewHtml = '<div class="fg-foto-preview" style="margin-bottom: 10px;">' +
+                    '<img src="' + attachment.url + '" style="max-width: 200px; height: auto; border: 1px solid #ddd; padding: 5px;" />' +
+                    '</div>';
+                
+                $('.fg-foto-preview').remove();
+                $('#fg_upload_foto_button').before(previewHtml);
+                $('#fg_remove_foto_button').show();
+            });
+            
+            custom_uploader.open();
+        });
+        
+        // Remove Photo Handler for Socio
+        $('#fg_remove_foto_button').on('click', function(e) {
+            e.preventDefault();
+            if (confirm('Sei sicuro di voler rimuovere la foto?')) {
+                $('#fg_foto_id').val('');
+                $('.fg-foto-preview').remove();
+                $(this).hide();
+            }
+        });
+        
     });
     
 })(jQuery);

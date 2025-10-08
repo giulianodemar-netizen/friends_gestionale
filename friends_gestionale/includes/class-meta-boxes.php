@@ -198,6 +198,28 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                 </div>
             </div>
+            
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Foto Socio', 'friends-gestionale'); ?></h3>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <?php
+                        $foto_id = get_post_thumbnail_id($post->ID);
+                        if ($foto_id) {
+                            $foto_url = wp_get_attachment_image_src($foto_id, 'medium');
+                            ?>
+                            <div class="fg-foto-preview" style="margin-bottom: 10px;">
+                                <img src="<?php echo esc_url($foto_url[0]); ?>" style="max-width: 200px; height: auto; border: 1px solid #ddd; padding: 5px;" />
+                            </div>
+                            <?php
+                        }
+                        ?>
+                        <button type="button" class="button" id="fg_upload_foto_button"><?php _e('Carica Foto', 'friends-gestionale'); ?></button>
+                        <button type="button" class="button" id="fg_remove_foto_button" style="<?php echo !$foto_id ? 'display:none;' : ''; ?>"><?php _e('Rimuovi Foto', 'friends-gestionale'); ?></button>
+                        <input type="hidden" id="fg_foto_id" name="fg_foto_id" value="<?php echo esc_attr($foto_id); ?>" />
+                    </div>
+                </div>
+            </div>
         </div>
         <?php
     }
@@ -670,6 +692,15 @@ class Friends_Gestionale_Meta_Boxes {
                         'name' => sanitize_text_field($doc['name'])
                     );
                 }, $_POST['fg_documents']));
+            }
+            // Save photo as featured image
+            if (isset($_POST['fg_foto_id'])) {
+                $foto_id = absint($_POST['fg_foto_id']);
+                if ($foto_id > 0) {
+                    set_post_thumbnail($post_id, $foto_id);
+                } else {
+                    delete_post_thumbnail($post_id);
+                }
             }
         }
         

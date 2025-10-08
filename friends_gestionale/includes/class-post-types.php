@@ -28,6 +28,12 @@ class Friends_Gestionale_Post_Types {
         add_action('manage_fg_raccolta_posts_custom_column', array($this, 'render_raccolta_columns'), 10, 2);
         add_filter('manage_fg_evento_posts_columns', array($this, 'set_evento_columns'));
         add_action('manage_fg_evento_posts_custom_column', array($this, 'render_evento_columns'), 10, 2);
+        
+        // Taxonomy custom fields for categoria_socio
+        add_action('fg_categoria_socio_add_form_fields', array($this, 'add_categoria_quota_field'));
+        add_action('fg_categoria_socio_edit_form_fields', array($this, 'edit_categoria_quota_field'), 10, 2);
+        add_action('created_fg_categoria_socio', array($this, 'save_categoria_quota_field'));
+        add_action('edited_fg_categoria_socio', array($this, 'save_categoria_quota_field'));
     }
     
     /**
@@ -407,6 +413,47 @@ class Friends_Gestionale_Post_Types {
                     echo '-';
                 }
                 break;
+        }
+    }
+    
+    /**
+     * Add quota field to categoria_socio taxonomy (add form)
+     */
+    public function add_categoria_quota_field() {
+        ?>
+        <div class="form-field">
+            <label for="fg_quota_associativa"><?php _e('Quota Associativa (€)', 'friends-gestionale'); ?></label>
+            <input type="number" name="fg_quota_associativa" id="fg_quota_associativa" step="0.01" min="0" value="" />
+            <p class="description"><?php _e('Inserisci l\'importo della quota annuale per questa categoria di socio.', 'friends-gestionale'); ?></p>
+        </div>
+        <?php
+    }
+    
+    /**
+     * Add quota field to categoria_socio taxonomy (edit form)
+     */
+    public function edit_categoria_quota_field($term, $taxonomy) {
+        $quota = get_term_meta($term->term_id, 'fg_quota_associativa', true);
+        ?>
+        <tr class="form-field">
+            <th scope="row">
+                <label for="fg_quota_associativa"><?php _e('Quota Associativa (€)', 'friends-gestionale'); ?></label>
+            </th>
+            <td>
+                <input type="number" name="fg_quota_associativa" id="fg_quota_associativa" step="0.01" min="0" value="<?php echo esc_attr($quota); ?>" />
+                <p class="description"><?php _e('Inserisci l\'importo della quota annuale per questa categoria di socio.', 'friends-gestionale'); ?></p>
+            </td>
+        </tr>
+        <?php
+    }
+    
+    /**
+     * Save quota field for categoria_socio taxonomy
+     */
+    public function save_categoria_quota_field($term_id) {
+        if (isset($_POST['fg_quota_associativa'])) {
+            $quota = floatval($_POST['fg_quota_associativa']);
+            update_term_meta($term_id, 'fg_quota_associativa', $quota);
         }
     }
 }

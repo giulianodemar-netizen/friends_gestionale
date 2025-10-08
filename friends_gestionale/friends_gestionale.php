@@ -124,10 +124,16 @@ class Friends_Gestionale {
             remove_menu_page('plugins.php');                // Plugins
             remove_menu_page('users.php');                  // Users
             remove_menu_page('tools.php');                  // Tools
-            remove_menu_page('options-general.php');        // Settings
+            // Keep Settings visible for plugin settings access
+            // remove_menu_page('options-general.php');     // Settings - now kept visible
             
-            // Remove Visual Composer menu
+            // Remove Visual Composer menus (try multiple possible slugs)
             remove_menu_page('vc-general');                 // Visual Composer
+            remove_menu_page('vc-welcome');                 // VC Welcome
+            remove_menu_page('vcv-settings');               // VC Settings
+            remove_menu_page('vcv-about');                  // VC About
+            remove_menu_page('vcv-headers-footers');        // VC Headers/Footers
+            remove_menu_page('vcv-headers-footers-layouts'); // VC Layouts
             
             // Keep all Friends Gestionale post type menus visible:
             // - Soci (fg_socio)
