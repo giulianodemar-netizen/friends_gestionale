@@ -201,42 +201,6 @@ class Friends_Gestionale_Meta_Boxes {
         </div>
         <?php
     }
-                <label for="fg_indirizzo"><strong><?php _e('Indirizzo:', 'friends-gestionale'); ?></strong></label><br>
-                <textarea id="fg_indirizzo" name="fg_indirizzo" rows="3" class="widefat"><?php echo esc_textarea($indirizzo); ?></textarea>
-            </p>
-            
-            <p>
-                <label for="fg_data_iscrizione"><strong><?php _e('Data Iscrizione:', 'friends-gestionale'); ?></strong></label><br>
-                <input type="date" id="fg_data_iscrizione" name="fg_data_iscrizione" value="<?php echo esc_attr($data_iscrizione); ?>" class="widefat" />
-            </p>
-            
-            <p>
-                <label for="fg_data_scadenza"><strong><?php _e('Data Scadenza:', 'friends-gestionale'); ?></strong></label><br>
-                <input type="date" id="fg_data_scadenza" name="fg_data_scadenza" value="<?php echo esc_attr($data_scadenza); ?>" class="widefat" />
-            </p>
-            
-            <p>
-                <label for="fg_quota_annuale"><strong><?php _e('Quota Annuale (€):', 'friends-gestionale'); ?></strong></label><br>
-                <input type="number" id="fg_quota_annuale" name="fg_quota_annuale" value="<?php echo esc_attr($quota_annuale); ?>" step="0.01" min="0" class="widefat" />
-            </p>
-            
-            <p>
-                <label for="fg_stato"><strong><?php _e('Stato:', 'friends-gestionale'); ?></strong></label><br>
-                <select id="fg_stato" name="fg_stato" class="widefat">
-                    <option value="attivo" <?php selected($stato, 'attivo'); ?>><?php _e('Attivo', 'friends-gestionale'); ?></option>
-                    <option value="sospeso" <?php selected($stato, 'sospeso'); ?>><?php _e('Sospeso', 'friends-gestionale'); ?></option>
-                    <option value="scaduto" <?php selected($stato, 'scaduto'); ?>><?php _e('Scaduto', 'friends-gestionale'); ?></option>
-                    <option value="inattivo" <?php selected($stato, 'inattivo'); ?>><?php _e('Inattivo', 'friends-gestionale'); ?></option>
-                </select>
-            </p>
-            
-            <p>
-                <label for="fg_note"><strong><?php _e('Note:', 'friends-gestionale'); ?></strong></label><br>
-                <textarea id="fg_note" name="fg_note" rows="4" class="widefat"><?php echo esc_textarea($note); ?></textarea>
-            </p>
-        </div>
-        <?php
-    }
     
     /**
      * Render documents meta box
