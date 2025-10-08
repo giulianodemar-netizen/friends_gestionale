@@ -193,6 +193,32 @@
                 }
             } else if (tipoPagamento === 'quota') {
                 $('#fg_categoria_socio_field').show();
+                // Auto-populate amount when quota type is selected
+                updatePaymentAmountFromCategory();
+            }
+        }
+        
+        // Function to update payment amount from member category quota
+        function updatePaymentAmountFromCategory() {
+            var socioId = $('#fg_socio_id').val();
+            var categoriaId = $('#fg_categoria_socio_id').val();
+            
+            if (socioId && $('#fg_tipo_pagamento').val() === 'quota') {
+                // Make AJAX request to get member's category and quota
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'fg_get_member_quota',
+                        socio_id: socioId,
+                        categoria_id: categoriaId
+                    },
+                    success: function(response) {
+                        if (response.success && response.data.quota) {
+                            $('#fg_importo').val(response.data.quota);
+                        }
+                    }
+                });
             }
         }
         
@@ -202,6 +228,18 @@
         // Update when payment type changes
         $('#fg_tipo_pagamento').on('change', function() {
             togglePaymentFields();
+        });
+        
+        // Update when socio changes
+        $('#fg_socio_id').on('change', function() {
+            if ($('#fg_tipo_pagamento').val() === 'quota') {
+                updatePaymentAmountFromCategory();
+            }
+        });
+        
+        // Update when category changes
+        $('#fg_categoria_socio_id').on('change', function() {
+            updatePaymentAmountFromCategory();
         });
         
         // Show/hide custom event field when event selection changes

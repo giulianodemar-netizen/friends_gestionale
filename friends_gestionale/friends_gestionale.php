@@ -100,6 +100,9 @@ class Friends_Gestionale {
         
         // Redirect payment manager to payments page
         add_action('admin_init', array($this, 'redirect_payment_manager'));
+        
+        // AJAX handlers
+        add_action('wp_ajax_fg_get_member_quota', array($this, 'ajax_get_member_quota'));
     }
     
     /**
@@ -261,6 +264,43 @@ class Friends_Gestionale {
                 $admin_role->add_cap($cap);
             }
         }
+    }
+    
+    /**
+     * AJAX handler to get member quota from category
+     */
+    public function ajax_get_member_quota() {
+        $socio_id = isset($_POST['socio_id']) ? absint($_POST['socio_id']) : 0;
+        $categoria_id = isset($_POST['categoria_id']) ? absint($_POST['categoria_id']) : 0;
+        
+        if (!$socio_id) {
+            wp_send_json_error(array('message' => 'Invalid socio ID'));
+            return;
+        }
+        
+        $quota = 0;
+        
+        // If category is specified, get quota from category
+        if ($categoria_id) {
+            $quota = get_term_meta($categoria_id, 'fg_quota_associativa', true);
+        } else {
+            // Otherwise, get from member's assigned category
+            $categories = wp_get_post_terms($socio_id, 'fg_categoria_socio');
+            if (!empty($categories) && !is_wp_error($categories)) {
+                $categoria_id = $categories[0]->term_id;
+                $quota = get_term_meta($categoria_id, 'fg_quota_associativa', true);
+            }
+        }
+        
+        // Fallback to member's individual quota if no category quota
+        if (empty($quota)) {
+            $quota = get_post_meta($socio_id, '_fg_quota_annuale', true);
+        }
+        
+        wp_send_json_success(array(
+            'quota' => floatval($quota),
+            'categoria_id' => $categoria_id
+        ));
     }
     
     /**
