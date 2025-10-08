@@ -1,0 +1,444 @@
+================================================================================
+FRIENDS OF NAPLES GESTIONALE - WordPress Plugin
+================================================================================
+
+VERSION: 1.0.0
+RELEASE DATE: 2024
+AUTHOR: Friends of Naples Team
+LICENSE: GPL v2 or later
+
+================================================================================
+PLUGIN OVERVIEW
+================================================================================
+
+Friends of Naples Gestionale is a comprehensive WordPress plugin for managing
+non-profit organizations, associations, and clubs. It provides complete member
+management, payment tracking, fundraising campaigns, and administrative tools.
+
+================================================================================
+DIRECTORY STRUCTURE
+================================================================================
+
+friends_gestionale/
+├── friends_gestionale.php       [Main Plugin File - 200 lines]
+│   └── Plugin initialization, hooks, asset loading
+│
+├── includes/                    [PHP Classes - 7 files]
+│   ├── class-post-types.php    [Custom Post Types - 160 lines]
+│   ├── class-meta-boxes.php    [Meta Boxes & Fields - 580 lines]
+│   ├── class-shortcodes.php    [Shortcodes System - 630 lines]
+│   ├── class-admin-dashboard.php [Admin Interface - 570 lines]
+│   ├── class-reminders.php     [Reminder System - 340 lines]
+│   ├── class-export.php        [CSV Export - 410 lines]
+│   └── class-email.php         [Email Notifications - 200 lines]
+│
+├── assets/                      [Frontend Resources]
+│   ├── css/
+│   │   ├── admin-style.css     [Admin Styles - 240 lines]
+│   │   └── frontend-style.css  [Frontend Styles - 350 lines]
+│   ├── js/
+│   │   ├── admin-script.js     [Admin JavaScript - 220 lines]
+│   │   └── frontend-script.js  [Frontend JavaScript - 280 lines]
+│   └── images/
+│       └── icon.svg            [Plugin Icon]
+│
+├── README.md                    [Complete Documentation - 10KB]
+├── QUICK_START.md              [Installation Guide - 4.4KB]
+├── CHANGELOG.md                [Version History - 4.9KB]
+├── SUMMARY.txt                 [This File]
+└── .gitignore                  [Git Ignore Rules]
+
+TOTAL: 17 files, ~3,775 lines of code
+
+================================================================================
+CUSTOM POST TYPES
+================================================================================
+
+1. fg_socio (Members/Soci)
+   - Title: Member name
+   - Meta Fields: fiscal code, email, phone, address, subscription date,
+                  expiry date, annual fee, status, notes
+   - Taxonomy: Member categories
+   - Supports: title, editor, thumbnail
+   - Menu Icon: dashicons-groups
+
+2. fg_pagamento (Payments/Pagamenti)
+   - Title: Payment reference
+   - Meta Fields: member ID, amount, payment date, payment method,
+                  payment type, notes
+   - Taxonomy: Payment status
+   - Supports: title
+   - Menu Icon: dashicons-money-alt
+
+3. fg_raccolta (Fundraising/Raccolte Fondi)
+   - Title: Campaign name
+   - Meta Fields: goal, collected amount, start date, end date, status
+   - Supports: title, editor, thumbnail
+   - Menu Icon: dashicons-heart
+   - Public: Yes (visible on frontend)
+
+================================================================================
+KEY FEATURES
+================================================================================
+
+MEMBER MANAGEMENT
+- Complete profile with personal and contact information
+- Document upload and management
+- Automatic expiry date calculation
+- Multiple status types (Active, Suspended, Expired, Inactive)
+- Category classification
+
+PAYMENT TRACKING
+- Link payments to specific members
+- Multiple payment methods (Cash, Bank Transfer, Card, PayPal)
+- Payment types (Membership, Donation, Event)
+- Payment history and reporting
+
+FUNDRAISING CAMPAIGNS
+- Goal setting and progress tracking
+- Visual progress bars with percentage
+- Campaign status management
+- Public display with shortcodes
+- Featured images support
+
+ADMINISTRATIVE DASHBOARD
+- Real-time statistics (total members, active, expired, revenue)
+- Interactive charts (Chart.js)
+  * Payment trends (12 months line chart)
+  * Member distribution (pie chart)
+- Recent payments display
+- Active campaigns monitoring
+- Quick action buttons
+
+REMINDER SYSTEM
+- Daily automated checks
+- Configurable reminder period (default: 30 days)
+- Automatic status updates for expired memberships
+- Admin dashboard notifications
+- Email notifications
+
+EMAIL NOTIFICATIONS
+- Welcome email for new members
+- Expiration reminder emails
+- Payment confirmation emails
+- Customizable templates
+- Dynamic placeholders ({nome}, {data_scadenza}, {quota})
+
+DATA EXPORT
+- CSV export for all data types
+- UTF-8 encoding with BOM (Excel compatible)
+- Filters for members (by status)
+- Filters for payments (by date range)
+- Filters for campaigns (by status)
+
+SHORTCODES
+1. [fg_elenco_soci] - Display members list
+   Parameters: categoria, stato, limite, ordina, ordine
+
+2. [fg_dettaglio_socio] - Display single member
+   Parameters: id
+
+3. [fg_elenco_raccolte] - Display fundraising campaigns
+   Parameters: stato, limite
+
+4. [fg_dettaglio_raccolta] - Display single campaign
+   Parameters: id
+
+5. [fg_progress_bar] - Display progress bar widget
+   Parameters: raccolta_id
+
+6. [fg_dashboard] - Display statistics dashboard
+   Parameters: none (admin only)
+
+7. [fg_filtro_soci] - Display member filter form
+   Parameters: none
+
+================================================================================
+ADMIN MENU STRUCTURE
+================================================================================
+
+WordPress Admin → Sidebar:
+
+Friends Gestionale (main menu)
+├── Dashboard (statistics overview)
+├── Statistiche (detailed charts)
+├── Impostazioni (plugin settings)
+└── Esporta Dati (CSV export)
+
+Soci (members)
+├── Tutti i Soci
+├── Aggiungi Socio
+└── Categorie
+
+Pagamenti (payments)
+├── Tutti i Pagamenti
+├── Aggiungi Pagamento
+└── Stati
+
+Raccolte Fondi (fundraising)
+├── Tutte le Raccolte
+├── Aggiungi Raccolta
+└── (public archive)
+
+================================================================================
+SETTINGS & CONFIGURATION
+================================================================================
+
+Admin → Friends Gestionale → Impostazioni:
+
+1. Quota Annuale Predefinita (Default Annual Fee)
+   - Type: Number (decimal)
+   - Default: €50
+   - Used for auto-populating member fees
+
+2. Giorni Anticipo Reminder (Reminder Days)
+   - Type: Number
+   - Default: 30
+   - Days before expiry to send reminder
+
+3. Notifiche Email (Email Notifications)
+   - Type: Checkbox
+   - Default: Enabled
+   - Enable/disable automatic emails
+
+4. Oggetto Email Reminder (Reminder Subject)
+   - Type: Text
+   - Customizable email subject
+
+5. Messaggio Email Reminder (Reminder Message)
+   - Type: Textarea
+   - Customizable email body
+   - Supports placeholders
+
+================================================================================
+AUTOMATION & CRON JOBS
+================================================================================
+
+DAILY TASKS (WordPress Cron)
+- Check for expiring memberships
+- Send reminder emails (if enabled)
+- Update expired member status
+- Log notification activities
+
+IMMEDIATE ACTIONS
+- Welcome email on new member creation
+- Payment confirmation on payment registration
+- Status change notifications
+
+================================================================================
+SECURITY FEATURES
+================================================================================
+
+✓ Nonce verification for all forms
+✓ Capability checks (manage_options, edit_posts)
+✓ Input sanitization (sanitize_text_field, sanitize_email, etc.)
+✓ Output escaping (esc_html, esc_attr, esc_url)
+✓ CSRF protection
+✓ SQL injection prevention (WordPress $wpdb)
+✓ XSS prevention
+✓ Direct file access prevention
+
+================================================================================
+BROWSER & DEVICE COMPATIBILITY
+================================================================================
+
+DESKTOP BROWSERS
+✓ Chrome (latest)
+✓ Firefox (latest)
+✓ Safari (latest)
+✓ Edge (latest)
+
+MOBILE DEVICES
+✓ iOS Safari
+✓ Chrome Mobile
+✓ Android Browser
+
+RESPONSIVE BREAKPOINTS
+- Desktop: 1024px+
+- Tablet: 768px - 1023px
+- Mobile: < 768px
+
+================================================================================
+TECHNICAL REQUIREMENTS
+================================================================================
+
+MINIMUM
+- WordPress: 5.0+
+- PHP: 7.2+
+- MySQL: 5.6+
+
+RECOMMENDED
+- WordPress: 6.0+
+- PHP: 8.0+
+- MySQL: 8.0+
+- HTTPS: Enabled
+- Memory: 128MB+
+
+OPTIONAL
+- SMTP plugin (for reliable email delivery)
+- Caching plugin (for performance)
+- Backup plugin (for data safety)
+
+================================================================================
+HOOKS & FILTERS
+================================================================================
+
+ACTIONS
+- save_post_fg_socio: After saving member
+- save_post_fg_pagamento: After saving payment
+- save_post_fg_raccolta: After saving campaign
+- fg_daily_reminder_check: Daily cron event
+- admin_notices: Dashboard notifications
+
+FILTERS
+- fg_reminder_email_subject: Modify email subject
+- fg_reminder_email_message: Modify email body
+- fg_export_csv_data: Modify export data
+
+================================================================================
+DATABASE TABLES
+================================================================================
+
+Uses standard WordPress tables:
+- wp_posts: Stores all custom post types
+- wp_postmeta: Stores all custom fields
+- wp_term_taxonomy: Stores taxonomies
+- wp_terms: Stores category terms
+- wp_options: Stores plugin settings
+
+No custom tables required!
+
+================================================================================
+FILE SIZE BREAKDOWN
+================================================================================
+
+PHP Files:        ~2,890 lines
+CSS Files:        ~590 lines
+JavaScript Files: ~500 lines
+Documentation:    ~20KB
+Total Size:       ~150KB (compressed)
+
+================================================================================
+PERFORMANCE OPTIMIZATION
+================================================================================
+
+✓ Efficient database queries (indexed meta keys)
+✓ Conditional script loading (only when needed)
+✓ CSS/JS minification ready
+✓ Image optimization (SVG icon)
+✓ Caching-friendly architecture
+✓ AJAX for dynamic operations
+✓ Lazy loading support
+
+================================================================================
+INTERNATIONALIZATION (I18N)
+================================================================================
+
+Text Domain: 'friends-gestionale'
+Domain Path: /languages
+Translation Ready: Yes
+
+All strings wrapped in:
+- __() for translation
+- _e() for echo translation
+- esc_html__() for escaped translation
+- sprintf() for dynamic strings
+
+================================================================================
+UPGRADE PATH
+================================================================================
+
+CURRENT: 1.0.0 (Initial Release)
+
+PLANNED: 2.0.0
+- Payment gateway integration
+- Mobile app
+- Advanced reporting
+- Event calendar
+- QR code system
+
+================================================================================
+SUPPORT & RESOURCES
+================================================================================
+
+DOCUMENTATION
+- README.md: Complete guide
+- QUICK_START.md: Installation steps
+- CHANGELOG.md: Version history
+- This file: Technical summary
+
+ONLINE
+- Repository: https://github.com/giulianodemar-netizen/friends_gestionale
+- Issues: GitHub Issues tracker
+- Support: Email team
+
+================================================================================
+BEST PRACTICES
+================================================================================
+
+FOR ADMINISTRATORS
+1. Regular backups before updates
+2. Test on staging environment first
+3. Configure SMTP for reliable emails
+4. Monitor dashboard notifications
+5. Export data regularly
+6. Review reminder settings seasonally
+
+FOR DEVELOPERS
+1. Follow WordPress Coding Standards
+2. Test with different themes
+3. Check multisite compatibility
+4. Validate on PHP versions
+5. Test export with large datasets
+6. Profile performance on production
+
+================================================================================
+TROUBLESHOOTING GUIDE
+================================================================================
+
+ISSUE: Emails not sending
+SOLUTION: Install WP Mail SMTP plugin, configure SMTP settings
+
+ISSUE: Dashboard empty
+SOLUTION: Check user role (must be Administrator), clear cache
+
+ISSUE: Shortcodes not working
+SOLUTION: Verify plugin is active, check shortcode syntax
+
+ISSUE: Export fails
+SOLUTION: Check server memory limit, try smaller datasets
+
+ISSUE: Images not loading
+SOLUTION: Check file permissions, verify upload directory
+
+ISSUE: Cron not running
+SOLUTION: Check WordPress cron is enabled, use cron plugin
+
+================================================================================
+LICENSING INFORMATION
+================================================================================
+
+Plugin: GPL v2 or later
+Chart.js: MIT License
+jQuery: MIT License
+WordPress: GPL v2
+
+This plugin is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or
+any later version.
+
+This plugin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+================================================================================
+CREDITS
+================================================================================
+
+Developed by: Friends of Naples Team
+Contributors: (see GitHub contributors)
+Libraries: Chart.js, jQuery, WordPress Core APIs
+
+================================================================================
