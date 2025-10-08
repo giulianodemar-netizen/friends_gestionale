@@ -172,7 +172,13 @@ class Friends_Gestionale_Post_Types {
             'show_admin_column' => true,
             'query_var' => true,
             'rewrite' => array('slug' => 'categoria-socio'),
-            'show_in_rest' => true
+            'show_in_rest' => true,
+            'capabilities' => array(
+                'manage_terms' => 'manage_categories',
+                'edit_terms' => 'edit_categories',
+                'delete_terms' => 'delete_categories',
+                'assign_terms' => 'assign_categories',
+            ),
         ));
         
         // Register Stato Pagamento taxonomy
@@ -193,7 +199,13 @@ class Friends_Gestionale_Post_Types {
             'show_admin_column' => true,
             'query_var' => true,
             'rewrite' => array('slug' => 'stato-pagamento'),
-            'show_in_rest' => true
+            'show_in_rest' => true,
+            'capabilities' => array(
+                'manage_terms' => 'manage_categories',
+                'edit_terms' => 'edit_categories',
+                'delete_terms' => 'delete_categories',
+                'assign_terms' => 'assign_categories',
+            ),
         ));
     }
     

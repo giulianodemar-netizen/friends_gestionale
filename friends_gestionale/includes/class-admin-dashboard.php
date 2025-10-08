@@ -68,7 +68,7 @@ class Friends_Gestionale_Admin_Dashboard {
             'edit_posts',
             'fg-payment-calendar',
             array($this, 'render_payment_calendar'),
-            'dashicons-calendar-alt',
+            'dashicons-money-alt', // Changed icon to money instead of calendar
             31
         );
     }
@@ -492,6 +492,10 @@ class Friends_Gestionale_Admin_Dashboard {
         $next_month = $current_month == 12 ? 1 : $current_month + 1;
         $next_year = $current_month == 12 ? $current_year + 1 : $current_year;
         
+        // Calculate previous and next year
+        $prev_year_same_month = $current_year - 1;
+        $next_year_same_month = $current_year + 1;
+        
         // Get month name
         $month_name = date_i18n('F Y', strtotime("$current_year-$current_month-01"));
         
@@ -556,14 +560,24 @@ class Friends_Gestionale_Admin_Dashboard {
         <div class="wrap">
             <h1><?php _e('Calendario Pagamenti', 'friends-gestionale'); ?></h1>
             
-            <div class="fg-calendar-navigation" style="margin: 20px 0; display: flex; justify-content: space-between; align-items: center;">
-                <a href="?page=fg-payment-calendar&month=<?php echo $prev_month; ?>&year=<?php echo $prev_year; ?>" class="button">
-                    <span class="dashicons dashicons-arrow-left-alt2"></span> <?php _e('Mese Precedente', 'friends-gestionale'); ?>
-                </a>
-                <h2><?php echo esc_html($month_name); ?></h2>
-                <a href="?page=fg-payment-calendar&month=<?php echo $next_month; ?>&year=<?php echo $next_year; ?>" class="button">
-                    <?php _e('Mese Successivo', 'friends-gestionale'); ?> <span class="dashicons dashicons-arrow-right-alt2"></span>
-                </a>
+            <div class="fg-calendar-navigation" style="margin: 20px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <a href="?page=fg-payment-calendar&month=<?php echo $prev_month; ?>&year=<?php echo $prev_year; ?>" class="button">
+                        <span class="dashicons dashicons-arrow-left-alt2"></span> <?php _e('Mese Precedente', 'friends-gestionale'); ?>
+                    </a>
+                    <h2><?php echo esc_html($month_name); ?></h2>
+                    <a href="?page=fg-payment-calendar&month=<?php echo $next_month; ?>&year=<?php echo $next_year; ?>" class="button">
+                        <?php _e('Mese Successivo', 'friends-gestionale'); ?> <span class="dashicons dashicons-arrow-right-alt2"></span>
+                    </a>
+                </div>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+                    <a href="?page=fg-payment-calendar&month=<?php echo $current_month; ?>&year=<?php echo $prev_year_same_month; ?>" class="button">
+                        <span class="dashicons dashicons-arrow-left-alt2"></span> <?php _e('Anno Precedente', 'friends-gestionale'); ?>
+                    </a>
+                    <a href="?page=fg-payment-calendar&month=<?php echo $current_month; ?>&year=<?php echo $next_year_same_month; ?>" class="button">
+                        <?php _e('Anno Successivo', 'friends-gestionale'); ?> <span class="dashicons dashicons-arrow-right-alt2"></span>
+                    </a>
+                </div>
             </div>
             
             <style>
@@ -606,6 +620,12 @@ class Friends_Gestionale_Admin_Dashboard {
                     border-radius: 3px;
                     background: #d4edda;
                     border-left: 3px solid #28a745;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .fg-payment-item:hover {
+                    background: #c3e6cb;
+                    transform: translateX(2px);
                 }
                 .fg-payment-due {
                     font-size: 11px;
@@ -614,6 +634,12 @@ class Friends_Gestionale_Admin_Dashboard {
                     border-radius: 3px;
                     background: #fff3cd;
                     border-left: 3px solid #ffc107;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .fg-payment-due:hover {
+                    background: #ffe8a1;
+                    transform: translateX(2px);
                 }
                 .fg-payment-overdue {
                     font-size: 11px;
@@ -622,6 +648,12 @@ class Friends_Gestionale_Admin_Dashboard {
                     border-radius: 3px;
                     background: #f8d7da;
                     border-left: 3px solid #dc3545;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .fg-payment-overdue:hover {
+                    background: #f5c6cb;
+                    transform: translateX(2px);
                 }
             </style>
             
@@ -666,7 +698,22 @@ class Friends_Gestionale_Admin_Dashboard {
                                         $importo = get_post_meta($payment->ID, '_fg_importo', true);
                                         $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
                                         $socio_nome = $socio_id ? get_the_title($socio_id) : 'N/A';
-                                        echo '<div class="fg-payment-item" title="' . esc_attr($socio_nome) . '">';
+                                        $metodo = get_post_meta($payment->ID, '_fg_metodo_pagamento', true);
+                                        $tipo = get_post_meta($payment->ID, '_fg_tipo_pagamento', true);
+                                        $note = get_post_meta($payment->ID, '_fg_note', true);
+                                        
+                                        $tooltip = sprintf(
+                                            'Socio: %s\nImporto: €%s\nTipo: %s\nMetodo: %s%s',
+                                            $socio_nome,
+                                            number_format($importo, 2),
+                                            ucfirst($tipo),
+                                            ucfirst($metodo),
+                                            $note ? '\nNote: ' . $note : ''
+                                        );
+                                        
+                                        $edit_url = admin_url('post.php?post=' . $payment->ID . '&action=edit');
+                                        
+                                        echo '<div class="fg-payment-item" title="' . esc_attr($tooltip) . '" onclick="window.open(\'' . esc_url($edit_url) . '\', \'_blank\')">';
                                         echo '✓ €' . number_format($importo, 2) . ' - ' . esc_html(substr($socio_nome, 0, 15));
                                         echo '</div>';
                                     }
@@ -676,7 +723,19 @@ class Friends_Gestionale_Admin_Dashboard {
                                         $quota = get_post_meta($socio->ID, '_fg_quota_annuale', true);
                                         $is_overdue = ($current_date < $today);
                                         $class = $is_overdue ? 'fg-payment-overdue' : 'fg-payment-due';
-                                        echo '<div class="' . $class . '" title="Scadenza: ' . esc_attr($socio->post_title) . '">';
+                                        $data_scadenza = get_post_meta($socio->ID, '_fg_data_scadenza', true);
+                                        
+                                        $tooltip = sprintf(
+                                            'Socio: %s\nQuota: €%s\nScadenza: %s\nStato: %s',
+                                            $socio->post_title,
+                                            number_format($quota, 2),
+                                            date_i18n(get_option('date_format'), strtotime($data_scadenza)),
+                                            $is_overdue ? 'Arretrato' : 'In scadenza'
+                                        );
+                                        
+                                        $socio_url = admin_url('post.php?post=' . $socio->ID . '&action=edit');
+                                        
+                                        echo '<div class="' . $class . '" title="' . esc_attr($tooltip) . '" onclick="window.open(\'' . esc_url($socio_url) . '\', \'_blank\')">';
                                         echo ($is_overdue ? '⚠' : '○') . ' €' . number_format($quota, 2) . ' - ' . esc_html(substr($socio->post_title, 0, 15));
                                         echo '</div>';
                                     }

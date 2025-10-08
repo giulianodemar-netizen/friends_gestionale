@@ -232,6 +232,12 @@ class Friends_Gestionale {
                 
                 // Upload files (for attachments)
                 'upload_files' => true,
+                
+                // Taxonomy management capabilities
+                'manage_categories' => true,
+                'edit_categories' => true,
+                'delete_categories' => true,
+                'assign_categories' => true,
             )
         );
         
