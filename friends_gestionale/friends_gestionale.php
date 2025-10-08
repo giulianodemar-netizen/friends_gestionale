@@ -126,6 +126,9 @@ class Friends_Gestionale {
             remove_menu_page('tools.php');                  // Tools
             remove_menu_page('options-general.php');        // Settings
             
+            // Remove Visual Composer menu
+            remove_menu_page('vc-general');                 // Visual Composer
+            
             // Keep all Friends Gestionale post type menus visible:
             // - Soci (fg_socio)
             // - Pagamenti (fg_pagamento)

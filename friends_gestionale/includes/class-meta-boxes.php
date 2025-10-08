@@ -29,7 +29,7 @@ class Friends_Gestionale_Meta_Boxes {
      */
     public function hide_default_editor() {
         global $post_type;
-        if (in_array($post_type, array('fg_socio', 'fg_pagamento', 'fg_evento'))) {
+        if (in_array($post_type, array('fg_socio', 'fg_pagamento', 'fg_evento', 'fg_raccolta'))) {
             remove_post_type_support($post_type, 'editor');
             remove_post_type_support($post_type, 'title');
         }
@@ -374,6 +374,10 @@ class Friends_Gestionale_Meta_Boxes {
     public function render_raccolta_info_meta_box($post) {
         wp_nonce_field('fg_raccolta_meta_box', 'fg_raccolta_meta_box_nonce');
         
+        $titolo_raccolta = get_post_meta($post->ID, '_fg_titolo_raccolta', true);
+        if (empty($titolo_raccolta)) {
+            $titolo_raccolta = $post->post_title;
+        }
         $obiettivo = get_post_meta($post->ID, '_fg_obiettivo', true);
         $raccolto = get_post_meta($post->ID, '_fg_raccolto', true);
         $data_inizio = get_post_meta($post->ID, '_fg_data_inizio', true);
@@ -383,6 +387,13 @@ class Friends_Gestionale_Meta_Boxes {
         <div class="fg-meta-box fg-improved-form">
             <div class="fg-form-section">
                 <h3 class="fg-section-title"><?php _e('Dettagli Raccolta Fondi', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_titolo_raccolta"><strong><?php _e('Titolo Raccolta:', 'friends-gestionale'); ?></strong> <span class="required">*</span></label>
+                        <input type="text" id="fg_titolo_raccolta" name="fg_titolo_raccolta" value="<?php echo esc_attr($titolo_raccolta); ?>" class="widefat" required />
+                    </div>
+                </div>
                 
                 <div class="fg-form-row">
                     <div class="fg-form-field fg-field-half">
@@ -701,6 +712,21 @@ class Friends_Gestionale_Meta_Boxes {
         if ($post->post_type === 'fg_raccolta') {
             if (!isset($_POST['fg_raccolta_meta_box_nonce']) || !wp_verify_nonce($_POST['fg_raccolta_meta_box_nonce'], 'fg_raccolta_meta_box')) {
                 return;
+            }
+            
+            // Update post title with titolo_raccolta
+            if (isset($_POST['fg_titolo_raccolta'])) {
+                $titolo_raccolta = sanitize_text_field($_POST['fg_titolo_raccolta']);
+                
+                // Update post title
+                remove_action('save_post', array($this, 'save_meta_boxes'), 10);
+                wp_update_post(array(
+                    'ID' => $post_id,
+                    'post_title' => $titolo_raccolta
+                ));
+                add_action('save_post', array($this, 'save_meta_boxes'), 10, 2);
+                
+                update_post_meta($post_id, '_fg_titolo_raccolta', $titolo_raccolta);
             }
             
             if (isset($_POST['fg_obiettivo'])) {
