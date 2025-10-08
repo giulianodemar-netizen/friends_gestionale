@@ -214,11 +214,28 @@
                         categoria_id: categoriaId
                     },
                     success: function(response) {
-                        if (response.success && response.data.quota) {
-                            $('#fg_importo').val(response.data.quota);
+                        if (response.success) {
+                            // Auto-select the member's category in dropdown
+                            if (response.data.categoria_id) {
+                                $('#fg_categoria_socio_id').val(response.data.categoria_id);
+                            }
+                            
+                            // Auto-populate amount and make it readonly
+                            if (response.data.quota) {
+                                $('#fg_importo').val(response.data.quota);
+                                $('#fg_importo').prop('readonly', true);
+                                $('#fg_importo').css('background-color', '#f0f0f0');
+                            } else {
+                                $('#fg_importo').prop('readonly', false);
+                                $('#fg_importo').css('background-color', '');
+                            }
                         }
                     }
                 });
+            } else {
+                // Remove readonly when not quota payment
+                $('#fg_importo').prop('readonly', false);
+                $('#fg_importo').css('background-color', '');
             }
         }
         

@@ -27,7 +27,7 @@ class Friends_Gestionale_Admin_Dashboard {
         add_menu_page(
             __('Friends Gestionale', 'friends-gestionale'),
             __('Friends Gestionale', 'friends-gestionale'),
-            'manage_options',
+            'edit_posts',
             'friends-gestionale',
             array($this, 'render_dashboard'),
             'dashicons-heart',
@@ -38,7 +38,7 @@ class Friends_Gestionale_Admin_Dashboard {
             'friends-gestionale',
             __('Dashboard', 'friends-gestionale'),
             __('Dashboard', 'friends-gestionale'),
-            'manage_options',
+            'edit_posts',
             'friends-gestionale',
             array($this, 'render_dashboard')
         );
@@ -47,27 +47,29 @@ class Friends_Gestionale_Admin_Dashboard {
             'friends-gestionale',
             __('Statistiche', 'friends-gestionale'),
             __('Statistiche', 'friends-gestionale'),
-            'manage_options',
+            'edit_posts',
             'fg-statistics',
             array($this, 'render_statistics')
         );
         
         add_submenu_page(
             'friends-gestionale',
+            __('Impostazioni', 'friends-gestionale'),
+            __('Impostazioni', 'friends-gestionale'),
+            'edit_posts',
+            'fg-settings',
+            array($this, 'render_settings')
+        );
+        
+        // Add Calendario Pagamenti as a top-level menu item
+        add_menu_page(
             __('Calendario Pagamenti', 'friends-gestionale'),
             __('Calendario Pagamenti', 'friends-gestionale'),
             'edit_posts',
             'fg-payment-calendar',
-            array($this, 'render_payment_calendar')
-        );
-        
-        add_submenu_page(
-            'friends-gestionale',
-            __('Impostazioni', 'friends-gestionale'),
-            __('Impostazioni', 'friends-gestionale'),
-            'manage_options',
-            'fg-settings',
-            array($this, 'render_settings')
+            array($this, 'render_payment_calendar'),
+            'dashicons-calendar-alt',
+            31
         );
     }
     
