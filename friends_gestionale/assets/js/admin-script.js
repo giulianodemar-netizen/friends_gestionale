@@ -388,6 +388,20 @@
             }
         });
         
+        // Pre-fill payment form when coming from calendar
+        var urlParams = new URLSearchParams(window.location.search);
+        var socioIdFromUrl = urlParams.get('socio_id');
+        
+        if (socioIdFromUrl && $('#fg_socio_id').length) {
+            // Set the socio
+            $('#fg_socio_id').val(socioIdFromUrl).trigger('change');
+            
+            // Set payment type to quota
+            setTimeout(function() {
+                $('#fg_tipo_pagamento').val('quota').trigger('change');
+            }, 500);
+        }
+        
     });
     
 })(jQuery);

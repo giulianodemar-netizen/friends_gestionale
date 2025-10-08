@@ -562,19 +562,19 @@ class Friends_Gestionale_Admin_Dashboard {
             
             <div class="fg-calendar-navigation" style="margin: 20px 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <a href="?page=fg-payment-calendar&month=<?php echo $prev_month; ?>&year=<?php echo $prev_year; ?>" class="button">
+                    <a href="?page=fg-payment-calendar&month=<?php echo $prev_month; ?>&year=<?php echo $prev_year; ?>" class="button button-primary" style="display: inline-flex; align-items: center; gap: 5px;">
                         <span class="dashicons dashicons-arrow-left-alt2"></span> <?php _e('Mese Precedente', 'friends-gestionale'); ?>
                     </a>
-                    <h2><?php echo esc_html($month_name); ?></h2>
-                    <a href="?page=fg-payment-calendar&month=<?php echo $next_month; ?>&year=<?php echo $next_year; ?>" class="button">
+                    <h2 style="margin: 0;"><?php echo esc_html($month_name); ?></h2>
+                    <a href="?page=fg-payment-calendar&month=<?php echo $next_month; ?>&year=<?php echo $next_year; ?>" class="button button-primary" style="display: inline-flex; align-items: center; gap: 5px;">
                         <?php _e('Mese Successivo', 'friends-gestionale'); ?> <span class="dashicons dashicons-arrow-right-alt2"></span>
                     </a>
                 </div>
                 <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
-                    <a href="?page=fg-payment-calendar&month=<?php echo $current_month; ?>&year=<?php echo $prev_year_same_month; ?>" class="button">
+                    <a href="?page=fg-payment-calendar&month=<?php echo $current_month; ?>&year=<?php echo $prev_year_same_month; ?>" class="button button-secondary" style="display: inline-flex; align-items: center; gap: 5px;">
                         <span class="dashicons dashicons-arrow-left-alt2"></span> <?php _e('Anno Precedente', 'friends-gestionale'); ?>
                     </a>
-                    <a href="?page=fg-payment-calendar&month=<?php echo $current_month; ?>&year=<?php echo $next_year_same_month; ?>" class="button">
+                    <a href="?page=fg-payment-calendar&month=<?php echo $current_month; ?>&year=<?php echo $next_year_same_month; ?>" class="button button-secondary" style="display: inline-flex; align-items: center; gap: 5px;">
                         <?php _e('Anno Successivo', 'friends-gestionale'); ?> <span class="dashicons dashicons-arrow-right-alt2"></span>
                     </a>
                 </div>
@@ -600,6 +600,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     vertical-align: top;
                     height: 100px;
                     width: 14.28%;
+                    position: relative;
                 }
                 .fg-calendar .day-number {
                     font-weight: bold;
@@ -622,6 +623,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     border-left: 3px solid #28a745;
                     cursor: pointer;
                     transition: all 0.2s;
+                    position: relative;
                 }
                 .fg-payment-item:hover {
                     background: #c3e6cb;
@@ -636,6 +638,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     border-left: 3px solid #ffc107;
                     cursor: pointer;
                     transition: all 0.2s;
+                    position: relative;
                 }
                 .fg-payment-due:hover {
                     background: #ffe8a1;
@@ -650,10 +653,53 @@ class Friends_Gestionale_Admin_Dashboard {
                     border-left: 3px solid #dc3545;
                     cursor: pointer;
                     transition: all 0.2s;
+                    position: relative;
                 }
                 .fg-payment-overdue:hover {
                     background: #f5c6cb;
                     transform: translateX(2px);
+                }
+                
+                /* Graphical popup tooltip */
+                .fg-payment-tooltip {
+                    display: none;
+                    position: absolute;
+                    z-index: 1000;
+                    background: #fff;
+                    border: 2px solid #0073aa;
+                    border-radius: 5px;
+                    padding: 12px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                    min-width: 250px;
+                    left: 100%;
+                    top: 0;
+                    margin-left: 10px;
+                }
+                .fg-payment-item:hover .fg-payment-tooltip,
+                .fg-payment-due:hover .fg-payment-tooltip,
+                .fg-payment-overdue:hover .fg-payment-tooltip {
+                    display: block;
+                }
+                .fg-payment-tooltip h4 {
+                    margin: 0 0 10px 0;
+                    padding: 0 0 8px 0;
+                    border-bottom: 1px solid #ddd;
+                    color: #0073aa;
+                    font-size: 14px;
+                }
+                .fg-payment-tooltip .tooltip-row {
+                    display: flex;
+                    margin: 5px 0;
+                    font-size: 12px;
+                }
+                .fg-payment-tooltip .tooltip-label {
+                    font-weight: bold;
+                    width: 80px;
+                    color: #666;
+                }
+                .fg-payment-tooltip .tooltip-value {
+                    flex: 1;
+                    color: #333;
                 }
             </style>
             
@@ -702,41 +748,57 @@ class Friends_Gestionale_Admin_Dashboard {
                                         $tipo = get_post_meta($payment->ID, '_fg_tipo_pagamento', true);
                                         $note = get_post_meta($payment->ID, '_fg_note', true);
                                         
-                                        $tooltip = sprintf(
-                                            'Socio: %s\nImporto: €%s\nTipo: %s\nMetodo: %s%s',
-                                            $socio_nome,
-                                            number_format($importo, 2),
-                                            ucfirst($tipo),
-                                            ucfirst($metodo),
-                                            $note ? '\nNote: ' . $note : ''
-                                        );
-                                        
                                         $edit_url = admin_url('post.php?post=' . $payment->ID . '&action=edit');
                                         
-                                        echo '<div class="fg-payment-item" title="' . esc_attr($tooltip) . '" onclick="window.open(\'' . esc_url($edit_url) . '\', \'_blank\')">';
+                                        echo '<div class="fg-payment-item" onclick="window.open(\'' . esc_url($edit_url) . '\', \'_blank\')">';
                                         echo '✓ €' . number_format($importo, 2) . ' - ' . esc_html(substr($socio_nome, 0, 15));
+                                        
+                                        // Graphical popup tooltip
+                                        echo '<div class="fg-payment-tooltip">';
+                                        echo '<h4>Pagamento Effettuato</h4>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Socio:</span><span class="tooltip-value">' . esc_html($socio_nome) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Importo:</span><span class="tooltip-value">€' . number_format($importo, 2) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Tipo:</span><span class="tooltip-value">' . esc_html(ucfirst($tipo)) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Metodo:</span><span class="tooltip-value">' . esc_html(ucfirst($metodo)) . '</span></div>';
+                                        if ($note) {
+                                            echo '<div class="tooltip-row"><span class="tooltip-label">Note:</span><span class="tooltip-value">' . esc_html($note) . '</span></div>';
+                                        }
+                                        echo '</div>';
+                                        
                                         echo '</div>';
                                     }
                                     
                                     // Show due payments
                                     foreach ($payments_by_day[$day_counter]['due'] as $socio) {
-                                        $quota = get_post_meta($socio->ID, '_fg_quota_annuale', true);
+                                        // Get member category and its quota
+                                        $terms = wp_get_post_terms($socio->ID, 'fg_categoria_socio');
+                                        $quota = 0;
+                                        if (!empty($terms) && !is_wp_error($terms)) {
+                                            $categoria_quota = get_term_meta($terms[0]->term_id, 'fg_quota_associativa', true);
+                                            $quota = $categoria_quota ? floatval($categoria_quota) : floatval(get_post_meta($socio->ID, '_fg_quota_annuale', true));
+                                        } else {
+                                            $quota = floatval(get_post_meta($socio->ID, '_fg_quota_annuale', true));
+                                        }
+                                        
                                         $is_overdue = ($current_date < $today);
                                         $class = $is_overdue ? 'fg-payment-overdue' : 'fg-payment-due';
                                         $data_scadenza = get_post_meta($socio->ID, '_fg_data_scadenza', true);
                                         
-                                        $tooltip = sprintf(
-                                            'Socio: %s\nQuota: €%s\nScadenza: %s\nStato: %s',
-                                            $socio->post_title,
-                                            number_format($quota, 2),
-                                            date_i18n(get_option('date_format'), strtotime($data_scadenza)),
-                                            $is_overdue ? 'Arretrato' : 'In scadenza'
-                                        );
+                                        // Build URL for creating new payment with pre-filled data
+                                        $new_payment_url = admin_url('post-new.php?post_type=fg_pagamento&socio_id=' . $socio->ID);
                                         
-                                        $socio_url = admin_url('post.php?post=' . $socio->ID . '&action=edit');
-                                        
-                                        echo '<div class="' . $class . '" title="' . esc_attr($tooltip) . '" onclick="window.open(\'' . esc_url($socio_url) . '\', \'_blank\')">';
+                                        echo '<div class="' . $class . '" onclick="window.open(\'' . esc_url($new_payment_url) . '\', \'_blank\')">';
                                         echo ($is_overdue ? '⚠' : '○') . ' €' . number_format($quota, 2) . ' - ' . esc_html(substr($socio->post_title, 0, 15));
+                                        
+                                        // Graphical popup tooltip
+                                        echo '<div class="fg-payment-tooltip">';
+                                        echo '<h4>' . ($is_overdue ? 'Pagamento Arretrato' : 'Pagamento in Scadenza') . '</h4>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Socio:</span><span class="tooltip-value">' . esc_html($socio->post_title) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Quota:</span><span class="tooltip-value">€' . number_format($quota, 2) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Scadenza:</span><span class="tooltip-value">' . date_i18n(get_option('date_format'), strtotime($data_scadenza)) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Stato:</span><span class="tooltip-value">' . ($is_overdue ? 'Arretrato' : 'In scadenza') . '</span></div>';
+                                        echo '</div>';
+                                        
                                         echo '</div>';
                                     }
                                 }

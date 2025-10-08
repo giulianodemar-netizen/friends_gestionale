@@ -34,6 +34,10 @@ class Friends_Gestionale_Post_Types {
         add_action('fg_categoria_socio_edit_form_fields', array($this, 'edit_categoria_quota_field'), 10, 2);
         add_action('created_fg_categoria_socio', array($this, 'save_categoria_quota_field'));
         add_action('edited_fg_categoria_socio', array($this, 'save_categoria_quota_field'));
+        
+        // Add filter dropdown for payment type
+        add_action('restrict_manage_posts', array($this, 'add_pagamento_filters'));
+        add_filter('parse_query', array($this, 'filter_pagamenti_by_type'));
     }
     
     /**
@@ -283,6 +287,54 @@ class Friends_Gestionale_Post_Types {
             'fg_tipo_pagamento' => __('Tipo', 'friends-gestionale'),
             'date' => $columns['date']
         );
+    }
+    
+    /**
+     * Add filter dropdown for payment type
+     */
+    public function add_pagamento_filters() {
+        global $typenow;
+        
+        if ($typenow == 'fg_pagamento') {
+            $current_tipo = isset($_GET['tipo_pagamento']) ? $_GET['tipo_pagamento'] : '';
+            
+            $tipi_pagamento = array(
+                'quota' => __('Quota Associativa', 'friends-gestionale'),
+                'donazione' => __('Donazione', 'friends-gestionale'),
+                'evento' => __('Evento', 'friends-gestionale'),
+                'altro' => __('Altro', 'friends-gestionale')
+            );
+            
+            echo '<select name="tipo_pagamento">';
+            echo '<option value="">' . __('Tutti i tipi di pagamento', 'friends-gestionale') . '</option>';
+            foreach ($tipi_pagamento as $value => $label) {
+                printf(
+                    '<option value="%s"%s>%s</option>',
+                    esc_attr($value),
+                    selected($current_tipo, $value, false),
+                    esc_html($label)
+                );
+            }
+            echo '</select>';
+        }
+    }
+    
+    /**
+     * Filter payments by type
+     */
+    public function filter_pagamenti_by_type($query) {
+        global $pagenow, $typenow;
+        
+        if ($pagenow == 'edit.php' && $typenow == 'fg_pagamento' && isset($_GET['tipo_pagamento']) && $_GET['tipo_pagamento'] != '') {
+            $meta_query = array(
+                array(
+                    'key' => '_fg_tipo_pagamento',
+                    'value' => sanitize_text_field($_GET['tipo_pagamento']),
+                    'compare' => '='
+                )
+            );
+            $query->set('meta_query', $meta_query);
+        }
     }
     
     /**
