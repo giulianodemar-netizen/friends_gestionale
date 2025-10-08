@@ -92,6 +92,9 @@ class Friends_Gestionale {
         // Load text domain for translations
         add_action('plugins_loaded', array($this, 'load_textdomain'));
         
+        // Ensure payment manager role exists
+        add_action('init', array($this, 'ensure_payment_manager_role'));
+        
         // Restrict menu access for payment manager role
         add_action('admin_menu', array($this, 'restrict_payment_manager_menu'), 999);
         
@@ -104,6 +107,11 @@ class Friends_Gestionale {
      */
     public function restrict_payment_manager_menu() {
         $user = wp_get_current_user();
+        
+        // Don't restrict administrators - they should have full access
+        if (in_array('administrator', $user->roles)) {
+            return;
+        }
         
         if (in_array('fg_payment_manager', $user->roles)) {
             // Remove all default WordPress menus
@@ -134,6 +142,11 @@ class Friends_Gestionale {
     public function redirect_payment_manager() {
         $user = wp_get_current_user();
         
+        // Don't restrict administrators - they should have full access
+        if (in_array('administrator', $user->roles)) {
+            return;
+        }
+        
         if (in_array('fg_payment_manager', $user->roles)) {
             global $pagenow;
             
@@ -155,6 +168,16 @@ class Friends_Gestionale {
                     wp_die(__('Non hai i permessi per accedere a questa pagina.', 'friends-gestionale'));
                 }
             }
+        }
+    }
+    
+    /**
+     * Ensure payment manager role exists (called on init)
+     */
+    public function ensure_payment_manager_role() {
+        // Check if role exists, if not create it
+        if (!get_role('fg_payment_manager')) {
+            $this->create_payment_manager_role();
         }
     }
     
