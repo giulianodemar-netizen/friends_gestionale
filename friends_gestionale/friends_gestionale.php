@@ -171,10 +171,8 @@ class Friends_Gestionale {
      * Ensure payment manager role exists (called on init)
      */
     public function ensure_payment_manager_role() {
-        // Check if role exists, if not create it
-        if (!get_role('fg_payment_manager')) {
-            $this->create_payment_manager_role();
-        }
+        // Always recreate the role to ensure it has the latest name and capabilities
+        $this->create_payment_manager_role();
     }
     
     /**
@@ -225,24 +223,34 @@ class Friends_Gestionale {
             )
         );
         
-        // Get the role
-        $role = get_role('fg_payment_manager');
+        // Get the roles
+        $plugin_role = get_role('fg_payment_manager');
+        $admin_role = get_role('administrator');
         
-        if ($role) {
-            // Add capabilities for fg_pagamento (Pagamenti)
-            $role->add_cap('edit_fg_pagamento');
-            $role->add_cap('read_fg_pagamento');
-            $role->add_cap('delete_fg_pagamento');
-            $role->add_cap('edit_fg_pagamentos');
-            $role->add_cap('edit_others_fg_pagamentos');
-            $role->add_cap('publish_fg_pagamentos');
-            $role->add_cap('read_private_fg_pagamentos');
-            $role->add_cap('delete_fg_pagamentos');
-            $role->add_cap('delete_private_fg_pagamentos');
-            $role->add_cap('delete_published_fg_pagamentos');
-            $role->add_cap('delete_others_fg_pagamentos');
-            $role->add_cap('edit_private_fg_pagamentos');
-            $role->add_cap('edit_published_fg_pagamentos');
+        // Add capabilities for fg_pagamento (Pagamenti) to both roles
+        $capabilities = array(
+            'edit_fg_pagamento',
+            'read_fg_pagamento',
+            'delete_fg_pagamento',
+            'edit_fg_pagamentos',
+            'edit_others_fg_pagamentos',
+            'publish_fg_pagamentos',
+            'read_private_fg_pagamentos',
+            'delete_fg_pagamentos',
+            'delete_private_fg_pagamentos',
+            'delete_published_fg_pagamentos',
+            'delete_others_fg_pagamentos',
+            'edit_private_fg_pagamentos',
+            'edit_published_fg_pagamentos',
+        );
+        
+        foreach ($capabilities as $cap) {
+            if ($plugin_role) {
+                $plugin_role->add_cap($cap);
+            }
+            if ($admin_role) {
+                $admin_role->add_cap($cap);
+            }
         }
     }
     
