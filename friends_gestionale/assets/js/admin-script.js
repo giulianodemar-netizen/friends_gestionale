@@ -173,6 +173,47 @@
             }
         });
         
+        // Show/hide conditional payment fields based on payment type
+        function togglePaymentFields() {
+            var tipoPagamento = $('#fg_tipo_pagamento').val();
+            
+            // Hide all conditional fields
+            $('#fg_evento_field').hide();
+            $('#fg_evento_custom_field').hide();
+            $('#fg_categoria_socio_field').hide();
+            
+            // Show fields based on payment type
+            if (tipoPagamento === 'evento') {
+                $('#fg_evento_field').show();
+                
+                // Check if "Altro Evento" is selected
+                var eventoId = $('#fg_evento_id').val();
+                if (eventoId === 'altro_evento') {
+                    $('#fg_evento_custom_field').show();
+                }
+            } else if (tipoPagamento === 'quota') {
+                $('#fg_categoria_socio_field').show();
+            }
+        }
+        
+        // Initialize on page load
+        togglePaymentFields();
+        
+        // Update when payment type changes
+        $('#fg_tipo_pagamento').on('change', function() {
+            togglePaymentFields();
+        });
+        
+        // Show/hide custom event field when event selection changes
+        $('#fg_evento_id').on('change', function() {
+            var eventoId = $(this).val();
+            if (eventoId === 'altro_evento') {
+                $('#fg_evento_custom_field').show();
+            } else {
+                $('#fg_evento_custom_field').hide();
+            }
+        });
+        
         // Confirm before deleting
         $('.submitdelete').on('click', function(e) {
             if (!confirm('Sei sicuro di voler eliminare questo elemento?')) {

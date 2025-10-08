@@ -84,7 +84,8 @@ class Friends_Gestionale_Post_Types {
             'supports' => array('title'),
             'has_archive' => false,
             'rewrite' => array('slug' => 'pagamenti'),
-            'capability_type' => 'post',
+            'capability_type' => array('fg_pagamento', 'fg_pagamentos'),
+            'map_meta_cap' => true,
             'show_in_rest' => true
         ));
         

@@ -91,6 +91,71 @@ class Friends_Gestionale {
         
         // Load text domain for translations
         add_action('plugins_loaded', array($this, 'load_textdomain'));
+        
+        // Restrict menu access for payment manager role
+        add_action('admin_menu', array($this, 'restrict_payment_manager_menu'), 999);
+        
+        // Redirect payment manager to payments page
+        add_action('admin_init', array($this, 'redirect_payment_manager'));
+    }
+    
+    /**
+     * Restrict admin menu for payment manager role
+     */
+    public function restrict_payment_manager_menu() {
+        $user = wp_get_current_user();
+        
+        if (in_array('fg_payment_manager', $user->roles)) {
+            // Remove all default WordPress menus
+            remove_menu_page('index.php');                  // Dashboard
+            remove_menu_page('edit.php');                   // Posts
+            remove_menu_page('upload.php');                 // Media
+            remove_menu_page('edit.php?post_type=page');    // Pages
+            remove_menu_page('edit-comments.php');          // Comments
+            remove_menu_page('themes.php');                 // Appearance
+            remove_menu_page('plugins.php');                // Plugins
+            remove_menu_page('users.php');                  // Users
+            remove_menu_page('tools.php');                  // Tools
+            remove_menu_page('options-general.php');        // Settings
+            
+            // Remove other Friends Gestionale post types
+            remove_menu_page('edit.php?post_type=fg_socio');
+            remove_menu_page('edit.php?post_type=fg_raccolta');
+            remove_menu_page('edit.php?post_type=fg_evento');
+            
+            // Keep only Pagamenti menu
+            // The fg_pagamento post type menu will remain visible due to capabilities
+        }
+    }
+    
+    /**
+     * Redirect payment manager to payments page on login
+     */
+    public function redirect_payment_manager() {
+        $user = wp_get_current_user();
+        
+        if (in_array('fg_payment_manager', $user->roles)) {
+            global $pagenow;
+            
+            // Redirect from dashboard to payments
+            if ($pagenow == 'index.php') {
+                wp_redirect(admin_url('edit.php?post_type=fg_pagamento'));
+                exit;
+            }
+            
+            // Prevent access to other post types
+            if (isset($_GET['post_type']) && $_GET['post_type'] != 'fg_pagamento') {
+                wp_die(__('Non hai i permessi per accedere a questa pagina.', 'friends-gestionale'));
+            }
+            
+            // Prevent access to other post edit pages
+            if ($pagenow == 'post.php' && isset($_GET['post'])) {
+                $post_type = get_post_type($_GET['post']);
+                if ($post_type && $post_type != 'fg_pagamento') {
+                    wp_die(__('Non hai i permessi per accedere a questa pagina.', 'friends-gestionale'));
+                }
+            }
+        }
     }
     
     /**
@@ -105,6 +170,61 @@ class Friends_Gestionale {
         add_option('friends_gestionale_quota_annuale', 50);
         add_option('friends_gestionale_reminder_days', 30);
         add_option('friends_gestionale_email_notifications', true);
+        
+        // Create custom user role for payment management
+        $this->create_payment_manager_role();
+    }
+    
+    /**
+     * Create custom user role for payment management only
+     */
+    private function create_payment_manager_role() {
+        // Remove role if it exists to ensure clean setup
+        remove_role('fg_payment_manager');
+        
+        // Add the role with minimal capabilities
+        add_role(
+            'fg_payment_manager',
+            __('Friends Gestionale - Gestore Pagamenti', 'friends-gestionale'),
+            array(
+                'read' => true,
+                
+                // Capabilities for fg_pagamento post type
+                'edit_posts' => true,
+                'edit_published_posts' => true,
+                'publish_posts' => true,
+                'delete_posts' => true,
+                'delete_published_posts' => true,
+                
+                // Upload files (for attachments if needed)
+                'upload_files' => true,
+                
+                // Access to admin
+                'read_private_posts' => false,
+                'edit_others_posts' => false,
+                'delete_others_posts' => false,
+            )
+        );
+        
+        // Get the role
+        $role = get_role('fg_payment_manager');
+        
+        if ($role) {
+            // Add custom post type specific capabilities
+            $role->add_cap('edit_fg_pagamento');
+            $role->add_cap('read_fg_pagamento');
+            $role->add_cap('delete_fg_pagamento');
+            $role->add_cap('edit_fg_pagamentos');
+            $role->add_cap('edit_others_fg_pagamentos');
+            $role->add_cap('publish_fg_pagamentos');
+            $role->add_cap('read_private_fg_pagamentos');
+            $role->add_cap('delete_fg_pagamentos');
+            $role->add_cap('delete_private_fg_pagamentos');
+            $role->add_cap('delete_published_fg_pagamentos');
+            $role->add_cap('delete_others_fg_pagamentos');
+            $role->add_cap('edit_private_fg_pagamentos');
+            $role->add_cap('edit_published_fg_pagamentos');
+        }
     }
     
     /**

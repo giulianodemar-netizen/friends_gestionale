@@ -241,6 +241,9 @@ class Friends_Gestionale_Meta_Boxes {
         $data_pagamento = get_post_meta($post->ID, '_fg_data_pagamento', true);
         $metodo_pagamento = get_post_meta($post->ID, '_fg_metodo_pagamento', true);
         $tipo_pagamento = get_post_meta($post->ID, '_fg_tipo_pagamento', true);
+        $evento_id = get_post_meta($post->ID, '_fg_evento_id', true);
+        $evento_custom = get_post_meta($post->ID, '_fg_evento_custom', true);
+        $categoria_socio_id = get_post_meta($post->ID, '_fg_categoria_socio_id', true);
         $note = get_post_meta($post->ID, '_fg_note', true);
         
         // Get all members for dropdown
@@ -249,6 +252,20 @@ class Friends_Gestionale_Meta_Boxes {
             'posts_per_page' => -1,
             'orderby' => 'title',
             'order' => 'ASC'
+        ));
+        
+        // Get all events for dropdown
+        $eventi = get_posts(array(
+            'post_type' => 'fg_evento',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC'
+        ));
+        
+        // Get all member categories
+        $categorie = get_terms(array(
+            'taxonomy' => 'fg_categoria_socio',
+            'hide_empty' => false
         ));
         ?>
         <div class="fg-meta-box">
@@ -292,6 +309,38 @@ class Friends_Gestionale_Meta_Boxes {
                     <option value="donazione" <?php selected($tipo_pagamento, 'donazione'); ?>><?php _e('Donazione', 'friends-gestionale'); ?></option>
                     <option value="evento" <?php selected($tipo_pagamento, 'evento'); ?>><?php _e('Evento', 'friends-gestionale'); ?></option>
                     <option value="altro" <?php selected($tipo_pagamento, 'altro'); ?>><?php _e('Altro', 'friends-gestionale'); ?></option>
+                </select>
+            </p>
+            
+            <p id="fg_evento_field" style="display: none;">
+                <label for="fg_evento_id"><strong><?php _e('Seleziona Evento:', 'friends-gestionale'); ?></strong></label><br>
+                <select id="fg_evento_id" name="fg_evento_id" class="widefat">
+                    <option value=""><?php _e('Seleziona Evento', 'friends-gestionale'); ?></option>
+                    <?php foreach ($eventi as $evento): ?>
+                        <option value="<?php echo $evento->ID; ?>" <?php selected($evento_id, $evento->ID); ?>>
+                            <?php echo esc_html($evento->post_title); ?>
+                        </option>
+                    <?php endforeach; ?>
+                    <option value="altro_evento" <?php selected($evento_id, 'altro_evento'); ?>><?php _e('Altro Evento', 'friends-gestionale'); ?></option>
+                </select>
+            </p>
+            
+            <p id="fg_evento_custom_field" style="display: none;">
+                <label for="fg_evento_custom"><strong><?php _e('Titolo Evento Personalizzato:', 'friends-gestionale'); ?></strong></label><br>
+                <input type="text" id="fg_evento_custom" name="fg_evento_custom" value="<?php echo esc_attr($evento_custom); ?>" class="widefat" />
+            </p>
+            
+            <p id="fg_categoria_socio_field" style="display: none;">
+                <label for="fg_categoria_socio_id"><strong><?php _e('Categoria Socio:', 'friends-gestionale'); ?></strong></label><br>
+                <select id="fg_categoria_socio_id" name="fg_categoria_socio_id" class="widefat">
+                    <option value=""><?php _e('Seleziona Categoria', 'friends-gestionale'); ?></option>
+                    <?php if (!empty($categorie) && !is_wp_error($categorie)): ?>
+                        <?php foreach ($categorie as $categoria): ?>
+                            <option value="<?php echo $categoria->term_id; ?>" <?php selected($categoria_socio_id, $categoria->term_id); ?>>
+                                <?php echo esc_html($categoria->name); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </select>
             </p>
             
@@ -607,6 +656,15 @@ class Friends_Gestionale_Meta_Boxes {
             }
             if (isset($_POST['fg_tipo_pagamento'])) {
                 update_post_meta($post_id, '_fg_tipo_pagamento', sanitize_text_field($_POST['fg_tipo_pagamento']));
+            }
+            if (isset($_POST['fg_evento_id'])) {
+                update_post_meta($post_id, '_fg_evento_id', sanitize_text_field($_POST['fg_evento_id']));
+            }
+            if (isset($_POST['fg_evento_custom'])) {
+                update_post_meta($post_id, '_fg_evento_custom', sanitize_text_field($_POST['fg_evento_custom']));
+            }
+            if (isset($_POST['fg_categoria_socio_id'])) {
+                update_post_meta($post_id, '_fg_categoria_socio_id', absint($_POST['fg_categoria_socio_id']));
             }
             if (isset($_POST['fg_note'])) {
                 update_post_meta($post_id, '_fg_note', sanitize_textarea_field($_POST['fg_note']));
