@@ -1,5 +1,186 @@
 /* Friends Gestionale - Admin Styles */
 
+/* Improved Forms */
+.fg-improved-form {
+    background: #fff;
+    padding: 20px;
+}
+
+.fg-form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.fg-form-section:last-child {
+    border-bottom: none;
+}
+
+.fg-section-title {
+    margin: 0 0 20px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #0073aa;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #0073aa;
+}
+
+.fg-form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.fg-form-field {
+    flex: 1;
+}
+
+.fg-form-field label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #23282d;
+}
+
+.fg-form-field .required {
+    color: #dc3232;
+}
+
+.fg-form-field input[type="text"],
+.fg-form-field input[type="email"],
+.fg-form-field input[type="number"],
+.fg-form-field input[type="date"],
+.fg-form-field input[type="time"],
+.fg-form-field select,
+.fg-form-field textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.fg-form-field input:focus,
+.fg-form-field select:focus,
+.fg-form-field textarea:focus {
+    border-color: #0073aa;
+    outline: none;
+    box-shadow: 0 0 0 1px #0073aa;
+}
+
+.fg-field-half {
+    flex: 0 0 calc(50% - 7.5px);
+}
+
+.fg-field-third {
+    flex: 0 0 calc(33.333% - 10px);
+}
+
+/* Status Badges */
+.fg-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.fg-stato-attivo, .fg-stato-programmato {
+    background: #d4edda;
+    color: #155724;
+}
+
+.fg-stato-sospeso, .fg-stato-in-corso {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.fg-stato-scaduto, .fg-stato-annullato {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.fg-stato-inattivo {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+.fg-stato-completata, .fg-stato-completato {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+/* Partecipanti Box */
+.fg-partecipanti-box {
+    padding: 15px;
+}
+
+.fg-partecipanti-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background: #f9f9f9;
+}
+
+.fg-partecipante-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.fg-partecipante-name {
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.fg-partecipante-email {
+    color: #666;
+    font-size: 13px;
+    margin-right: auto;
+}
+
+.fg-remove-partecipante {
+    color: #dc3232;
+    border-color: #dc3232;
+}
+
+.fg-remove-partecipante:hover {
+    background: #dc3232;
+    color: #fff;
+}
+
+.fg-no-partecipanti {
+    text-align: center;
+    color: #666;
+    padding: 20px;
+}
+
+#fg-send-invites-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #0073aa;
+    color: #fff;
+    border-color: #0073aa;
+    padding: 12px;
+}
+
+#fg-send-invites-btn:hover {
+    background: #005a87;
+    border-color: #005a87;
+}
+
 /* Dashboard Stats */
 .fg-dashboard-stats {
     display: grid;
@@ -271,4 +452,59 @@
     .fg-actions-grid {
         grid-template-columns: 1fr;
     }
+    
+    .fg-form-row {
+        flex-direction: column;
+    }
+    
+    .fg-field-half,
+    .fg-field-third {
+        flex: 1;
+    }
+}
+
+/* Admin List Table Columns */
+.column-fg_email,
+.column-fg_telefono,
+.column-fg_codice_fiscale,
+.column-fg_luogo {
+    width: 150px;
+}
+
+.column-fg_stato,
+.column-fg_stato_evento {
+    width: 100px;
+}
+
+.column-fg_data_iscrizione,
+.column-fg_data_scadenza,
+.column-fg_data_evento,
+.column-fg_data_pagamento,
+.column-fg_data_inizio,
+.column-fg_data_fine {
+    width: 120px;
+}
+
+.column-fg_quota_annuale,
+.column-fg_importo,
+.column-fg_obiettivo,
+.column-fg_raccolto {
+    width: 100px;
+    text-align: right;
+}
+
+.column-fg_progresso {
+    width: 80px;
+    text-align: center;
+}
+
+.column-fg_partecipanti {
+    width: 90px;
+    text-align: center;
+}
+
+.column-fg_socio,
+.column-fg_metodo_pagamento,
+.column-fg_tipo_pagamento {
+    width: 150px;
 }

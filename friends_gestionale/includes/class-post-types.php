@@ -18,6 +18,16 @@ class Friends_Gestionale_Post_Types {
     public function __construct() {
         add_action('init', array($this, 'register_post_types'));
         add_action('init', array($this, 'register_taxonomies'));
+        
+        // Custom admin columns
+        add_filter('manage_fg_socio_posts_columns', array($this, 'set_socio_columns'));
+        add_action('manage_fg_socio_posts_custom_column', array($this, 'render_socio_columns'), 10, 2);
+        add_filter('manage_fg_pagamento_posts_columns', array($this, 'set_pagamento_columns'));
+        add_action('manage_fg_pagamento_posts_custom_column', array($this, 'render_pagamento_columns'), 10, 2);
+        add_filter('manage_fg_raccolta_posts_columns', array($this, 'set_raccolta_columns'));
+        add_action('manage_fg_raccolta_posts_custom_column', array($this, 'render_raccolta_columns'), 10, 2);
+        add_filter('manage_fg_evento_posts_columns', array($this, 'set_evento_columns'));
+        add_action('manage_fg_evento_posts_custom_column', array($this, 'render_evento_columns'), 10, 2);
     }
     
     /**
@@ -104,6 +114,33 @@ class Friends_Gestionale_Post_Types {
             'capability_type' => 'post',
             'show_in_rest' => true
         ));
+        
+        // Register Eventi (Events) post type
+        register_post_type('fg_evento', array(
+            'labels' => array(
+                'name' => __('Eventi', 'friends-gestionale'),
+                'singular_name' => __('Evento', 'friends-gestionale'),
+                'add_new' => __('Aggiungi Evento', 'friends-gestionale'),
+                'add_new_item' => __('Aggiungi Nuovo Evento', 'friends-gestionale'),
+                'edit_item' => __('Modifica Evento', 'friends-gestionale'),
+                'new_item' => __('Nuovo Evento', 'friends-gestionale'),
+                'view_item' => __('Visualizza Evento', 'friends-gestionale'),
+                'search_items' => __('Cerca Eventi', 'friends-gestionale'),
+                'not_found' => __('Nessun evento trovato', 'friends-gestionale'),
+                'not_found_in_trash' => __('Nessun evento nel cestino', 'friends-gestionale'),
+                'menu_name' => __('Eventi', 'friends-gestionale')
+            ),
+            'public' => true,
+            'show_ui' => true,
+            'show_in_menu' => true,
+            'menu_position' => 28,
+            'menu_icon' => 'dashicons-calendar-alt',
+            'supports' => array('title', 'editor', 'thumbnail'),
+            'has_archive' => true,
+            'rewrite' => array('slug' => 'eventi'),
+            'capability_type' => 'post',
+            'show_in_rest' => true
+        ));
     }
     
     /**
@@ -151,6 +188,225 @@ class Friends_Gestionale_Post_Types {
             'rewrite' => array('slug' => 'stato-pagamento'),
             'show_in_rest' => true
         ));
+    }
+    
+    /**
+     * Set custom columns for Soci
+     */
+    public function set_socio_columns($columns) {
+        return array(
+            'cb' => $columns['cb'],
+            'title' => __('Nome Completo', 'friends-gestionale'),
+            'fg_email' => __('Email', 'friends-gestionale'),
+            'fg_telefono' => __('Telefono', 'friends-gestionale'),
+            'fg_codice_fiscale' => __('Codice Fiscale', 'friends-gestionale'),
+            'fg_stato' => __('Stato', 'friends-gestionale'),
+            'fg_data_iscrizione' => __('Data Iscrizione', 'friends-gestionale'),
+            'fg_data_scadenza' => __('Data Scadenza', 'friends-gestionale'),
+            'fg_quota_annuale' => __('Quota Annuale', 'friends-gestionale'),
+            'taxonomy-fg_categoria_socio' => __('Categoria', 'friends-gestionale'),
+            'date' => $columns['date']
+        );
+    }
+    
+    /**
+     * Render custom columns for Soci
+     */
+    public function render_socio_columns($column, $post_id) {
+        switch ($column) {
+            case 'fg_email':
+                $email = get_post_meta($post_id, '_fg_email', true);
+                echo $email ? esc_html($email) : '-';
+                break;
+            case 'fg_telefono':
+                $telefono = get_post_meta($post_id, '_fg_telefono', true);
+                echo $telefono ? esc_html($telefono) : '-';
+                break;
+            case 'fg_codice_fiscale':
+                $cf = get_post_meta($post_id, '_fg_codice_fiscale', true);
+                echo $cf ? esc_html($cf) : '-';
+                break;
+            case 'fg_stato':
+                $stato = get_post_meta($post_id, '_fg_stato', true);
+                if ($stato) {
+                    $class = 'fg-stato-' . esc_attr($stato);
+                    echo '<span class="fg-badge ' . $class . '">' . esc_html(ucfirst($stato)) . '</span>';
+                } else {
+                    echo '-';
+                }
+                break;
+            case 'fg_data_iscrizione':
+                $data = get_post_meta($post_id, '_fg_data_iscrizione', true);
+                echo $data ? esc_html(date_i18n(get_option('date_format'), strtotime($data))) : '-';
+                break;
+            case 'fg_data_scadenza':
+                $data = get_post_meta($post_id, '_fg_data_scadenza', true);
+                echo $data ? esc_html(date_i18n(get_option('date_format'), strtotime($data))) : '-';
+                break;
+            case 'fg_quota_annuale':
+                $quota = get_post_meta($post_id, '_fg_quota_annuale', true);
+                echo $quota ? '€' . number_format($quota, 2, ',', '.') : '-';
+                break;
+        }
+    }
+    
+    /**
+     * Set custom columns for Pagamenti
+     */
+    public function set_pagamento_columns($columns) {
+        return array(
+            'cb' => $columns['cb'],
+            'title' => __('Riferimento', 'friends-gestionale'),
+            'fg_socio' => __('Socio', 'friends-gestionale'),
+            'fg_importo' => __('Importo', 'friends-gestionale'),
+            'fg_data_pagamento' => __('Data Pagamento', 'friends-gestionale'),
+            'fg_metodo_pagamento' => __('Metodo', 'friends-gestionale'),
+            'fg_tipo_pagamento' => __('Tipo', 'friends-gestionale'),
+            'date' => $columns['date']
+        );
+    }
+    
+    /**
+     * Render custom columns for Pagamenti
+     */
+    public function render_pagamento_columns($column, $post_id) {
+        switch ($column) {
+            case 'fg_socio':
+                $socio_id = get_post_meta($post_id, '_fg_socio_id', true);
+                if ($socio_id) {
+                    $socio = get_post($socio_id);
+                    if ($socio) {
+                        echo '<a href="' . get_edit_post_link($socio_id) . '">' . esc_html($socio->post_title) . '</a>';
+                    } else {
+                        echo '-';
+                    }
+                } else {
+                    echo '-';
+                }
+                break;
+            case 'fg_importo':
+                $importo = get_post_meta($post_id, '_fg_importo', true);
+                echo $importo ? '€' . number_format($importo, 2, ',', '.') : '-';
+                break;
+            case 'fg_data_pagamento':
+                $data = get_post_meta($post_id, '_fg_data_pagamento', true);
+                echo $data ? esc_html(date_i18n(get_option('date_format'), strtotime($data))) : '-';
+                break;
+            case 'fg_metodo_pagamento':
+                $metodo = get_post_meta($post_id, '_fg_metodo_pagamento', true);
+                echo $metodo ? esc_html(ucfirst($metodo)) : '-';
+                break;
+            case 'fg_tipo_pagamento':
+                $tipo = get_post_meta($post_id, '_fg_tipo_pagamento', true);
+                echo $tipo ? esc_html(ucfirst($tipo)) : '-';
+                break;
+        }
+    }
+    
+    /**
+     * Set custom columns for Raccolte
+     */
+    public function set_raccolta_columns($columns) {
+        return array(
+            'cb' => $columns['cb'],
+            'title' => __('Titolo', 'friends-gestionale'),
+            'fg_obiettivo' => __('Obiettivo', 'friends-gestionale'),
+            'fg_raccolto' => __('Raccolto', 'friends-gestionale'),
+            'fg_progresso' => __('Progresso', 'friends-gestionale'),
+            'fg_data_inizio' => __('Data Inizio', 'friends-gestionale'),
+            'fg_data_fine' => __('Data Fine', 'friends-gestionale'),
+            'fg_stato' => __('Stato', 'friends-gestionale'),
+            'date' => $columns['date']
+        );
+    }
+    
+    /**
+     * Render custom columns for Raccolte
+     */
+    public function render_raccolta_columns($column, $post_id) {
+        switch ($column) {
+            case 'fg_obiettivo':
+                $obiettivo = get_post_meta($post_id, '_fg_obiettivo', true);
+                echo $obiettivo ? '€' . number_format($obiettivo, 2, ',', '.') : '-';
+                break;
+            case 'fg_raccolto':
+                $raccolto = get_post_meta($post_id, '_fg_raccolto', true);
+                echo $raccolto ? '€' . number_format($raccolto, 2, ',', '.') : '-';
+                break;
+            case 'fg_progresso':
+                $obiettivo = floatval(get_post_meta($post_id, '_fg_obiettivo', true));
+                $raccolto = floatval(get_post_meta($post_id, '_fg_raccolto', true));
+                if ($obiettivo > 0) {
+                    $percentuale = ($raccolto / $obiettivo) * 100;
+                    echo number_format($percentuale, 1) . '%';
+                } else {
+                    echo '-';
+                }
+                break;
+            case 'fg_data_inizio':
+                $data = get_post_meta($post_id, '_fg_data_inizio', true);
+                echo $data ? esc_html(date_i18n(get_option('date_format'), strtotime($data))) : '-';
+                break;
+            case 'fg_data_fine':
+                $data = get_post_meta($post_id, '_fg_data_fine', true);
+                echo $data ? esc_html(date_i18n(get_option('date_format'), strtotime($data))) : '-';
+                break;
+            case 'fg_stato':
+                $stato = get_post_meta($post_id, '_fg_stato', true);
+                if ($stato) {
+                    echo '<span class="fg-badge fg-stato-' . esc_attr($stato) . '">' . esc_html(ucfirst($stato)) . '</span>';
+                } else {
+                    echo '-';
+                }
+                break;
+        }
+    }
+    
+    /**
+     * Set custom columns for Eventi
+     */
+    public function set_evento_columns($columns) {
+        return array(
+            'cb' => $columns['cb'],
+            'title' => __('Titolo Evento', 'friends-gestionale'),
+            'fg_data_evento' => __('Data Evento', 'friends-gestionale'),
+            'fg_luogo' => __('Luogo', 'friends-gestionale'),
+            'fg_partecipanti' => __('Partecipanti', 'friends-gestionale'),
+            'fg_stato_evento' => __('Stato', 'friends-gestionale'),
+            'date' => $columns['date']
+        );
+    }
+    
+    /**
+     * Render custom columns for Eventi
+     */
+    public function render_evento_columns($column, $post_id) {
+        switch ($column) {
+            case 'fg_data_evento':
+                $data = get_post_meta($post_id, '_fg_data_evento', true);
+                echo $data ? esc_html(date_i18n(get_option('date_format'), strtotime($data))) : '-';
+                break;
+            case 'fg_luogo':
+                $luogo = get_post_meta($post_id, '_fg_luogo', true);
+                echo $luogo ? esc_html($luogo) : '-';
+                break;
+            case 'fg_partecipanti':
+                $partecipanti = get_post_meta($post_id, '_fg_partecipanti', true);
+                if (is_array($partecipanti) && !empty($partecipanti)) {
+                    echo count($partecipanti);
+                } else {
+                    echo '0';
+                }
+                break;
+            case 'fg_stato_evento':
+                $stato = get_post_meta($post_id, '_fg_stato_evento', true);
+                if ($stato) {
+                    echo '<span class="fg-badge fg-stato-' . esc_attr($stato) . '">' . esc_html(ucfirst($stato)) . '</span>';
+                } else {
+                    echo '-';
+                }
+                break;
+        }
     }
 }
 

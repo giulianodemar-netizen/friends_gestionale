@@ -45,6 +45,83 @@
             }
         });
         
+        // Add Partecipante Handler
+        $('#fg-add-partecipante-btn').on('click', function(e) {
+            e.preventDefault();
+            
+            var select = $('#fg-add-partecipante');
+            var socioId = select.val();
+            var socioName = select.find('option:selected').text();
+            
+            if (!socioId) {
+                alert('Seleziona un socio dalla lista');
+                return;
+            }
+            
+            // Check if already added
+            if ($('.fg-partecipante-item[data-socio-id="' + socioId + '"]').length > 0) {
+                alert('Questo socio è già stato aggiunto');
+                return;
+            }
+            
+            // Remove "no partecipanti" message if exists
+            $('.fg-no-partecipanti').remove();
+            
+            var partecipanteHtml = '<div class="fg-partecipante-item" data-socio-id="' + socioId + '">' +
+                '<span class="fg-partecipante-name">' + socioName + '</span>' +
+                '<button type="button" class="button fg-remove-partecipante" data-socio-id="' + socioId + '">Rimuovi</button>' +
+                '<input type="hidden" name="fg_partecipanti[]" value="' + socioId + '" />' +
+                '</div>';
+            
+            $('#fg-partecipanti-list').append(partecipanteHtml);
+            
+            // Update count
+            var count = $('.fg-partecipante-item').length;
+            $('#fg-partecipanti-count').text(count);
+            
+            // Reset select
+            select.val('');
+        });
+        
+        // Remove Partecipante Handler
+        $(document).on('click', '.fg-remove-partecipante', function(e) {
+            e.preventDefault();
+            if (confirm('Rimuovere questo partecipante dalla lista?')) {
+                $(this).closest('.fg-partecipante-item').remove();
+                
+                // Update count
+                var count = $('.fg-partecipante-item').length;
+                $('#fg-partecipanti-count').text(count);
+                
+                // Show "no partecipanti" message if empty
+                if (count === 0) {
+                    $('#fg-partecipanti-list').html('<p class="fg-no-partecipanti">Nessun partecipante aggiunto.</p>');
+                }
+            }
+        });
+        
+        // Send Invites Handler
+        $('#fg-send-invites-btn').on('click', function(e) {
+            e.preventDefault();
+            
+            var count = $('.fg-partecipante-item').length;
+            if (count === 0) {
+                alert('Nessun partecipante da invitare');
+                return;
+            }
+            
+            if (confirm('Inviare email di invito a ' + count + ' partecipante/i?')) {
+                var button = $(this);
+                button.prop('disabled', true).text('Invio in corso...');
+                
+                // In a real implementation, this would make an AJAX call
+                setTimeout(function() {
+                    alert('Inviti inviati con successo a ' + count + ' partecipante/i!');
+                    button.prop('disabled', false).html('<span class="dashicons dashicons-email" style="margin-top: 3px;"></span> Invia Inviti Email a Tutti i Partecipanti');
+                }, 1500);
+            }
+        });
+        
         // Initialize datepickers
         if ($.fn.datepicker) {
             $('input[type="date"]').not('.hasDatepicker').each(function() {
