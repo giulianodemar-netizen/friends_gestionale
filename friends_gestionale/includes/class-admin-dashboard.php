@@ -81,6 +81,7 @@ class Friends_Gestionale_Admin_Dashboard {
         $total_soci = wp_count_posts('fg_socio')->publish;
         $total_pagamenti = wp_count_posts('fg_pagamento')->publish;
         $total_raccolte = wp_count_posts('fg_raccolta')->publish;
+        $total_eventi = wp_count_posts('fg_evento')->publish;
         
         // Get active members
         $soci_attivi = new WP_Query(array(
@@ -117,17 +118,28 @@ class Friends_Gestionale_Admin_Dashboard {
             'posts_per_page' => -1
         ));
         $totale_incassi = 0;
+        $count_pagamenti = 0;
         foreach ($pagamenti as $pagamento) {
-            $totale_incassi += floatval(get_post_meta($pagamento->ID, '_fg_importo', true));
+            $importo = floatval(get_post_meta($pagamento->ID, '_fg_importo', true));
+            $totale_incassi += $importo;
+            if ($importo > 0) $count_pagamenti++;
         }
+        $media_donazione = $count_pagamenti > 0 ? $totale_incassi / $count_pagamenti : 0;
         
-        // Get recent payments
-        $pagamenti_recenti = get_posts(array(
-            'post_type' => 'fg_pagamento',
-            'posts_per_page' => 5,
-            'orderby' => 'date',
-            'order' => 'DESC'
+        // Get upcoming events
+        $eventi_prossimi = new WP_Query(array(
+            'post_type' => 'fg_evento',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_data_evento',
+                    'value' => $today,
+                    'compare' => '>=',
+                    'type' => 'DATE'
+                )
+            )
         ));
+        $count_eventi_prossimi = $eventi_prossimi->found_posts;
         
         // Get active fundraising campaigns
         $raccolte_attive = new WP_Query(array(
@@ -140,10 +152,63 @@ class Friends_Gestionale_Admin_Dashboard {
                 )
             )
         ));
+        $count_raccolte_attive = $raccolte_attive->found_posts;
+        
+        // Monthly statistics
+        $primo_giorno_mese = date('Y-m-01');
+        $ultimo_giorno_mese = date('Y-m-t');
+        
+        // Payments this month
+        $pagamenti_mese = new WP_Query(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_data_pagamento',
+                    'value' => array($primo_giorno_mese, $ultimo_giorno_mese),
+                    'compare' => 'BETWEEN',
+                    'type' => 'DATE'
+                )
+            )
+        ));
+        $count_pagamenti_mese = $pagamenti_mese->found_posts;
+        
+        // Revenue this month
+        $incassi_mese = 0;
+        if ($pagamenti_mese->have_posts()) {
+            while ($pagamenti_mese->have_posts()) {
+                $pagamenti_mese->the_post();
+                $incassi_mese += floatval(get_post_meta(get_the_ID(), '_fg_importo', true));
+            }
+            wp_reset_postdata();
+        }
+        
+        // New members this month
+        $nuovi_soci_mese = new WP_Query(array(
+            'post_type' => 'fg_socio',
+            'posts_per_page' => -1,
+            'date_query' => array(
+                array(
+                    'after' => $primo_giorno_mese,
+                    'before' => $ultimo_giorno_mese,
+                    'inclusive' => true,
+                )
+            )
+        ));
+        $count_nuovi_soci_mese = $nuovi_soci_mese->found_posts;
+        
+        // Get recent payments
+        $pagamenti_recenti = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => 5,
+            'orderby' => 'date',
+            'order' => 'DESC'
+        ));
         ?>
         <div class="wrap fg-dashboard-wrap">
             <h1><?php _e('Dashboard Friends Gestionale', 'friends-gestionale'); ?></h1>
             
+            <!-- Primary Statistics -->
             <div class="fg-dashboard-stats">
                 <div class="fg-stat-card">
                     <div class="fg-stat-icon">
@@ -182,6 +247,92 @@ class Friends_Gestionale_Admin_Dashboard {
                     <div class="fg-stat-content">
                         <h3>€<?php echo number_format($totale_incassi, 2, ',', '.'); ?></h3>
                         <p><?php _e('Totale Incassi', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Secondary Statistics -->
+            <div class="fg-dashboard-stats">
+                <div class="fg-stat-card">
+                    <div class="fg-stat-icon">
+                        <span class="dashicons dashicons-calendar"></span>
+                    </div>
+                    <div class="fg-stat-content">
+                        <h3><?php echo $total_eventi; ?></h3>
+                        <p><?php _e('Eventi Totali', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+                
+                <div class="fg-stat-card fg-stat-success">
+                    <div class="fg-stat-icon">
+                        <span class="dashicons dashicons-calendar-alt"></span>
+                    </div>
+                    <div class="fg-stat-content">
+                        <h3><?php echo $count_eventi_prossimi; ?></h3>
+                        <p><?php _e('Eventi Prossimi', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+                
+                <div class="fg-stat-card">
+                    <div class="fg-stat-icon">
+                        <span class="dashicons dashicons-heart"></span>
+                    </div>
+                    <div class="fg-stat-content">
+                        <h3><?php echo $count_raccolte_attive; ?></h3>
+                        <p><?php _e('Raccolte Attive', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+                
+                <div class="fg-stat-card fg-stat-info">
+                    <div class="fg-stat-icon">
+                        <span class="dashicons dashicons-chart-line"></span>
+                    </div>
+                    <div class="fg-stat-content">
+                        <h3>€<?php echo number_format($media_donazione, 2, ',', '.'); ?></h3>
+                        <p><?php _e('Media Donazione', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Monthly Statistics -->
+            <div class="fg-dashboard-stats">
+                <div class="fg-stat-card">
+                    <div class="fg-stat-icon">
+                        <span class="dashicons dashicons-admin-page"></span>
+                    </div>
+                    <div class="fg-stat-content">
+                        <h3><?php echo $count_pagamenti_mese; ?></h3>
+                        <p><?php _e('Pagamenti Questo Mese', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+                
+                <div class="fg-stat-card fg-stat-success">
+                    <div class="fg-stat-icon">
+                        <span class="dashicons dashicons-money"></span>
+                    </div>
+                    <div class="fg-stat-content">
+                        <h3>€<?php echo number_format($incassi_mese, 2, ',', '.'); ?></h3>
+                        <p><?php _e('Incassi Questo Mese', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+                
+                <div class="fg-stat-card">
+                    <div class="fg-stat-icon">
+                        <span class="dashicons dashicons-admin-users"></span>
+                    </div>
+                    <div class="fg-stat-content">
+                        <h3><?php echo $count_nuovi_soci_mese; ?></h3>
+                        <p><?php _e('Nuovi Soci Questo Mese', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+                
+                <div class="fg-stat-card">
+                    <div class="fg-stat-icon">
+                        <span class="dashicons dashicons-megaphone"></span>
+                    </div>
+                    <div class="fg-stat-content">
+                        <h3><?php echo $total_raccolte; ?></h3>
+                        <p><?php _e('Raccolte Fondi Totali', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
             </div>
@@ -259,6 +410,10 @@ class Friends_Gestionale_Admin_Dashboard {
                         <span class="dashicons dashicons-plus"></span>
                         <?php _e('Registra Pagamento', 'friends-gestionale'); ?>
                     </a>
+                    <a href="<?php echo admin_url('post-new.php?post_type=fg_evento'); ?>" class="button button-primary button-hero">
+                        <span class="dashicons dashicons-calendar"></span>
+                        <?php _e('Crea Evento', 'friends-gestionale'); ?>
+                    </a>
                     <a href="<?php echo admin_url('post-new.php?post_type=fg_raccolta'); ?>" class="button button-primary button-hero">
                         <span class="dashicons dashicons-plus"></span>
                         <?php _e('Nuova Raccolta Fondi', 'friends-gestionale'); ?>
@@ -266,6 +421,10 @@ class Friends_Gestionale_Admin_Dashboard {
                     <a href="<?php echo admin_url('admin.php?page=fg-statistics'); ?>" class="button button-hero">
                         <span class="dashicons dashicons-chart-bar"></span>
                         <?php _e('Visualizza Statistiche', 'friends-gestionale'); ?>
+                    </a>
+                    <a href="<?php echo admin_url('admin.php?page=fg-export'); ?>" class="button button-hero">
+                        <span class="dashicons dashicons-download"></span>
+                        <?php _e('Esporta Dati', 'friends-gestionale'); ?>
                     </a>
                 </div>
             </div>
@@ -325,6 +484,108 @@ class Friends_Gestionale_Admin_Dashboard {
             ));
             $members_by_status[$stato] = $query->found_posts;
         }
+        
+        // Get donations by type
+        $tipi_pagamento = array('quota', 'donazione', 'raccolta', 'evento', 'altro');
+        $payments_by_type = array();
+        $payments_by_type_totals = array();
+        
+        foreach ($tipi_pagamento as $tipo) {
+            $pagamenti_tipo = get_posts(array(
+                'post_type' => 'fg_pagamento',
+                'posts_per_page' => -1,
+                'meta_query' => array(
+                    array(
+                        'key' => '_fg_tipo_pagamento',
+                        'value' => $tipo
+                    )
+                )
+            ));
+            $payments_by_type[$tipo] = count($pagamenti_tipo);
+            
+            $total_tipo = 0;
+            foreach ($pagamenti_tipo as $pag) {
+                $total_tipo += floatval(get_post_meta($pag->ID, '_fg_importo', true));
+            }
+            $payments_by_type_totals[$tipo] = $total_tipo;
+        }
+        
+        // Get monthly new members data
+        $new_members_data = array();
+        for ($i = 11; $i >= 0; $i--) {
+            $month = date('Y-m', strtotime("-$i months"));
+            $start_date = $month . '-01';
+            $end_date = date('Y-m-t', strtotime($start_date));
+            
+            $new_members = new WP_Query(array(
+                'post_type' => 'fg_socio',
+                'posts_per_page' => -1,
+                'date_query' => array(
+                    array(
+                        'after' => $start_date,
+                        'before' => $end_date,
+                        'inclusive' => true,
+                    )
+                )
+            ));
+            $new_members_data[] = $new_members->found_posts;
+        }
+        
+        // Get upcoming events
+        $today = date('Y-m-d');
+        $eventi_prossimi = new WP_Query(array(
+            'post_type' => 'fg_evento',
+            'posts_per_page' => 10,
+            'meta_key' => '_fg_data_evento',
+            'orderby' => 'meta_value',
+            'order' => 'ASC',
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_data_evento',
+                    'value' => $today,
+                    'compare' => '>=',
+                    'type' => 'DATE'
+                )
+            )
+        ));
+        
+        // Get top donors
+        $all_soci = get_posts(array(
+            'post_type' => 'fg_socio',
+            'posts_per_page' => -1
+        ));
+        
+        $soci_donations = array();
+        foreach ($all_soci as $socio) {
+            $payments = get_posts(array(
+                'post_type' => 'fg_pagamento',
+                'posts_per_page' => -1,
+                'meta_query' => array(
+                    array(
+                        'key' => '_fg_socio_id',
+                        'value' => $socio->ID
+                    )
+                )
+            ));
+            
+            $total = 0;
+            foreach ($payments as $payment) {
+                $total += floatval(get_post_meta($payment->ID, '_fg_importo', true));
+            }
+            
+            if ($total > 0) {
+                $soci_donations[] = array(
+                    'nome' => $socio->post_title,
+                    'totale' => $total
+                );
+            }
+        }
+        
+        // Sort by total and get top 10
+        usort($soci_donations, function($a, $b) {
+            return $b['totale'] - $a['totale'];
+        });
+        $top_donors = array_slice($soci_donations, 0, 10);
         ?>
         <div class="wrap fg-statistics-wrap">
             <h1><?php _e('Statistiche', 'friends-gestionale'); ?></h1>
@@ -337,6 +598,76 @@ class Friends_Gestionale_Admin_Dashboard {
             <div class="fg-chart-container">
                 <h2><?php _e('Distribuzione Soci per Stato', 'friends-gestionale'); ?></h2>
                 <canvas id="fg-members-chart" width="400" height="150"></canvas>
+            </div>
+            
+            <div class="fg-chart-container">
+                <h2><?php _e('Donazioni per Tipo', 'friends-gestionale'); ?></h2>
+                <canvas id="fg-donations-type-chart" width="400" height="150"></canvas>
+            </div>
+            
+            <div class="fg-chart-container">
+                <h2><?php _e('Nuovi Soci (Ultimi 12 Mesi)', 'friends-gestionale'); ?></h2>
+                <canvas id="fg-new-members-chart" width="400" height="150"></canvas>
+            </div>
+            
+            <div class="fg-dashboard-grid" style="margin-top: 30px;">
+                <div class="fg-dashboard-box">
+                    <h2><?php _e('Eventi Prossimi', 'friends-gestionale'); ?></h2>
+                    <?php if ($eventi_prossimi->have_posts()): ?>
+                        <table class="widefat">
+                            <thead>
+                                <tr>
+                                    <th><?php _e('Evento', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Data', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Partecipanti', 'friends-gestionale'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php while ($eventi_prossimi->have_posts()): $eventi_prossimi->the_post(); ?>
+                                    <?php
+                                    $data_evento = get_post_meta(get_the_ID(), '_fg_data_evento', true);
+                                    $invitati = get_post_meta(get_the_ID(), '_fg_invitati', true);
+                                    $num_invitati = is_array($invitati) ? count($invitati) : 0;
+                                    ?>
+                                    <tr>
+                                        <td><strong><?php the_title(); ?></strong></td>
+                                        <td><?php echo $data_evento ? date_i18n(get_option('date_format'), strtotime($data_evento)) : '-'; ?></td>
+                                        <td><?php echo $num_invitati; ?></td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <p><?php _e('Nessun evento in programma.', 'friends-gestionale'); ?></p>
+                    <?php endif; ?>
+                    <?php wp_reset_postdata(); ?>
+                </div>
+                
+                <div class="fg-dashboard-box">
+                    <h2><?php _e('Top Donatori', 'friends-gestionale'); ?></h2>
+                    <?php if (!empty($top_donors)): ?>
+                        <table class="widefat">
+                            <thead>
+                                <tr>
+                                    <th><?php _e('Posizione', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Nome', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Totale Donato', 'friends-gestionale'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php $pos = 1; foreach ($top_donors as $donor): ?>
+                                    <tr>
+                                        <td><strong><?php echo $pos++; ?>°</strong></td>
+                                        <td><?php echo esc_html($donor['nome']); ?></td>
+                                        <td><strong>€<?php echo number_format($donor['totale'], 2, ',', '.'); ?></strong></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <p><?php _e('Nessuna donazione registrata.', 'friends-gestionale'); ?></p>
+                    <?php endif; ?>
+                </div>
             </div>
             
             <script>
@@ -396,6 +727,71 @@ class Friends_Gestionale_Admin_Dashboard {
                         plugins: {
                             legend: {
                                 position: 'bottom'
+                            }
+                        }
+                    }
+                });
+                
+                // Donations by type chart
+                var donationsTypeCtx = document.getElementById('fg-donations-type-chart').getContext('2d');
+                new Chart(donationsTypeCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: [
+                            '<?php _e('Quota', 'friends-gestionale'); ?>',
+                            '<?php _e('Donazione', 'friends-gestionale'); ?>',
+                            '<?php _e('Raccolta Fondi', 'friends-gestionale'); ?>',
+                            '<?php _e('Evento', 'friends-gestionale'); ?>',
+                            '<?php _e('Altro', 'friends-gestionale'); ?>'
+                        ],
+                        datasets: [{
+                            data: <?php echo json_encode(array_values($payments_by_type_totals)); ?>,
+                            backgroundColor: [
+                                'rgba(54, 162, 235, 0.8)',
+                                'rgba(255, 99, 132, 0.8)',
+                                'rgba(255, 206, 86, 0.8)',
+                                'rgba(75, 192, 192, 0.8)',
+                                'rgba(153, 102, 255, 0.8)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+                
+                // New members chart
+                var newMembersCtx = document.getElementById('fg-new-members-chart').getContext('2d');
+                new Chart(newMembersCtx, {
+                    type: 'line',
+                    data: {
+                        labels: <?php echo json_encode($months); ?>,
+                        datasets: [{
+                            label: '<?php _e('Nuovi Soci', 'friends-gestionale'); ?>',
+                            data: <?php echo json_encode($new_members_data); ?>,
+                            borderColor: 'rgb(153, 102, 255)',
+                            backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: true
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
                             }
                         }
                     }

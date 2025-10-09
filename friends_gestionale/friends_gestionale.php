@@ -95,11 +95,17 @@ class Friends_Gestionale {
         // Ensure payment manager role exists
         add_action('init', array($this, 'ensure_payment_manager_role'));
         
+        // Initialize Export class
+        add_action('init', array($this, 'init_export_class'));
+        
         // Restrict menu access for payment manager role
         add_action('admin_menu', array($this, 'restrict_payment_manager_menu'), 999);
         
         // Redirect payment manager to payments page
         add_action('admin_init', array($this, 'redirect_payment_manager'));
+        
+        // Login redirect for payment manager
+        add_filter('login_redirect', array($this, 'redirect_after_login'), 10, 3);
         
         // AJAX handlers
         add_action('wp_ajax_fg_get_member_quota', array($this, 'ajax_get_member_quota'));
@@ -107,6 +113,28 @@ class Friends_Gestionale {
         add_action('wp_ajax_fg_get_raccolta_donors', array($this, 'ajax_get_raccolta_donors'));
         add_action('wp_ajax_fg_get_socio_donations', array($this, 'ajax_get_socio_donations'));
         add_action('wp_ajax_fg_get_category_quota', array($this, 'ajax_get_category_quota'));
+    }
+    
+    /**
+     * Initialize Export class
+     */
+    public function init_export_class() {
+        new Friends_Gestionale_Export();
+    }
+    
+    /**
+     * Redirect to plugin dashboard after login for payment managers
+     */
+    public function redirect_after_login($redirect_to, $request, $user) {
+        // Check if user object is valid and has roles
+        if (isset($user->roles) && is_array($user->roles)) {
+            // If user has payment manager role, redirect to plugin dashboard
+            if (in_array('fg_payment_manager', $user->roles)) {
+                return admin_url('admin.php?page=friends-gestionale');
+            }
+        }
+        // For all other users, use default redirect
+        return $redirect_to;
     }
     
     /**
