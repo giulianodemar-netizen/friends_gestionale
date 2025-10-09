@@ -626,12 +626,10 @@ class Friends_Gestionale_Admin_Dashboard {
                     cursor: pointer;
                     transition: all 0.2s;
                     position: relative;
-                    z-index: 1;
                 }
                 .fg-payment-item:hover {
                     background: #c3e6cb;
                     transform: translateX(2px);
-                    z-index: 100000;
                 }
                 .fg-payment-due {
                     font-size: 11px;
@@ -643,12 +641,10 @@ class Friends_Gestionale_Admin_Dashboard {
                     cursor: pointer;
                     transition: all 0.2s;
                     position: relative;
-                    z-index: 1;
                 }
                 .fg-payment-due:hover {
                     background: #ffe8a1;
                     transform: translateX(2px);
-                    z-index: 100000;
                 }
                 .fg-payment-overdue {
                     font-size: 11px;
@@ -660,19 +656,17 @@ class Friends_Gestionale_Admin_Dashboard {
                     cursor: pointer;
                     transition: all 0.2s;
                     position: relative;
-                    z-index: 1;
                 }
                 .fg-payment-overdue:hover {
                     background: #f5c6cb;
                     transform: translateX(2px);
-                    z-index: 100000;
                 }
                 
                 /* Graphical popup tooltip */
                 .fg-payment-tooltip {
                     display: none;
                     position: fixed;
-                    z-index: 100001 !important;
+                    z-index: 999999 !important;
                     background: #fff;
                     border: 2px solid #0073aa;
                     border-radius: 5px;
@@ -758,22 +752,29 @@ class Friends_Gestionale_Admin_Dashboard {
                                         
                                         $edit_url = admin_url('post.php?post=' . $payment->ID . '&action=edit');
                                         
-                                        echo '<div class="fg-payment-item" onclick="window.open(\'' . esc_url($edit_url) . '\', \'_blank\')">';
+                                        // Create unique ID for tooltip
+                                        $tooltip_id = 'tooltip-' . $payment->ID;
+                                        
+                                        echo '<div class="fg-payment-item" data-tooltip-id="' . $tooltip_id . '" onclick="window.open(\'' . esc_url($edit_url) . '\', \'_blank\')">';
                                         echo '✓ €' . number_format($importo, 2) . ' - ' . esc_html(substr($socio_nome, 0, 15));
+                                        echo '</div>';
                                         
-                                        // Graphical popup tooltip
-                                        echo '<div class="fg-payment-tooltip">';
-                                        echo '<h4>Pagamento Effettuato</h4>';
-                                        echo '<div class="tooltip-row"><span class="tooltip-label">Socio:</span><span class="tooltip-value">' . esc_html($socio_nome) . '</span></div>';
-                                        echo '<div class="tooltip-row"><span class="tooltip-label">Importo:</span><span class="tooltip-value">€' . number_format($importo, 2) . '</span></div>';
-                                        echo '<div class="tooltip-row"><span class="tooltip-label">Tipo:</span><span class="tooltip-value">' . esc_html(ucfirst($tipo)) . '</span></div>';
-                                        echo '<div class="tooltip-row"><span class="tooltip-label">Metodo:</span><span class="tooltip-value">' . esc_html(ucfirst($metodo)) . '</span></div>';
-                                        if ($note) {
-                                            echo '<div class="tooltip-row"><span class="tooltip-label">Note:</span><span class="tooltip-value">' . esc_html($note) . '</span></div>';
+                                        // Store tooltip data for later rendering (outside table)
+                                        if (!isset($tooltips_data)) {
+                                            $tooltips_data = array();
                                         }
-                                        echo '</div>';
-                                        
-                                        echo '</div>';
+                                        $tooltips_data[$tooltip_id] = array(
+                                            'title' => 'Pagamento Effettuato',
+                                            'rows' => array(
+                                                array('label' => 'Socio:', 'value' => esc_html($socio_nome)),
+                                                array('label' => 'Importo:', 'value' => '€' . number_format($importo, 2)),
+                                                array('label' => 'Tipo:', 'value' => esc_html(ucfirst($tipo))),
+                                                array('label' => 'Metodo:', 'value' => esc_html(ucfirst($metodo))),
+                                            )
+                                        );
+                                        if ($note) {
+                                            $tooltips_data[$tooltip_id]['rows'][] = array('label' => 'Note:', 'value' => esc_html($note));
+                                        }
                                     }
                                     
                                     // Show due payments
@@ -795,19 +796,26 @@ class Friends_Gestionale_Admin_Dashboard {
                                         // Build URL for creating new payment with pre-filled data
                                         $new_payment_url = admin_url('post-new.php?post_type=fg_pagamento&socio_id=' . $socio->ID);
                                         
-                                        echo '<div class="' . $class . '" onclick="window.open(\'' . esc_url($new_payment_url) . '\', \'_blank\')">';
+                                        // Create unique ID for tooltip
+                                        $tooltip_id = 'tooltip-due-' . $socio->ID . '-' . $day_counter;
+                                        
+                                        echo '<div class="' . $class . '" data-tooltip-id="' . $tooltip_id . '" onclick="window.open(\'' . esc_url($new_payment_url) . '\', \'_blank\')">';
                                         echo ($is_overdue ? '⚠' : '○') . ' €' . number_format($quota, 2) . ' - ' . esc_html(substr($socio->post_title, 0, 15));
-                                        
-                                        // Graphical popup tooltip
-                                        echo '<div class="fg-payment-tooltip">';
-                                        echo '<h4>' . ($is_overdue ? 'Pagamento Arretrato' : 'Pagamento in Scadenza') . '</h4>';
-                                        echo '<div class="tooltip-row"><span class="tooltip-label">Socio:</span><span class="tooltip-value">' . esc_html($socio->post_title) . '</span></div>';
-                                        echo '<div class="tooltip-row"><span class="tooltip-label">Quota:</span><span class="tooltip-value">€' . number_format($quota, 2) . '</span></div>';
-                                        echo '<div class="tooltip-row"><span class="tooltip-label">Scadenza:</span><span class="tooltip-value">' . date_i18n(get_option('date_format'), strtotime($data_scadenza)) . '</span></div>';
-                                        echo '<div class="tooltip-row"><span class="tooltip-label">Stato:</span><span class="tooltip-value">' . ($is_overdue ? 'Arretrato' : 'In scadenza') . '</span></div>';
                                         echo '</div>';
                                         
-                                        echo '</div>';
+                                        // Store tooltip data for later rendering (outside table)
+                                        if (!isset($tooltips_data)) {
+                                            $tooltips_data = array();
+                                        }
+                                        $tooltips_data[$tooltip_id] = array(
+                                            'title' => $is_overdue ? 'Pagamento Arretrato' : 'Pagamento in Scadenza',
+                                            'rows' => array(
+                                                array('label' => 'Socio:', 'value' => esc_html($socio->post_title)),
+                                                array('label' => 'Quota:', 'value' => '€' . number_format($quota, 2)),
+                                                array('label' => 'Scadenza:', 'value' => date_i18n(get_option('date_format'), strtotime($data_scadenza))),
+                                                array('label' => 'Stato:', 'value' => $is_overdue ? 'Arretrato' : 'In scadenza'),
+                                            )
+                                        );
                                     }
                                 }
                                 
@@ -821,13 +829,37 @@ class Friends_Gestionale_Admin_Dashboard {
                 </tbody>
             </table>
             
+            <?php
+            // Render all tooltips outside the table structure (appended to body via JS)
+            if (isset($tooltips_data) && !empty($tooltips_data)) {
+                echo '<div id="fg-tooltips-container" style="display: none;">';
+                foreach ($tooltips_data as $tooltip_id => $tooltip_data) {
+                    echo '<div id="' . esc_attr($tooltip_id) . '" class="fg-payment-tooltip">';
+                    echo '<h4>' . esc_html($tooltip_data['title']) . '</h4>';
+                    foreach ($tooltip_data['rows'] as $row) {
+                        echo '<div class="tooltip-row">';
+                        echo '<span class="tooltip-label">' . esc_html($row['label']) . '</span>';
+                        echo '<span class="tooltip-value">' . $row['value'] . '</span>';
+                        echo '</div>';
+                    }
+                    echo '</div>';
+                }
+                echo '</div>';
+            }
+            ?>
+            
             <script type="text/javascript">
             jQuery(document).ready(function($) {
+                // Move tooltips to body for proper positioning
+                $('#fg-tooltips-container .fg-payment-tooltip').appendTo('body');
+                
                 // Position tooltips dynamically on hover
                 $('.fg-payment-item, .fg-payment-due, .fg-payment-overdue').on('mouseenter', function(e) {
-                    var $tooltip = $(this).find('.fg-payment-tooltip');
+                    var tooltipId = $(this).data('tooltip-id');
+                    var $tooltip = $('#' + tooltipId);
+                    
                     if ($tooltip.length) {
-                        // Get element position first (before any CSS changes)
+                        // Get element position
                         var rect = this.getBoundingClientRect();
                         
                         // Show tooltip hidden to measure its natural size
@@ -891,7 +923,9 @@ class Friends_Gestionale_Admin_Dashboard {
                     }
                 }).on('mouseleave', function(e) {
                     // Hide tooltip when mouse leaves
-                    var $tooltip = $(this).find('.fg-payment-tooltip');
+                    var tooltipId = $(this).data('tooltip-id');
+                    var $tooltip = $('#' + tooltipId);
+                    
                     if ($tooltip.length) {
                         $tooltip.css({
                             'display': 'none',
