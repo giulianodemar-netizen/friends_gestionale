@@ -192,12 +192,22 @@
                 if (eventoId === 'altro_evento') {
                     $('#fg_evento_custom_field').show();
                 }
+                // Unlock importo field for evento payments
+                $('#fg_importo').prop('readonly', false);
+                $('#fg_importo').css('background-color', '');
             } else if (tipoPagamento === 'quota') {
                 $('#fg_categoria_socio_field').show();
                 // Auto-populate amount when quota type is selected
                 updatePaymentAmountFromCategory();
             } else if (tipoPagamento === 'raccolta') {
                 $('#fg_raccolta_field').show();
+                // Unlock importo field for raccolta payments
+                $('#fg_importo').prop('readonly', false);
+                $('#fg_importo').css('background-color', '');
+            } else if (tipoPagamento === 'donazione' || tipoPagamento === 'altro') {
+                // Unlock importo field for donazione and altro payments
+                $('#fg_importo').prop('readonly', false);
+                $('#fg_importo').css('background-color', '');
             }
         }
         

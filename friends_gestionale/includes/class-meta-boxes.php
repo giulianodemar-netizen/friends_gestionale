@@ -524,6 +524,73 @@ class Friends_Gestionale_Meta_Boxes {
                         </div>
                     </div>
                 <?php endif; ?>
+                
+                <?php
+                // Display donor list if this is an existing raccolta
+                if ($post->ID > 0):
+                    // Get all payments for this raccolta
+                    $payments = get_posts(array(
+                        'post_type' => 'fg_pagamento',
+                        'posts_per_page' => -1,
+                        'meta_query' => array(
+                            array(
+                                'key' => '_fg_raccolta_id',
+                                'value' => $post->ID,
+                                'compare' => '='
+                            )
+                        )
+                    ));
+                    
+                    if (!empty($payments)):
+                ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <label><strong><?php _e('Donatori:', 'friends-gestionale'); ?></strong></label>
+                            <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px; max-height: 300px; overflow-y: auto;">
+                                <?php foreach ($payments as $payment):
+                                    $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
+                                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                                    $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+                                    
+                                    if ($socio_id):
+                                        $socio = get_post($socio_id);
+                                        if ($socio):
+                                ?>
+                                    <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <a href="<?php echo get_edit_post_link($socio_id); ?>" target="_blank" style="color: #0073aa; text-decoration: none; font-weight: 500;">
+                                                <?php echo esc_html($socio->post_title); ?>
+                                            </a>
+                                            <?php if ($data_pagamento): ?>
+                                                <small style="color: #666; display: block; margin-top: 3px;">
+                                                    <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($data_pagamento))); ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        </div>
+                                        <strong style="color: #0073aa; font-size: 14px;">
+                                            €<?php echo number_format(floatval($importo), 2, ',', '.'); ?>
+                                        </strong>
+                                    </div>
+                                <?php
+                                        endif;
+                                    endif;
+                                endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php
+                    else:
+                ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <label><strong><?php _e('Donatori:', 'friends-gestionale'); ?></strong></label>
+                            <p style="color: #666; font-style: italic;"><?php _e('Nessun donatore ancora per questa raccolta fondi.', 'friends-gestionale'); ?></p>
+                        </div>
+                    </div>
+                <?php
+                    endif;
+                endif;
+                ?>
             </div>
         </div>
         <?php

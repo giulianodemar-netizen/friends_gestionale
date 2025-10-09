@@ -406,7 +406,11 @@ class Friends_Gestionale_Post_Types {
                 break;
             case 'fg_raccolto':
                 $raccolto = get_post_meta($post_id, '_fg_raccolto', true);
-                echo $raccolto ? '€' . number_format($raccolto, 2, ',', '.') : '-';
+                if ($raccolto && $raccolto > 0) {
+                    echo '<span class="fg-donatori-count" data-post-id="' . esc_attr($post_id) . '" style="cursor: pointer; color: #0073aa; text-decoration: underline;">€' . number_format($raccolto, 2, ',', '.') . '</span>';
+                } else {
+                    echo '-';
+                }
                 break;
             case 'fg_progresso':
                 $obiettivo = floatval(get_post_meta($post_id, '_fg_obiettivo', true));
@@ -689,6 +693,181 @@ class Friends_Gestionale_Post_Types {
                         },
                         error: function() {
                             modalBody.html('<p style="text-align:center;padding:20px;color:#dc3545;">Errore nel caricamento dei partecipanti.</p>');
+                        }
+                    });
+                });
+            });
+            </script>
+            <?php
+        }
+        
+        // Add donor popup for raccolta fondi
+        if ($screen && $screen->post_type === 'fg_raccolta') {
+            ?>
+            <style>
+                /* Donor popup modal - reuse participant modal styles */
+                .fg-donatori-modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 100000;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                }
+                .fg-donatori-modal-content {
+                    background: #fff;
+                    margin: 5% auto;
+                    padding: 0;
+                    border: 2px solid #0073aa;
+                    border-radius: 5px;
+                    width: 80%;
+                    max-width: 600px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                }
+                .fg-donatori-modal-header {
+                    background: #0073aa;
+                    color: #fff;
+                    padding: 15px 20px;
+                    border-radius: 3px 3px 0 0;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .fg-donatori-modal-header h2 {
+                    margin: 0;
+                    font-size: 18px;
+                    color: #fff;
+                }
+                .fg-donatori-modal-close {
+                    color: #fff;
+                    font-size: 28px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    background: none;
+                    border: none;
+                    padding: 0;
+                    line-height: 1;
+                }
+                .fg-donatori-modal-close:hover {
+                    color: #ddd;
+                }
+                .fg-donatori-modal-body {
+                    padding: 20px;
+                    max-height: 60vh;
+                    overflow-y: auto;
+                }
+                .fg-donatore-item {
+                    padding: 12px;
+                    border-bottom: 1px solid #eee;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+                .fg-donatore-item:last-child {
+                    border-bottom: none;
+                }
+                .fg-donatore-info {
+                    display: flex;
+                    align-items: center;
+                    flex-grow: 1;
+                }
+                .fg-donatore-number {
+                    background: #0073aa;
+                    color: #fff;
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: bold;
+                    margin-right: 15px;
+                    flex-shrink: 0;
+                }
+                .fg-donatore-name {
+                    font-size: 14px;
+                }
+                .fg-donatore-name a {
+                    text-decoration: none;
+                    color: #0073aa;
+                }
+                .fg-donatore-name a:hover {
+                    text-decoration: underline;
+                }
+                .fg-donatore-amount {
+                    font-weight: bold;
+                    color: #0073aa;
+                    font-size: 14px;
+                    margin-left: 15px;
+                }
+            </style>
+            <script>
+            jQuery(document).ready(function($) {
+                // Create modal element for donors
+                var modal = $('<div class="fg-donatori-modal"></div>');
+                var modalContent = $('<div class="fg-donatori-modal-content"></div>');
+                var modalHeader = $('<div class="fg-donatori-modal-header"><h2>Donatori della Raccolta</h2><button class="fg-donatori-modal-close">&times;</button></div>');
+                var modalBody = $('<div class="fg-donatori-modal-body"></div>');
+                
+                modalContent.append(modalHeader).append(modalBody);
+                modal.append(modalContent);
+                $('body').append(modal);
+                
+                // Close modal handlers
+                $('.fg-donatori-modal-close', modal).on('click', function() {
+                    modal.hide();
+                });
+                $(modal).on('click', function(e) {
+                    if (e.target === modal[0]) {
+                        modal.hide();
+                    }
+                });
+                
+                // Click handler for donor count/amount
+                $(document).on('click', '.fg-donatori-count', function(e) {
+                    e.preventDefault();
+                    var postId = $(this).data('post-id');
+                    
+                    // Show loading
+                    modalBody.html('<p style="text-align:center;padding:20px;">Caricamento...</p>');
+                    modal.show();
+                    
+                    // AJAX request to get donors
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'fg_get_raccolta_donors',
+                            post_id: postId,
+                            nonce: '<?php echo wp_create_nonce('fg_get_donors'); ?>'
+                        },
+                        success: function(response) {
+                            if (response.success && response.data.donors) {
+                                var html = '';
+                                $.each(response.data.donors, function(index, donor) {
+                                    html += '<div class="fg-donatore-item">';
+                                    html += '<div class="fg-donatore-info">';
+                                    html += '<div class="fg-donatore-number">' + (index + 1) + '</div>';
+                                    html += '<div class="fg-donatore-name">';
+                                    if (donor.edit_link) {
+                                        html += '<a href="' + donor.edit_link + '" target="_blank">' + donor.name + '</a>';
+                                    } else {
+                                        html += donor.name;
+                                    }
+                                    html += '</div>';
+                                    html += '</div>';
+                                    html += '<div class="fg-donatore-amount">€' + donor.amount + '</div>';
+                                    html += '</div>';
+                                });
+                                modalBody.html(html);
+                            } else {
+                                modalBody.html('<p style="text-align:center;padding:20px;">Nessun donatore trovato.</p>');
+                            }
+                        },
+                        error: function() {
+                            modalBody.html('<p style="text-align:center;padding:20px;color:#dc3545;">Errore nel caricamento dei donatori.</p>');
                         }
                     });
                 });

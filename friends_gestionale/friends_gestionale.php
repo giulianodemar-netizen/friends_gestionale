@@ -104,6 +104,7 @@ class Friends_Gestionale {
         // AJAX handlers
         add_action('wp_ajax_fg_get_member_quota', array($this, 'ajax_get_member_quota'));
         add_action('wp_ajax_fg_get_event_participants', array($this, 'ajax_get_event_participants'));
+        add_action('wp_ajax_fg_get_raccolta_donors', array($this, 'ajax_get_raccolta_donors'));
         add_action('wp_ajax_fg_get_category_quota', array($this, 'ajax_get_category_quota'));
     }
     
@@ -349,6 +350,62 @@ class Friends_Gestionale {
         }
         
         wp_send_json_success(array('participants' => $participants_data));
+    }
+    
+    /**
+     * AJAX handler to get raccolta fondi donors
+     */
+    public function ajax_get_raccolta_donors() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'fg_get_donors')) {
+            wp_send_json_error(array('message' => 'Invalid nonce'));
+            return;
+        }
+        
+        $post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+        
+        if (!$post_id) {
+            wp_send_json_error(array('message' => 'Invalid raccolta ID'));
+            return;
+        }
+        
+        // Get all payments for this raccolta
+        $payments = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_raccolta_id',
+                    'value' => $post_id,
+                    'compare' => '='
+                )
+            )
+        ));
+        
+        if (empty($payments)) {
+            wp_send_json_success(array('donors' => array()));
+            return;
+        }
+        
+        $donors_data = array();
+        foreach ($payments as $payment) {
+            $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
+            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+            
+            if ($socio_id) {
+                $socio = get_post($socio_id);
+                if ($socio) {
+                    $donors_data[] = array(
+                        'id' => $socio_id,
+                        'name' => $socio->post_title,
+                        'amount' => number_format(floatval($importo), 2, ',', '.'),
+                        'edit_link' => get_edit_post_link($socio_id)
+                    );
+                }
+            }
+        }
+        
+        wp_send_json_success(array('donors' => $donors_data));
     }
     
     /**
