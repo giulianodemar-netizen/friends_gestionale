@@ -677,11 +677,6 @@ class Friends_Gestionale_Admin_Dashboard {
                     pointer-events: none;
                     white-space: normal;
                 }
-                .fg-payment-item:hover .fg-payment-tooltip,
-                .fg-payment-due:hover .fg-payment-tooltip,
-                .fg-payment-overdue:hover .fg-payment-tooltip {
-                    display: block;
-                }
                 .fg-payment-item,
                 .fg-payment-due,
                 .fg-payment-overdue {
@@ -879,6 +874,15 @@ class Friends_Gestionale_Admin_Dashboard {
                             'top': top + 'px',
                             'visibility': 'visible',
                             'display': 'block'
+                        });
+                    }
+                }).on('mouseleave', function(e) {
+                    // Hide tooltip when mouse leaves
+                    var $tooltip = $(this).find('.fg-payment-tooltip');
+                    if ($tooltip.length) {
+                        $tooltip.css({
+                            'display': 'none',
+                            'visibility': 'hidden'
                         });
                     }
                 });
