@@ -258,6 +258,88 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                 </div>
             </div>
+            
+            <?php
+            // Display donations section if this is an existing member
+            if ($post->ID > 0):
+                // Get all payments for this member
+                $payments = get_posts(array(
+                    'post_type' => 'fg_pagamento',
+                    'posts_per_page' => -1,
+                    'orderby' => 'date',
+                    'order' => 'DESC',
+                    'meta_query' => array(
+                        array(
+                            'key' => '_fg_socio_id',
+                            'value' => $post->ID,
+                            'compare' => '='
+                        )
+                    )
+                ));
+                
+                $total_donato = 0;
+                foreach ($payments as $payment) {
+                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                    $total_donato += floatval($importo);
+                }
+            ?>
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Riepilogo Donazioni', 'friends-gestionale'); ?></h3>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label><strong><?php _e('Totale Donato:', 'friends-gestionale'); ?></strong></label>
+                        <p style="font-size: 18px; font-weight: bold; color: #0073aa; margin: 10px 0;">
+                            €<?php echo number_format($total_donato, 2, ',', '.'); ?>
+                        </p>
+                    </div>
+                </div>
+                
+                <?php if (!empty($payments)): ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <label><strong><?php _e('Elenco Donazioni:', 'friends-gestionale'); ?></strong></label>
+                            <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px; max-height: 300px; overflow-y: auto;">
+                                <?php 
+                                $tipo_labels = array(
+                                    'quota' => 'Quota Associativa',
+                                    'donazione' => 'Donazione singola',
+                                    'raccolta' => 'Raccolta Fondi',
+                                    'evento' => 'Evento',
+                                    'altro' => 'Altro'
+                                );
+                                
+                                foreach ($payments as $payment):
+                                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                                    $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+                                    $tipo_pagamento = get_post_meta($payment->ID, '_fg_tipo_pagamento', true);
+                                    $tipo_label = isset($tipo_labels[$tipo_pagamento]) ? $tipo_labels[$tipo_pagamento] : 'Pagamento';
+                                ?>
+                                    <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <strong><?php echo esc_html($tipo_label); ?></strong>
+                                            <?php if ($data_pagamento): ?>
+                                                <small style="color: #666; display: block; margin-top: 3px;">
+                                                    <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($data_pagamento))); ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        </div>
+                                        <strong style="color: #0073aa; font-size: 14px;">
+                                            €<?php echo number_format(floatval($importo), 2, ',', '.'); ?>
+                                        </strong>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <p style="color: #666; font-style: italic;"><?php _e('Nessuna donazione ancora per questo socio.', 'friends-gestionale'); ?></p>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
         </div>
         <?php
     }

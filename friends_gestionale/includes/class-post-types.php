@@ -222,7 +222,7 @@ class Friends_Gestionale_Post_Types {
     public function set_socio_columns($columns) {
         return array(
             'cb' => $columns['cb'],
-            'title' => __('Nome Completo', 'friends-gestionale'),
+            'fg_nome_foto' => __('Nome Completo', 'friends-gestionale'),
             'fg_email' => __('Email', 'friends-gestionale'),
             'fg_telefono' => __('Telefono', 'friends-gestionale'),
             'fg_codice_fiscale' => __('Codice Fiscale', 'friends-gestionale'),
@@ -230,6 +230,7 @@ class Friends_Gestionale_Post_Types {
             'fg_data_iscrizione' => __('Data Iscrizione', 'friends-gestionale'),
             'fg_data_scadenza' => __('Data Scadenza', 'friends-gestionale'),
             'fg_quota_annuale' => __('Quota Annuale', 'friends-gestionale'),
+            'fg_totale_donato' => __('Totale Donato', 'friends-gestionale'),
             'taxonomy-fg_categoria_socio' => __('Categoria', 'friends-gestionale'),
             'date' => $columns['date']
         );
@@ -240,7 +241,7 @@ class Friends_Gestionale_Post_Types {
      */
     public function render_socio_columns($column, $post_id) {
         switch ($column) {
-            case 'title':
+            case 'fg_nome_foto':
                 // Display name with photo below it
                 $title = get_the_title($post_id);
                 echo '<strong><a href="' . get_edit_post_link($post_id) . '">' . esc_html($title) . '</a></strong>';
@@ -252,6 +253,32 @@ class Friends_Gestionale_Post_Types {
                     if ($foto_url) {
                         echo '<br><img src="' . esc_url($foto_url[0]) . '" style="max-width: 60px; height: auto; margin-top: 5px; border-radius: 3px; border: 1px solid #ddd;" />';
                     }
+                }
+                break;
+            case 'fg_totale_donato':
+                // Calculate total donations for this member
+                $payments = get_posts(array(
+                    'post_type' => 'fg_pagamento',
+                    'posts_per_page' => -1,
+                    'meta_query' => array(
+                        array(
+                            'key' => '_fg_socio_id',
+                            'value' => $post_id,
+                            'compare' => '='
+                        )
+                    )
+                ));
+                
+                $total = 0;
+                foreach ($payments as $payment) {
+                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                    $total += floatval($importo);
+                }
+                
+                if ($total > 0) {
+                    echo '<span class="fg-donazioni-socio-count" data-post-id="' . esc_attr($post_id) . '" style="cursor: pointer; color: #0073aa; text-decoration: underline; font-weight: bold;">€' . number_format($total, 2, ',', '.') . '</span>';
+                } else {
+                    echo '-';
                 }
                 break;
             case 'fg_email':
@@ -870,6 +897,9 @@ class Friends_Gestionale_Post_Types {
                                     } else {
                                         html += donor.name;
                                     }
+                                    if (donor.date) {
+                                        html += '<div style="font-size: 12px; color: #666; margin-top: 3px;">' + donor.date + '</div>';
+                                    }
                                     html += '</div>';
                                     html += '</div>';
                                     html += '<div class="fg-donatore-amount">€' + donor.amount + '</div>';
@@ -882,6 +912,178 @@ class Friends_Gestionale_Post_Types {
                         },
                         error: function() {
                             modalBody.html('<p style="text-align:center;padding:20px;color:#dc3545;">Errore nel caricamento dei donatori.</p>');
+                        }
+                    });
+                });
+            });
+            </script>
+            <?php
+        }
+        
+        // Add member donations popup for soci
+        if ($screen && $screen->post_type === 'fg_socio') {
+            ?>
+            <style>
+                /* Member donations popup modal - reuse donor modal styles */
+                .fg-donazioni-socio-modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 100000;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                }
+                .fg-donazioni-socio-modal-content {
+                    background: #fff;
+                    margin: 5% auto;
+                    padding: 0;
+                    border: 2px solid #0073aa;
+                    border-radius: 5px;
+                    width: 80%;
+                    max-width: 600px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                }
+                .fg-donazioni-socio-modal-header {
+                    background: #0073aa;
+                    color: #fff;
+                    padding: 15px 20px;
+                    border-radius: 3px 3px 0 0;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .fg-donazioni-socio-modal-header h2 {
+                    margin: 0;
+                    font-size: 18px;
+                    color: #fff;
+                }
+                .fg-donazioni-socio-modal-close {
+                    color: #fff;
+                    font-size: 28px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    background: none;
+                    border: none;
+                    padding: 0;
+                    line-height: 1;
+                }
+                .fg-donazioni-socio-modal-close:hover {
+                    color: #ddd;
+                }
+                .fg-donazioni-socio-modal-body {
+                    padding: 20px;
+                    max-height: 60vh;
+                    overflow-y: auto;
+                }
+                .fg-donazione-socio-item {
+                    padding: 12px;
+                    border-bottom: 1px solid #eee;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+                .fg-donazione-socio-item:last-child {
+                    border-bottom: none;
+                }
+                .fg-donazione-socio-info {
+                    display: flex;
+                    align-items: center;
+                    flex-grow: 1;
+                }
+                .fg-donazione-socio-number {
+                    background: #0073aa;
+                    color: #fff;
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: bold;
+                    margin-right: 15px;
+                    flex-shrink: 0;
+                }
+                .fg-donazione-socio-details {
+                    font-size: 14px;
+                }
+                .fg-donazione-socio-date {
+                    font-size: 12px;
+                    color: #666;
+                    margin-top: 3px;
+                }
+                .fg-donazione-socio-amount {
+                    font-weight: bold;
+                    color: #0073aa;
+                    font-size: 14px;
+                    margin-left: 15px;
+                }
+            </style>
+            <script>
+            jQuery(document).ready(function($) {
+                // Create modal element for member donations
+                var modal = $('<div class="fg-donazioni-socio-modal"></div>');
+                var modalContent = $('<div class="fg-donazioni-socio-modal-content"></div>');
+                var modalHeader = $('<div class="fg-donazioni-socio-modal-header"><h2>Donazioni del Socio</h2><button class="fg-donazioni-socio-modal-close">&times;</button></div>');
+                var modalBody = $('<div class="fg-donazioni-socio-modal-body"></div>');
+                
+                modalContent.append(modalHeader).append(modalBody);
+                modal.append(modalContent);
+                $('body').append(modal);
+                
+                // Close modal handlers
+                $('.fg-donazioni-socio-modal-close', modal).on('click', function() {
+                    modal.hide();
+                });
+                $(modal).on('click', function(e) {
+                    if (e.target === modal[0]) {
+                        modal.hide();
+                    }
+                });
+                
+                // Click handler for member donation count
+                $(document).on('click', '.fg-donazioni-socio-count', function(e) {
+                    e.preventDefault();
+                    var postId = $(this).data('post-id');
+                    
+                    // Show loading
+                    modalBody.html('<p style="text-align:center;padding:20px;">Caricamento...</p>');
+                    modal.show();
+                    
+                    // AJAX request to get member donations
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'fg_get_socio_donations',
+                            post_id: postId,
+                            nonce: '<?php echo wp_create_nonce('fg_get_socio_donations'); ?>'
+                        },
+                        success: function(response) {
+                            if (response.success && response.data.donations) {
+                                var html = '';
+                                $.each(response.data.donations, function(index, donation) {
+                                    html += '<div class="fg-donazione-socio-item">';
+                                    html += '<div class="fg-donazione-socio-info">';
+                                    html += '<div class="fg-donazione-socio-number">' + (index + 1) + '</div>';
+                                    html += '<div class="fg-donazione-socio-details">';
+                                    html += '<div>' + donation.tipo + '</div>';
+                                    if (donation.date) {
+                                        html += '<div class="fg-donazione-socio-date">' + donation.date + '</div>';
+                                    }
+                                    html += '</div>';
+                                    html += '</div>';
+                                    html += '<div class="fg-donazione-socio-amount">€' + donation.amount + '</div>';
+                                    html += '</div>';
+                                });
+                                modalBody.html(html);
+                            } else {
+                                modalBody.html('<p style="text-align:center;padding:20px;">Nessuna donazione trovata.</p>');
+                            }
+                        },
+                        error: function() {
+                            modalBody.html('<p style="text-align:center;padding:20px;color:#dc3545;">Errore nel caricamento delle donazioni.</p>');
                         }
                     });
                 });
