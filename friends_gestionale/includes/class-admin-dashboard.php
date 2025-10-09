@@ -586,6 +586,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     border-collapse: collapse;
                     background: #fff;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    overflow: visible;
                 }
                 .fg-calendar th {
                     background: #0073aa;
@@ -600,6 +601,8 @@ class Friends_Gestionale_Admin_Dashboard {
                     vertical-align: top;
                     height: 100px;
                     width: 14.28%;
+                    overflow: visible;
+                    position: relative;
                 }
                 .fg-calendar .day-number {
                     font-weight: bold;
@@ -662,7 +665,7 @@ class Friends_Gestionale_Admin_Dashboard {
                 /* Graphical popup tooltip */
                 .fg-payment-tooltip {
                     display: none;
-                    position: absolute;
+                    position: fixed;
                     z-index: 99999 !important;
                     background: #fff;
                     border: 2px solid #0073aa;
@@ -670,10 +673,9 @@ class Friends_Gestionale_Admin_Dashboard {
                     padding: 12px;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
                     min-width: 250px;
-                    left: 100%;
-                    top: 0;
-                    margin-left: 10px;
+                    max-width: 350px;
                     pointer-events: none;
+                    white-space: normal;
                 }
                 .fg-payment-item:hover .fg-payment-tooltip,
                 .fg-payment-due:hover .fg-payment-tooltip,
@@ -817,6 +819,44 @@ class Friends_Gestionale_Admin_Dashboard {
                     ?>
                 </tbody>
             </table>
+            
+            <script type="text/javascript">
+            jQuery(document).ready(function($) {
+                // Position tooltips dynamically on hover
+                $('.fg-payment-item, .fg-payment-due, .fg-payment-overdue').on('mouseenter', function(e) {
+                    var $tooltip = $(this).find('.fg-payment-tooltip');
+                    if ($tooltip.length) {
+                        var rect = this.getBoundingClientRect();
+                        var tooltipWidth = 250; // min-width from CSS
+                        
+                        // Calculate position - try to show on the right
+                        var left = rect.right + 10;
+                        var top = rect.top;
+                        
+                        // If tooltip would go off screen on the right, show on the left
+                        if (left + tooltipWidth > window.innerWidth) {
+                            left = rect.left - tooltipWidth - 10;
+                        }
+                        
+                        // If still off screen, show below
+                        if (left < 0) {
+                            left = rect.left;
+                            top = rect.bottom + 10;
+                        }
+                        
+                        // Ensure it doesn't go off the top
+                        if (top < 0) {
+                            top = 10;
+                        }
+                        
+                        $tooltip.css({
+                            'left': left + 'px',
+                            'top': top + 'px'
+                        });
+                    }
+                });
+            });
+            </script>
             
             <div class="fg-calendar-legend" style="margin-top: 20px; padding: 15px; background: #fff; border: 1px solid #ddd;">
                 <h3><?php _e('Legenda', 'friends-gestionale'); ?></h3>
