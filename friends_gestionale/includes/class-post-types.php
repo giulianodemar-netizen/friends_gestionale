@@ -887,6 +887,14 @@ class Friends_Gestionale_Post_Types {
                         success: function(response) {
                             if (response.success && response.data.donors) {
                                 var html = '';
+                                
+                                // Show extra funds if exists
+                                if (response.data.fondi_extra && response.data.fondi_extra > 0) {
+                                    html += '<div style="background: #e7f3ff; border: 2px solid #0073aa; padding: 12px; margin-bottom: 15px; border-radius: 4px;">';
+                                    html += '<strong style="color: #0073aa;">Fondi Raccolti Extra Piattaforma: €' + response.data.fondi_extra.toFixed(2).replace('.', ',') + '</strong>';
+                                    html += '</div>';
+                                }
+                                
                                 $.each(response.data.donors, function(index, donor) {
                                     html += '<div class="fg-donatore-item">';
                                     html += '<div class="fg-donatore-info">';

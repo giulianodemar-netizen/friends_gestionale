@@ -210,7 +210,8 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                     <div class="fg-form-field fg-field-third">
                         <label for="fg_quota_annuale"><strong><?php _e('Quota Annuale (€):', 'friends-gestionale'); ?></strong></label>
-                        <input type="number" id="fg_quota_annuale" name="fg_quota_annuale" value="<?php echo esc_attr($quota_annuale); ?>" step="0.01" min="0" class="widefat" />
+                        <input type="number" id="fg_quota_annuale" name="fg_quota_annuale" value="<?php echo esc_attr($quota_annuale); ?>" step="0.01" min="0" class="widefat" readonly style="background-color: #f0f0f0;" />
+                        <p class="description"><?php _e('La quota viene calcolata automaticamente dalla categoria del socio.', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
@@ -546,9 +547,13 @@ class Friends_Gestionale_Meta_Boxes {
         }
         $obiettivo = get_post_meta($post->ID, '_fg_obiettivo', true);
         $raccolto = get_post_meta($post->ID, '_fg_raccolto', true);
+        $fondi_extra = get_post_meta($post->ID, '_fg_fondi_extra', true);
         $data_inizio = get_post_meta($post->ID, '_fg_data_inizio', true);
         $data_fine = get_post_meta($post->ID, '_fg_data_fine', true);
         $stato = get_post_meta($post->ID, '_fg_stato', true);
+        
+        // Calculate total collected (auto + extra)
+        $totale_raccolto = floatval($raccolto) + floatval($fondi_extra);
         ?>
         <div class="fg-meta-box fg-improved-form">
             <div class="fg-form-section">
@@ -567,9 +572,22 @@ class Friends_Gestionale_Meta_Boxes {
                         <input type="number" id="fg_obiettivo" name="fg_obiettivo" value="<?php echo esc_attr($obiettivo); ?>" step="0.01" min="0" class="widefat" />
                     </div>
                     <div class="fg-form-field fg-field-half">
-                        <label for="fg_raccolto"><strong><?php _e('Raccolto (€):', 'friends-gestionale'); ?></strong></label>
+                        <label for="fg_raccolto"><strong><?php _e('Raccolto Piattaforma (€):', 'friends-gestionale'); ?></strong></label>
                         <input type="number" id="fg_raccolto" name="fg_raccolto" value="<?php echo esc_attr($raccolto); ?>" step="0.01" min="0" class="widefat" readonly style="background-color: #f0f0f0;" />
                         <small style="color: #666;"><?php _e('Calcolato automaticamente dai pagamenti', 'friends-gestionale'); ?></small>
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_fondi_extra"><strong><?php _e('Fondi Raccolti Extra (€):', 'friends-gestionale'); ?></strong></label>
+                        <input type="number" id="fg_fondi_extra" name="fg_fondi_extra" value="<?php echo esc_attr($fondi_extra); ?>" step="0.01" min="0" class="widefat" />
+                        <small style="color: #666;"><?php _e('Fondi raccolti al di fuori della piattaforma', 'friends-gestionale'); ?></small>
+                    </div>
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_totale_raccolto"><strong><?php _e('Totale Raccolto (€):', 'friends-gestionale'); ?></strong></label>
+                        <input type="number" id="fg_totale_raccolto" name="fg_totale_raccolto" value="<?php echo esc_attr($totale_raccolto); ?>" step="0.01" min="0" class="widefat" readonly style="background-color: #f0f0f0;" />
+                        <small style="color: #666;"><?php _e('Piattaforma + Extra', 'friends-gestionale'); ?></small>
                     </div>
                 </div>
                 
@@ -977,6 +995,9 @@ class Friends_Gestionale_Meta_Boxes {
                     update_post_meta($post_id, '_fg_progressive_number', $progressive_number);
                 }
                 
+                // Format progressive number with leading zeros (4 digits)
+                $formatted_number = str_pad($progressive_number, 4, '0', STR_PAD_LEFT);
+                
                 // Translate payment method and type to Italian
                 $metodi_labels = array(
                     'contanti' => 'Contanti',
@@ -997,8 +1018,8 @@ class Friends_Gestionale_Meta_Boxes {
                 $metodo_label = isset($metodi_labels[$metodo_pagamento]) ? $metodi_labels[$metodo_pagamento] : ucfirst($metodo_pagamento);
                 $tipo_label = isset($tipi_labels[$tipo_pagamento]) ? $tipi_labels[$tipo_pagamento] : ucfirst($tipo_pagamento);
                 
-                // Create reference title: *[number] - [metodo] - [tipo]
-                $reference_title = '*' . $progressive_number . ' - ' . $metodo_label . ' - ' . $tipo_label;
+                // Create reference title: #[4-digit number] - [metodo] - [tipo]
+                $reference_title = '#' . $formatted_number . ' - ' . $metodo_label . ' - ' . $tipo_label;
                 
                 // Update post title
                 remove_action('save_post', array($this, 'save_meta_boxes'), 10);
@@ -1041,6 +1062,9 @@ class Friends_Gestionale_Meta_Boxes {
             }
             if (isset($_POST['fg_raccolto'])) {
                 update_post_meta($post_id, '_fg_raccolto', floatval($_POST['fg_raccolto']));
+            }
+            if (isset($_POST['fg_fondi_extra'])) {
+                update_post_meta($post_id, '_fg_fondi_extra', floatval($_POST['fg_fondi_extra']));
             }
             if (isset($_POST['fg_data_inizio'])) {
                 update_post_meta($post_id, '_fg_data_inizio', sanitize_text_field($_POST['fg_data_inizio']));

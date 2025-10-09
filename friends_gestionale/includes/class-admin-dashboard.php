@@ -663,7 +663,7 @@ class Friends_Gestionale_Admin_Dashboard {
                 .fg-payment-tooltip {
                     display: none;
                     position: absolute;
-                    z-index: 99999;
+                    z-index: 99999 !important;
                     background: #fff;
                     border: 2px solid #0073aa;
                     border-radius: 5px;
@@ -673,11 +673,17 @@ class Friends_Gestionale_Admin_Dashboard {
                     left: 100%;
                     top: 0;
                     margin-left: 10px;
+                    pointer-events: none;
                 }
                 .fg-payment-item:hover .fg-payment-tooltip,
                 .fg-payment-due:hover .fg-payment-tooltip,
                 .fg-payment-overdue:hover .fg-payment-tooltip {
                     display: block;
+                }
+                .fg-payment-item,
+                .fg-payment-due,
+                .fg-payment-overdue {
+                    overflow: visible !important;
                 }
                 .fg-payment-tooltip h4 {
                     margin: 0 0 10px 0;

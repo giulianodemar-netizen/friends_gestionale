@@ -157,11 +157,11 @@
             var socioId = $(this).val();
             if (socioId) {
                 $.ajax({
-                    url: friendsGestionale.ajaxUrl,
+                    url: ajaxurl,
                     type: 'POST',
                     data: {
-                        action: 'fg_get_socio_quota',
-                        nonce: friendsGestionale.nonce,
+                        action: 'fg_get_member_quota',
+                        nonce: '<?php echo wp_create_nonce("fg_get_member_quota"); ?>',
                         socio_id: socioId
                     },
                     success: function(response) {

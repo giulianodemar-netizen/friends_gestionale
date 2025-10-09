@@ -386,7 +386,8 @@ class Friends_Gestionale {
         ));
         
         if (empty($payments)) {
-            wp_send_json_success(array('donors' => array()));
+            $fondi_extra = get_post_meta($post_id, '_fg_fondi_extra', true);
+            wp_send_json_success(array('donors' => array(), 'fondi_extra' => floatval($fondi_extra)));
             return;
         }
         
@@ -410,7 +411,10 @@ class Friends_Gestionale {
             }
         }
         
-        wp_send_json_success(array('donors' => $donors_data));
+        // Get fondi extra
+        $fondi_extra = get_post_meta($post_id, '_fg_fondi_extra', true);
+        
+        wp_send_json_success(array('donors' => $donors_data, 'fondi_extra' => floatval($fondi_extra)));
     }
     
     /**
