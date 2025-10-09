@@ -104,6 +104,7 @@ class Friends_Gestionale {
         // AJAX handlers
         add_action('wp_ajax_fg_get_member_quota', array($this, 'ajax_get_member_quota'));
         add_action('wp_ajax_fg_get_event_participants', array($this, 'ajax_get_event_participants'));
+        add_action('wp_ajax_fg_get_category_quota', array($this, 'ajax_get_category_quota'));
     }
     
     /**
@@ -348,6 +349,33 @@ class Friends_Gestionale {
         }
         
         wp_send_json_success(array('participants' => $participants_data));
+    }
+    
+    /**
+     * AJAX handler to get category quota
+     */
+    public function ajax_get_category_quota() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'fg_get_category_quota')) {
+            wp_send_json_error(array('message' => 'Invalid nonce'));
+            return;
+        }
+        
+        $category_id = isset($_POST['category_id']) ? absint($_POST['category_id']) : 0;
+        
+        if (!$category_id) {
+            wp_send_json_error(array('message' => 'Invalid category ID'));
+            return;
+        }
+        
+        // Get quota from category
+        $quota = get_term_meta($category_id, 'fg_quota_associativa', true);
+        
+        if ($quota) {
+            wp_send_json_success(array('quota' => floatval($quota)));
+        } else {
+            wp_send_json_success(array('quota' => 0));
+        }
     }
     
     /**

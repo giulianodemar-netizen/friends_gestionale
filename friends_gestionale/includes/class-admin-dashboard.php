@@ -600,7 +600,6 @@ class Friends_Gestionale_Admin_Dashboard {
                     vertical-align: top;
                     height: 100px;
                     width: 14.28%;
-                    position: relative;
                 }
                 .fg-calendar .day-number {
                     font-weight: bold;

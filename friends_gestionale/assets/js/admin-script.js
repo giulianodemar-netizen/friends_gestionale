@@ -402,6 +402,20 @@
             }, 500);
         }
         
+        // Category selector for auto-filling quota in member form
+        $('#fg_categoria_socio_selector').on('change', function() {
+            var categoryId = $(this).val();
+            var quota = $(this).find('option:selected').data('quota');
+            
+            if (categoryId && quota) {
+                // Fill in the quota field
+                $('#fg_quota_annuale').val(quota);
+                
+                // Also check the category in the sidebar taxonomy checkboxes
+                $('#fg_categoria_sociotaxonomy input[type="checkbox"][value="' + categoryId + '"]').prop('checked', true);
+            }
+        });
+        
     });
     
 })(jQuery);

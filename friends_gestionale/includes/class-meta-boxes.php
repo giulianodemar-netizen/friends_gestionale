@@ -161,6 +161,43 @@ class Friends_Gestionale_Meta_Boxes {
             
             <div class="fg-form-section">
                 <h3 class="fg-section-title"><?php _e('Iscrizione', 'friends-gestionale'); ?></h3>
+                
+                <!-- Category selector for auto-filling quota -->
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_categoria_socio_selector"><strong><?php _e('Categoria Socio (per quota automatica):', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_categoria_socio_selector" name="fg_categoria_socio_selector" class="widefat">
+                            <option value=""><?php _e('Seleziona categoria...', 'friends-gestionale'); ?></option>
+                            <?php
+                            $categories = get_terms(array(
+                                'taxonomy' => 'fg_categoria_socio',
+                                'hide_empty' => false
+                            ));
+                            $member_categories = wp_get_post_terms($post->ID, 'fg_categoria_socio', array('fields' => 'ids'));
+                            $selected_category = !empty($member_categories) ? $member_categories[0] : '';
+                            
+                            if (!empty($categories) && !is_wp_error($categories)) {
+                                foreach ($categories as $cat) {
+                                    $quota = get_term_meta($cat->term_id, 'fg_quota_associativa', true);
+                                    $label = $cat->name;
+                                    if ($quota) {
+                                        $label .= ' - €' . number_format($quota, 2, ',', '.');
+                                    }
+                                    printf(
+                                        '<option value="%d" data-quota="%s" %s>%s</option>',
+                                        $cat->term_id,
+                                        esc_attr($quota),
+                                        selected($selected_category, $cat->term_id, false),
+                                        esc_html($label)
+                                    );
+                                }
+                            }
+                            ?>
+                        </select>
+                        <p class="description"><?php _e('Selezionando una categoria, la quota annuale verrà compilata automaticamente.', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+                
                 <div class="fg-form-row">
                     <div class="fg-form-field fg-field-third">
                         <label for="fg_data_iscrizione"><strong><?php _e('Data Iscrizione:', 'friends-gestionale'); ?></strong></label>
@@ -678,6 +715,11 @@ class Friends_Gestionale_Meta_Boxes {
             }
             if (isset($_POST['fg_quota_annuale'])) {
                 update_post_meta($post_id, '_fg_quota_annuale', floatval($_POST['fg_quota_annuale']));
+            }
+            // Auto-assign category if selected from dropdown
+            if (isset($_POST['fg_categoria_socio_selector']) && !empty($_POST['fg_categoria_socio_selector'])) {
+                $category_id = absint($_POST['fg_categoria_socio_selector']);
+                wp_set_post_terms($post_id, array($category_id), 'fg_categoria_socio', false);
             }
             if (isset($_POST['fg_stato'])) {
                 update_post_meta($post_id, '_fg_stato', sanitize_text_field($_POST['fg_stato']));
