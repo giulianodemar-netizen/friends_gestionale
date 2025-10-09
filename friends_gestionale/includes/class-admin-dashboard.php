@@ -826,32 +826,59 @@ class Friends_Gestionale_Admin_Dashboard {
                 $('.fg-payment-item, .fg-payment-due, .fg-payment-overdue').on('mouseenter', function(e) {
                     var $tooltip = $(this).find('.fg-payment-tooltip');
                     if ($tooltip.length) {
-                        var rect = this.getBoundingClientRect();
-                        var tooltipWidth = 250; // min-width from CSS
+                        // First, temporarily show the tooltip to measure it
+                        $tooltip.css({
+                            'display': 'block',
+                            'visibility': 'hidden',
+                            'left': '0',
+                            'top': '0'
+                        });
                         
-                        // Calculate position - try to show on the right
-                        var left = rect.right + 10;
-                        var top = rect.top;
+                        var rect = this.getBoundingClientRect();
+                        var tooltipWidth = $tooltip.outerWidth();
+                        var tooltipHeight = $tooltip.outerHeight();
+                        var windowWidth = $(window).width();
+                        var windowHeight = $(window).height();
+                        
+                        var left, top;
+                        
+                        // Try to position on the right
+                        left = rect.right + 10;
+                        top = rect.top;
                         
                         // If tooltip would go off screen on the right, show on the left
-                        if (left + tooltipWidth > window.innerWidth) {
+                        if (left + tooltipWidth > windowWidth - 10) {
                             left = rect.left - tooltipWidth - 10;
                         }
                         
-                        // If still off screen, show below
-                        if (left < 0) {
-                            left = rect.left;
+                        // If still off screen on the left, position below instead
+                        if (left < 10) {
+                            left = Math.max(10, rect.left);
                             top = rect.bottom + 10;
                         }
                         
+                        // Check if tooltip would go off bottom of screen
+                        if (top + tooltipHeight > windowHeight - 10) {
+                            // Position above the element instead
+                            top = rect.top - tooltipHeight - 10;
+                        }
+                        
                         // Ensure it doesn't go off the top
-                        if (top < 0) {
+                        if (top < 10) {
                             top = 10;
                         }
                         
+                        // Ensure left doesn't go off right edge
+                        if (left + tooltipWidth > windowWidth - 10) {
+                            left = windowWidth - tooltipWidth - 10;
+                        }
+                        
+                        // Apply final position and make visible
                         $tooltip.css({
                             'left': left + 'px',
-                            'top': top + 'px'
+                            'top': top + 'px',
+                            'visibility': 'visible',
+                            'display': 'block'
                         });
                     }
                 });
