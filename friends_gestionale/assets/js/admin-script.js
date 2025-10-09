@@ -181,6 +181,7 @@
             $('#fg_evento_field').hide();
             $('#fg_evento_custom_field').hide();
             $('#fg_categoria_socio_field').hide();
+            $('#fg_raccolta_field').hide();
             
             // Show fields based on payment type
             if (tipoPagamento === 'evento') {
@@ -195,6 +196,8 @@
                 $('#fg_categoria_socio_field').show();
                 // Auto-populate amount when quota type is selected
                 updatePaymentAmountFromCategory();
+            } else if (tipoPagamento === 'raccolta') {
+                $('#fg_raccolta_field').show();
             }
         }
         

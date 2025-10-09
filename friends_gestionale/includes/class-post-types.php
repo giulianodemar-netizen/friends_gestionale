@@ -303,7 +303,8 @@ class Friends_Gestionale_Post_Types {
             
             $tipi_pagamento = array(
                 'quota' => __('Quota Associativa', 'friends-gestionale'),
-                'donazione' => __('Donazione', 'friends-gestionale'),
+                'donazione' => __('Donazione singola', 'friends-gestionale'),
+                'raccolta' => __('Raccolta Fondi', 'friends-gestionale'),
                 'evento' => __('Evento', 'friends-gestionale'),
                 'altro' => __('Altro', 'friends-gestionale')
             );
@@ -412,7 +413,13 @@ class Friends_Gestionale_Post_Types {
                 $raccolto = floatval(get_post_meta($post_id, '_fg_raccolto', true));
                 if ($obiettivo > 0) {
                     $percentuale = ($raccolto / $obiettivo) * 100;
-                    echo number_format($percentuale, 1) . '%';
+                    $percentuale_display = min(100, $percentuale);
+                    echo '<div class="fg-progress-wrapper">';
+                    echo '<div class="fg-progress-bar-small" style="width: 100px; height: 18px; background: #e0e0e0; border-radius: 3px; position: relative; display: inline-block; vertical-align: middle; margin-right: 8px;">';
+                    echo '<div style="width: ' . esc_attr($percentuale_display) . '%; height: 100%; background: #0073aa; border-radius: 3px; transition: width 0.3s ease;"></div>';
+                    echo '</div>';
+                    echo '<span style="font-weight: 600;">' . number_format($percentuale, 1) . '%</span>';
+                    echo '</div>';
                 } else {
                     echo '-';
                 }
