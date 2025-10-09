@@ -958,6 +958,57 @@ class Friends_Gestionale_Meta_Boxes {
                 update_post_meta($post_id, '_fg_note', sanitize_textarea_field($_POST['fg_note']));
             }
             
+            // Generate automatic reference title
+            $metodo_pagamento = isset($_POST['fg_metodo_pagamento']) ? sanitize_text_field($_POST['fg_metodo_pagamento']) : get_post_meta($post_id, '_fg_metodo_pagamento', true);
+            $tipo_pagamento = isset($_POST['fg_tipo_pagamento']) ? sanitize_text_field($_POST['fg_tipo_pagamento']) : get_post_meta($post_id, '_fg_tipo_pagamento', true);
+            
+            if ($metodo_pagamento && $tipo_pagamento) {
+                // Get or create progressive number for this payment
+                $progressive_number = get_post_meta($post_id, '_fg_progressive_number', true);
+                if (empty($progressive_number)) {
+                    // Get the highest progressive number
+                    global $wpdb;
+                    $max_number = $wpdb->get_var(
+                        "SELECT MAX(CAST(meta_value AS UNSIGNED)) 
+                        FROM {$wpdb->postmeta} 
+                        WHERE meta_key = '_fg_progressive_number'"
+                    );
+                    $progressive_number = $max_number ? intval($max_number) + 1 : 1;
+                    update_post_meta($post_id, '_fg_progressive_number', $progressive_number);
+                }
+                
+                // Translate payment method and type to Italian
+                $metodi_labels = array(
+                    'contanti' => 'Contanti',
+                    'bonifico' => 'Bonifico',
+                    'carta' => 'Carta',
+                    'paypal' => 'PayPal',
+                    'altro' => 'Altro'
+                );
+                
+                $tipi_labels = array(
+                    'quota' => 'Quota',
+                    'donazione' => 'Donazione',
+                    'raccolta' => 'Raccolta',
+                    'evento' => 'Evento',
+                    'altro' => 'Altro'
+                );
+                
+                $metodo_label = isset($metodi_labels[$metodo_pagamento]) ? $metodi_labels[$metodo_pagamento] : ucfirst($metodo_pagamento);
+                $tipo_label = isset($tipi_labels[$tipo_pagamento]) ? $tipi_labels[$tipo_pagamento] : ucfirst($tipo_pagamento);
+                
+                // Create reference title: *[number] - [metodo] - [tipo]
+                $reference_title = '*' . $progressive_number . ' - ' . $metodo_label . ' - ' . $tipo_label;
+                
+                // Update post title
+                remove_action('save_post', array($this, 'save_meta_boxes'), 10);
+                wp_update_post(array(
+                    'ID' => $post_id,
+                    'post_title' => $reference_title
+                ));
+                add_action('save_post', array($this, 'save_meta_boxes'), 10, 2);
+            }
+            
             // Update raccolta total if this is a raccolta payment
             if (isset($_POST['fg_tipo_pagamento']) && $_POST['fg_tipo_pagamento'] === 'raccolta' && isset($_POST['fg_raccolta_id']) && !empty($_POST['fg_raccolta_id'])) {
                 $this->update_raccolta_total(absint($_POST['fg_raccolta_id']));
