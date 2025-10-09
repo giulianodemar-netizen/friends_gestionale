@@ -626,10 +626,12 @@ class Friends_Gestionale_Admin_Dashboard {
                     cursor: pointer;
                     transition: all 0.2s;
                     position: relative;
+                    z-index: 1;
                 }
                 .fg-payment-item:hover {
                     background: #c3e6cb;
                     transform: translateX(2px);
+                    z-index: 100000;
                 }
                 .fg-payment-due {
                     font-size: 11px;
@@ -641,10 +643,12 @@ class Friends_Gestionale_Admin_Dashboard {
                     cursor: pointer;
                     transition: all 0.2s;
                     position: relative;
+                    z-index: 1;
                 }
                 .fg-payment-due:hover {
                     background: #ffe8a1;
                     transform: translateX(2px);
+                    z-index: 100000;
                 }
                 .fg-payment-overdue {
                     font-size: 11px;
@@ -656,17 +660,19 @@ class Friends_Gestionale_Admin_Dashboard {
                     cursor: pointer;
                     transition: all 0.2s;
                     position: relative;
+                    z-index: 1;
                 }
                 .fg-payment-overdue:hover {
                     background: #f5c6cb;
                     transform: translateX(2px);
+                    z-index: 100000;
                 }
                 
                 /* Graphical popup tooltip */
                 .fg-payment-tooltip {
                     display: none;
                     position: fixed;
-                    z-index: 99999 !important;
+                    z-index: 100001 !important;
                     background: #fff;
                     border: 2px solid #0073aa;
                     border-radius: 5px;
