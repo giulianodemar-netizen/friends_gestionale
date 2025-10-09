@@ -25,13 +25,13 @@ class Friends_Gestionale_Admin_Dashboard {
      */
     public function add_admin_menu() {
         add_menu_page(
-            __('Friends Gestionale', 'friends-gestionale'),
-            __('Friends Gestionale', 'friends-gestionale'),
+            __('Gestionale Donazioni Friends', 'friends-gestionale'),
+            __('Gestionale Donazioni Friends', 'friends-gestionale'),
             'edit_posts',
             'friends-gestionale',
             array($this, 'render_dashboard'),
             'dashicons-heart',
-            30
+            24
         );
         
         add_submenu_page(

@@ -240,6 +240,20 @@ class Friends_Gestionale_Post_Types {
      */
     public function render_socio_columns($column, $post_id) {
         switch ($column) {
+            case 'title':
+                // Display name with photo below it
+                $title = get_the_title($post_id);
+                echo '<strong><a href="' . get_edit_post_link($post_id) . '">' . esc_html($title) . '</a></strong>';
+                
+                // Add photo if it exists
+                $foto_id = get_post_thumbnail_id($post_id);
+                if ($foto_id) {
+                    $foto_url = wp_get_attachment_image_src($foto_id, 'thumbnail');
+                    if ($foto_url) {
+                        echo '<br><img src="' . esc_url($foto_url[0]) . '" style="max-width: 60px; height: auto; margin-top: 5px; border-radius: 3px; border: 1px solid #ddd;" />';
+                    }
+                }
+                break;
             case 'fg_email':
                 $email = get_post_meta($post_id, '_fg_email', true);
                 echo $email ? esc_html($email) : '-';
