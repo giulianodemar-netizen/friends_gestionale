@@ -103,6 +103,7 @@ class Friends_Gestionale {
         
         // AJAX handlers
         add_action('wp_ajax_fg_get_member_quota', array($this, 'ajax_get_member_quota'));
+        add_action('wp_ajax_fg_get_event_participants', array($this, 'ajax_get_event_participants'));
     }
     
     /**
@@ -307,6 +308,46 @@ class Friends_Gestionale {
             'quota' => floatval($quota),
             'categoria_id' => $categoria_id
         ));
+    }
+    
+    /**
+     * AJAX handler to get event participants
+     */
+    public function ajax_get_event_participants() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'fg_get_participants')) {
+            wp_send_json_error(array('message' => 'Invalid nonce'));
+            return;
+        }
+        
+        $post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+        
+        if (!$post_id) {
+            wp_send_json_error(array('message' => 'Invalid event ID'));
+            return;
+        }
+        
+        // Get participants
+        $partecipanti = get_post_meta($post_id, '_fg_partecipanti', true);
+        
+        if (!is_array($partecipanti) || empty($partecipanti)) {
+            wp_send_json_success(array('participants' => array()));
+            return;
+        }
+        
+        $participants_data = array();
+        foreach ($partecipanti as $socio_id) {
+            $socio = get_post($socio_id);
+            if ($socio) {
+                $participants_data[] = array(
+                    'id' => $socio_id,
+                    'name' => $socio->post_title,
+                    'edit_link' => get_edit_post_link($socio_id)
+                );
+            }
+        }
+        
+        wp_send_json_success(array('participants' => $participants_data));
     }
     
     /**

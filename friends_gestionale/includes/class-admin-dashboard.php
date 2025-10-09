@@ -664,7 +664,7 @@ class Friends_Gestionale_Admin_Dashboard {
                 .fg-payment-tooltip {
                     display: none;
                     position: absolute;
-                    z-index: 1000;
+                    z-index: 99999;
                     background: #fff;
                     border: 2px solid #0073aa;
                     border-radius: 5px;
