@@ -173,6 +173,105 @@
             }
         });
         
+        // Show/hide conditional payment fields based on payment type
+        function togglePaymentFields() {
+            var tipoPagamento = $('#fg_tipo_pagamento').val();
+            
+            // Hide all conditional fields
+            $('#fg_evento_field').hide();
+            $('#fg_evento_custom_field').hide();
+            $('#fg_categoria_socio_field').hide();
+            $('#fg_raccolta_field').hide();
+            
+            // Show fields based on payment type
+            if (tipoPagamento === 'evento') {
+                $('#fg_evento_field').show();
+                
+                // Check if "Altro Evento" is selected
+                var eventoId = $('#fg_evento_id').val();
+                if (eventoId === 'altro_evento') {
+                    $('#fg_evento_custom_field').show();
+                }
+            } else if (tipoPagamento === 'quota') {
+                $('#fg_categoria_socio_field').show();
+                // Auto-populate amount when quota type is selected
+                updatePaymentAmountFromCategory();
+            } else if (tipoPagamento === 'raccolta') {
+                $('#fg_raccolta_field').show();
+            }
+        }
+        
+        // Function to update payment amount from member category quota
+        function updatePaymentAmountFromCategory() {
+            var socioId = $('#fg_socio_id').val();
+            var categoriaId = $('#fg_categoria_socio_id').val();
+            
+            if (socioId && $('#fg_tipo_pagamento').val() === 'quota') {
+                // Make AJAX request to get member's category and quota
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'fg_get_member_quota',
+                        socio_id: socioId,
+                        categoria_id: categoriaId
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // Auto-select the member's category in dropdown
+                            if (response.data.categoria_id) {
+                                $('#fg_categoria_socio_id').val(response.data.categoria_id);
+                            }
+                            
+                            // Auto-populate amount and make it readonly
+                            if (response.data.quota) {
+                                $('#fg_importo').val(response.data.quota);
+                                $('#fg_importo').prop('readonly', true);
+                                $('#fg_importo').css('background-color', '#f0f0f0');
+                            } else {
+                                $('#fg_importo').prop('readonly', false);
+                                $('#fg_importo').css('background-color', '');
+                            }
+                        }
+                    }
+                });
+            } else {
+                // Remove readonly when not quota payment
+                $('#fg_importo').prop('readonly', false);
+                $('#fg_importo').css('background-color', '');
+            }
+        }
+        
+        // Initialize on page load
+        togglePaymentFields();
+        
+        // Update when payment type changes
+        $('#fg_tipo_pagamento').on('change', function() {
+            togglePaymentFields();
+        });
+        
+        // Update when socio changes
+        $('#fg_socio_id').on('change', function() {
+            if ($('#fg_tipo_pagamento').val() === 'quota') {
+                updatePaymentAmountFromCategory();
+            }
+        });
+        
+        // Update when category changes
+        $('#fg_categoria_socio_id').on('change', function() {
+            updatePaymentAmountFromCategory();
+        });
+        
+        // Show/hide custom event field when event selection changes
+        $('#fg_evento_id').on('change', function() {
+            var eventoId = $(this).val();
+            if (eventoId === 'altro_evento') {
+                $('#fg_evento_custom_field').show();
+            } else {
+                $('#fg_evento_custom_field').hide();
+            }
+        });
+        
         // Confirm before deleting
         $('.submitdelete').on('click', function(e) {
             if (!confirm('Sei sicuro di voler eliminare questo elemento?')) {
@@ -247,6 +346,78 @@
                 }
             });
         }
+        
+        // Photo Upload Handler for Socio
+        $('#fg_upload_foto_button').on('click', function(e) {
+            e.preventDefault();
+            
+            var custom_uploader = wp.media({
+                title: 'Seleziona Foto Socio',
+                button: {
+                    text: 'Usa questa foto'
+                },
+                multiple: false,
+                library: {
+                    type: 'image'
+                }
+            });
+            
+            custom_uploader.on('select', function() {
+                var attachment = custom_uploader.state().get('selection').first().toJSON();
+                
+                // Update hidden field
+                $('#fg_foto_id').val(attachment.id);
+                
+                // Show preview
+                var previewHtml = '<div class="fg-foto-preview" style="margin-bottom: 10px;">' +
+                    '<img src="' + attachment.url + '" style="max-width: 200px; height: auto; border: 1px solid #ddd; padding: 5px;" />' +
+                    '</div>';
+                
+                $('.fg-foto-preview').remove();
+                $('#fg_upload_foto_button').before(previewHtml);
+                $('#fg_remove_foto_button').show();
+            });
+            
+            custom_uploader.open();
+        });
+        
+        // Remove Photo Handler for Socio
+        $('#fg_remove_foto_button').on('click', function(e) {
+            e.preventDefault();
+            if (confirm('Sei sicuro di voler rimuovere la foto?')) {
+                $('#fg_foto_id').val('');
+                $('.fg-foto-preview').remove();
+                $(this).hide();
+            }
+        });
+        
+        // Pre-fill payment form when coming from calendar
+        var urlParams = new URLSearchParams(window.location.search);
+        var socioIdFromUrl = urlParams.get('socio_id');
+        
+        if (socioIdFromUrl && $('#fg_socio_id').length) {
+            // Set the socio
+            $('#fg_socio_id').val(socioIdFromUrl).trigger('change');
+            
+            // Set payment type to quota
+            setTimeout(function() {
+                $('#fg_tipo_pagamento').val('quota').trigger('change');
+            }, 500);
+        }
+        
+        // Category selector for auto-filling quota in member form
+        $('#fg_categoria_socio_selector').on('change', function() {
+            var categoryId = $(this).val();
+            var quota = $(this).find('option:selected').data('quota');
+            
+            if (categoryId && quota) {
+                // Fill in the quota field
+                $('#fg_quota_annuale').val(quota);
+                
+                // Also check the category in the sidebar taxonomy checkboxes
+                $('#fg_categoria_sociotaxonomy input[type="checkbox"][value="' + categoryId + '"]').prop('checked', true);
+            }
+        });
         
     });
     

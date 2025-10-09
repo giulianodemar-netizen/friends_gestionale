@@ -19,6 +19,7 @@ class Friends_Gestionale_Meta_Boxes {
         add_action('add_meta_boxes', array($this, 'add_meta_boxes'));
         add_action('save_post', array($this, 'save_meta_boxes'), 10, 2);
         add_action('admin_init', array($this, 'setup_upload_handler'));
+        add_action('before_delete_post', array($this, 'before_delete_payment'));
         
         // Hide default editor for custom post types
         add_action('admin_head', array($this, 'hide_default_editor'));
@@ -29,7 +30,7 @@ class Friends_Gestionale_Meta_Boxes {
      */
     public function hide_default_editor() {
         global $post_type;
-        if (in_array($post_type, array('fg_socio', 'fg_pagamento', 'fg_evento'))) {
+        if (in_array($post_type, array('fg_socio', 'fg_pagamento', 'fg_evento', 'fg_raccolta'))) {
             remove_post_type_support($post_type, 'editor');
             remove_post_type_support($post_type, 'title');
         }
@@ -161,6 +162,43 @@ class Friends_Gestionale_Meta_Boxes {
             
             <div class="fg-form-section">
                 <h3 class="fg-section-title"><?php _e('Iscrizione', 'friends-gestionale'); ?></h3>
+                
+                <!-- Category selector for auto-filling quota -->
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_categoria_socio_selector"><strong><?php _e('Categoria Socio (per quota automatica):', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_categoria_socio_selector" name="fg_categoria_socio_selector" class="widefat">
+                            <option value=""><?php _e('Seleziona categoria...', 'friends-gestionale'); ?></option>
+                            <?php
+                            $categories = get_terms(array(
+                                'taxonomy' => 'fg_categoria_socio',
+                                'hide_empty' => false
+                            ));
+                            $member_categories = wp_get_post_terms($post->ID, 'fg_categoria_socio', array('fields' => 'ids'));
+                            $selected_category = !empty($member_categories) ? $member_categories[0] : '';
+                            
+                            if (!empty($categories) && !is_wp_error($categories)) {
+                                foreach ($categories as $cat) {
+                                    $quota = get_term_meta($cat->term_id, 'fg_quota_associativa', true);
+                                    $label = $cat->name;
+                                    if ($quota) {
+                                        $label .= ' - €' . number_format($quota, 2, ',', '.');
+                                    }
+                                    printf(
+                                        '<option value="%d" data-quota="%s" %s>%s</option>',
+                                        $cat->term_id,
+                                        esc_attr($quota),
+                                        selected($selected_category, $cat->term_id, false),
+                                        esc_html($label)
+                                    );
+                                }
+                            }
+                            ?>
+                        </select>
+                        <p class="description"><?php _e('Selezionando una categoria, la quota annuale verrà compilata automaticamente.', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+                
                 <div class="fg-form-row">
                     <div class="fg-form-field fg-field-third">
                         <label for="fg_data_iscrizione"><strong><?php _e('Data Iscrizione:', 'friends-gestionale'); ?></strong></label>
@@ -195,6 +233,28 @@ class Friends_Gestionale_Meta_Boxes {
                     <div class="fg-form-field">
                         <label for="fg_note"><strong><?php _e('Note:', 'friends-gestionale'); ?></strong></label>
                         <textarea id="fg_note" name="fg_note" rows="4" class="widefat"><?php echo esc_textarea($note); ?></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Foto Socio', 'friends-gestionale'); ?></h3>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <?php
+                        $foto_id = get_post_thumbnail_id($post->ID);
+                        if ($foto_id) {
+                            $foto_url = wp_get_attachment_image_src($foto_id, 'medium');
+                            ?>
+                            <div class="fg-foto-preview" style="margin-bottom: 10px;">
+                                <img src="<?php echo esc_url($foto_url[0]); ?>" style="max-width: 200px; height: auto; border: 1px solid #ddd; padding: 5px;" />
+                            </div>
+                            <?php
+                        }
+                        ?>
+                        <button type="button" class="button" id="fg_upload_foto_button"><?php _e('Carica Foto', 'friends-gestionale'); ?></button>
+                        <button type="button" class="button" id="fg_remove_foto_button" style="<?php echo !$foto_id ? 'display:none;' : ''; ?>"><?php _e('Rimuovi Foto', 'friends-gestionale'); ?></button>
+                        <input type="hidden" id="fg_foto_id" name="fg_foto_id" value="<?php echo esc_attr($foto_id); ?>" />
                     </div>
                 </div>
             </div>
@@ -241,6 +301,10 @@ class Friends_Gestionale_Meta_Boxes {
         $data_pagamento = get_post_meta($post->ID, '_fg_data_pagamento', true);
         $metodo_pagamento = get_post_meta($post->ID, '_fg_metodo_pagamento', true);
         $tipo_pagamento = get_post_meta($post->ID, '_fg_tipo_pagamento', true);
+        $evento_id = get_post_meta($post->ID, '_fg_evento_id', true);
+        $evento_custom = get_post_meta($post->ID, '_fg_evento_custom', true);
+        $categoria_socio_id = get_post_meta($post->ID, '_fg_categoria_socio_id', true);
+        $raccolta_id = get_post_meta($post->ID, '_fg_raccolta_id', true);
         $note = get_post_meta($post->ID, '_fg_note', true);
         
         // Get all members for dropdown
@@ -250,55 +314,140 @@ class Friends_Gestionale_Meta_Boxes {
             'orderby' => 'title',
             'order' => 'ASC'
         ));
+        
+        // Get all events for dropdown
+        $eventi = get_posts(array(
+            'post_type' => 'fg_evento',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC'
+        ));
+        
+        // Get all fundraising campaigns for dropdown
+        $raccolte = get_posts(array(
+            'post_type' => 'fg_raccolta',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC'
+        ));
+        
+        // Get all member categories
+        $categorie = get_terms(array(
+            'taxonomy' => 'fg_categoria_socio',
+            'hide_empty' => false
+        ));
         ?>
-        <div class="fg-meta-box">
-            <p>
-                <label for="fg_socio_id"><strong><?php _e('Socio:', 'friends-gestionale'); ?></strong></label><br>
-                <select id="fg_socio_id" name="fg_socio_id" class="widefat">
-                    <option value=""><?php _e('Seleziona Socio', 'friends-gestionale'); ?></option>
-                    <?php foreach ($soci as $socio): ?>
-                        <option value="<?php echo $socio->ID; ?>" <?php selected($socio_id, $socio->ID); ?>>
-                            <?php echo esc_html($socio->post_title); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </p>
-            
-            <p>
-                <label for="fg_importo"><strong><?php _e('Importo (€):', 'friends-gestionale'); ?></strong></label><br>
-                <input type="number" id="fg_importo" name="fg_importo" value="<?php echo esc_attr($importo); ?>" step="0.01" min="0" class="widefat" />
-            </p>
-            
-            <p>
-                <label for="fg_data_pagamento"><strong><?php _e('Data Pagamento:', 'friends-gestionale'); ?></strong></label><br>
-                <input type="date" id="fg_data_pagamento" name="fg_data_pagamento" value="<?php echo esc_attr($data_pagamento); ?>" class="widefat" />
-            </p>
-            
-            <p>
-                <label for="fg_metodo_pagamento"><strong><?php _e('Metodo di Pagamento:', 'friends-gestionale'); ?></strong></label><br>
-                <select id="fg_metodo_pagamento" name="fg_metodo_pagamento" class="widefat">
-                    <option value="contanti" <?php selected($metodo_pagamento, 'contanti'); ?>><?php _e('Contanti', 'friends-gestionale'); ?></option>
-                    <option value="bonifico" <?php selected($metodo_pagamento, 'bonifico'); ?>><?php _e('Bonifico Bancario', 'friends-gestionale'); ?></option>
-                    <option value="carta" <?php selected($metodo_pagamento, 'carta'); ?>><?php _e('Carta di Credito', 'friends-gestionale'); ?></option>
-                    <option value="paypal" <?php selected($metodo_pagamento, 'paypal'); ?>><?php _e('PayPal', 'friends-gestionale'); ?></option>
-                    <option value="altro" <?php selected($metodo_pagamento, 'altro'); ?>><?php _e('Altro', 'friends-gestionale'); ?></option>
-                </select>
-            </p>
-            
-            <p>
-                <label for="fg_tipo_pagamento"><strong><?php _e('Tipo di Pagamento:', 'friends-gestionale'); ?></strong></label><br>
-                <select id="fg_tipo_pagamento" name="fg_tipo_pagamento" class="widefat">
-                    <option value="quota" <?php selected($tipo_pagamento, 'quota'); ?>><?php _e('Quota Associativa', 'friends-gestionale'); ?></option>
-                    <option value="donazione" <?php selected($tipo_pagamento, 'donazione'); ?>><?php _e('Donazione', 'friends-gestionale'); ?></option>
-                    <option value="evento" <?php selected($tipo_pagamento, 'evento'); ?>><?php _e('Evento', 'friends-gestionale'); ?></option>
-                    <option value="altro" <?php selected($tipo_pagamento, 'altro'); ?>><?php _e('Altro', 'friends-gestionale'); ?></option>
-                </select>
-            </p>
-            
-            <p>
-                <label for="fg_note"><strong><?php _e('Note:', 'friends-gestionale'); ?></strong></label><br>
-                <textarea id="fg_note" name="fg_note" rows="4" class="widefat"><?php echo esc_textarea($note); ?></textarea>
-            </p>
+        <div class="fg-meta-box fg-improved-form">
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Informazioni Pagamento', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_socio_id"><strong><?php _e('Socio:', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_socio_id" name="fg_socio_id" class="widefat">
+                            <option value=""><?php _e('Seleziona Socio', 'friends-gestionale'); ?></option>
+                            <?php foreach ($soci as $socio): ?>
+                                <option value="<?php echo $socio->ID; ?>" <?php selected($socio_id, $socio->ID); ?>>
+                                    <?php echo esc_html($socio->post_title); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_importo"><strong><?php _e('Importo (€):', 'friends-gestionale'); ?></strong></label>
+                        <input type="number" id="fg_importo" name="fg_importo" value="<?php echo esc_attr($importo); ?>" step="0.01" min="0" class="widefat" />
+                    </div>
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_data_pagamento"><strong><?php _e('Data Pagamento:', 'friends-gestionale'); ?></strong></label>
+                        <input type="date" id="fg_data_pagamento" name="fg_data_pagamento" value="<?php echo esc_attr($data_pagamento); ?>" class="widefat" />
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_metodo_pagamento"><strong><?php _e('Metodo di Pagamento:', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_metodo_pagamento" name="fg_metodo_pagamento" class="widefat">
+                            <option value="contanti" <?php selected($metodo_pagamento, 'contanti'); ?>><?php _e('Contanti', 'friends-gestionale'); ?></option>
+                            <option value="bonifico" <?php selected($metodo_pagamento, 'bonifico'); ?>><?php _e('Bonifico Bancario', 'friends-gestionale'); ?></option>
+                            <option value="carta" <?php selected($metodo_pagamento, 'carta'); ?>><?php _e('Carta di Credito', 'friends-gestionale'); ?></option>
+                            <option value="paypal" <?php selected($metodo_pagamento, 'paypal'); ?>><?php _e('PayPal', 'friends-gestionale'); ?></option>
+                            <option value="altro" <?php selected($metodo_pagamento, 'altro'); ?>><?php _e('Altro', 'friends-gestionale'); ?></option>
+                        </select>
+                    </div>
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_tipo_pagamento"><strong><?php _e('Tipo di Pagamento:', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_tipo_pagamento" name="fg_tipo_pagamento" class="widefat">
+                            <option value="quota" <?php selected($tipo_pagamento, 'quota'); ?>><?php _e('Quota Associativa', 'friends-gestionale'); ?></option>
+                            <option value="donazione" <?php selected($tipo_pagamento, 'donazione'); ?>><?php _e('Donazione singola', 'friends-gestionale'); ?></option>
+                            <option value="raccolta" <?php selected($tipo_pagamento, 'raccolta'); ?>><?php _e('Raccolta Fondi', 'friends-gestionale'); ?></option>
+                            <option value="evento" <?php selected($tipo_pagamento, 'evento'); ?>><?php _e('Evento', 'friends-gestionale'); ?></option>
+                            <option value="altro" <?php selected($tipo_pagamento, 'altro'); ?>><?php _e('Altro', 'friends-gestionale'); ?></option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="fg-form-row" id="fg_evento_field" style="display: none;">
+                    <div class="fg-form-field">
+                        <label for="fg_evento_id"><strong><?php _e('Seleziona Evento:', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_evento_id" name="fg_evento_id" class="widefat">
+                            <option value=""><?php _e('Seleziona Evento', 'friends-gestionale'); ?></option>
+                            <?php foreach ($eventi as $evento): ?>
+                                <option value="<?php echo $evento->ID; ?>" <?php selected($evento_id, $evento->ID); ?>>
+                                    <?php echo esc_html($evento->post_title); ?>
+                                </option>
+                            <?php endforeach; ?>
+                            <option value="altro_evento" <?php selected($evento_id, 'altro_evento'); ?>><?php _e('Altro Evento', 'friends-gestionale'); ?></option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="fg-form-row" id="fg_evento_custom_field" style="display: none;">
+                    <div class="fg-form-field">
+                        <label for="fg_evento_custom"><strong><?php _e('Titolo Evento Personalizzato:', 'friends-gestionale'); ?></strong></label>
+                        <input type="text" id="fg_evento_custom" name="fg_evento_custom" value="<?php echo esc_attr($evento_custom); ?>" class="widefat" />
+                    </div>
+                </div>
+                
+                <div class="fg-form-row" id="fg_raccolta_field" style="display: none;">
+                    <div class="fg-form-field">
+                        <label for="fg_raccolta_id"><strong><?php _e('Seleziona Raccolta Fondi:', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_raccolta_id" name="fg_raccolta_id" class="widefat">
+                            <option value=""><?php _e('Seleziona Raccolta Fondi', 'friends-gestionale'); ?></option>
+                            <?php foreach ($raccolte as $raccolta): ?>
+                                <option value="<?php echo $raccolta->ID; ?>" <?php selected($raccolta_id, $raccolta->ID); ?>>
+                                    <?php echo esc_html($raccolta->post_title); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="fg-form-row" id="fg_categoria_socio_field" style="display: none;">
+                    <div class="fg-form-field">
+                        <label for="fg_categoria_socio_id"><strong><?php _e('Categoria Socio:', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_categoria_socio_id" name="fg_categoria_socio_id" class="widefat">
+                            <option value=""><?php _e('Seleziona Categoria', 'friends-gestionale'); ?></option>
+                            <?php if (!empty($categorie) && !is_wp_error($categorie)): ?>
+                                <?php foreach ($categorie as $categoria): ?>
+                                    <option value="<?php echo $categoria->term_id; ?>" <?php selected($categoria_socio_id, $categoria->term_id); ?>>
+                                        <?php echo esc_html($categoria->name); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_note"><strong><?php _e('Note:', 'friends-gestionale'); ?></strong></label>
+                        <textarea id="fg_note" name="fg_note" rows="4" class="widefat"><?php echo esc_textarea($note); ?></textarea>
+                    </div>
+                </div>
+            </div>
         </div>
         <?php
     }
@@ -309,51 +458,73 @@ class Friends_Gestionale_Meta_Boxes {
     public function render_raccolta_info_meta_box($post) {
         wp_nonce_field('fg_raccolta_meta_box', 'fg_raccolta_meta_box_nonce');
         
+        $titolo_raccolta = get_post_meta($post->ID, '_fg_titolo_raccolta', true);
+        if (empty($titolo_raccolta)) {
+            $titolo_raccolta = $post->post_title;
+        }
         $obiettivo = get_post_meta($post->ID, '_fg_obiettivo', true);
         $raccolto = get_post_meta($post->ID, '_fg_raccolto', true);
         $data_inizio = get_post_meta($post->ID, '_fg_data_inizio', true);
         $data_fine = get_post_meta($post->ID, '_fg_data_fine', true);
         $stato = get_post_meta($post->ID, '_fg_stato', true);
         ?>
-        <div class="fg-meta-box">
-            <p>
-                <label for="fg_obiettivo"><strong><?php _e('Obiettivo (€):', 'friends-gestionale'); ?></strong></label><br>
-                <input type="number" id="fg_obiettivo" name="fg_obiettivo" value="<?php echo esc_attr($obiettivo); ?>" step="0.01" min="0" class="widefat" />
-            </p>
-            
-            <p>
-                <label for="fg_raccolto"><strong><?php _e('Raccolto (€):', 'friends-gestionale'); ?></strong></label><br>
-                <input type="number" id="fg_raccolto" name="fg_raccolto" value="<?php echo esc_attr($raccolto); ?>" step="0.01" min="0" class="widefat" />
-            </p>
-            
-            <p>
-                <label for="fg_data_inizio"><strong><?php _e('Data Inizio:', 'friends-gestionale'); ?></strong></label><br>
-                <input type="date" id="fg_data_inizio" name="fg_data_inizio" value="<?php echo esc_attr($data_inizio); ?>" class="widefat" />
-            </p>
-            
-            <p>
-                <label for="fg_data_fine"><strong><?php _e('Data Fine:', 'friends-gestionale'); ?></strong></label><br>
-                <input type="date" id="fg_data_fine" name="fg_data_fine" value="<?php echo esc_attr($data_fine); ?>" class="widefat" />
-            </p>
-            
-            <p>
-                <label for="fg_stato"><strong><?php _e('Stato:', 'friends-gestionale'); ?></strong></label><br>
-                <select id="fg_stato" name="fg_stato" class="widefat">
-                    <option value="attiva" <?php selected($stato, 'attiva'); ?>><?php _e('Attiva', 'friends-gestionale'); ?></option>
-                    <option value="completata" <?php selected($stato, 'completata'); ?>><?php _e('Completata', 'friends-gestionale'); ?></option>
-                    <option value="sospesa" <?php selected($stato, 'sospesa'); ?>><?php _e('Sospesa', 'friends-gestionale'); ?></option>
-                </select>
-            </p>
-            
-            <?php if ($obiettivo > 0): ?>
-                <p>
-                    <strong><?php _e('Progresso:', 'friends-gestionale'); ?></strong><br>
-                    <div class="fg-progress-bar">
-                        <div class="fg-progress-fill" style="width: <?php echo min(100, ($raccolto / $obiettivo) * 100); ?>%"></div>
+        <div class="fg-meta-box fg-improved-form">
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Dettagli Raccolta Fondi', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_titolo_raccolta"><strong><?php _e('Titolo Raccolta:', 'friends-gestionale'); ?></strong> <span class="required">*</span></label>
+                        <input type="text" id="fg_titolo_raccolta" name="fg_titolo_raccolta" value="<?php echo esc_attr($titolo_raccolta); ?>" class="widefat" required />
                     </div>
-                    <small><?php echo number_format($raccolto, 2); ?>€ / <?php echo number_format($obiettivo, 2); ?>€ (<?php echo number_format(($raccolto / $obiettivo) * 100, 1); ?>%)</small>
-                </p>
-            <?php endif; ?>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_obiettivo"><strong><?php _e('Obiettivo (€):', 'friends-gestionale'); ?></strong></label>
+                        <input type="number" id="fg_obiettivo" name="fg_obiettivo" value="<?php echo esc_attr($obiettivo); ?>" step="0.01" min="0" class="widefat" />
+                    </div>
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_raccolto"><strong><?php _e('Raccolto (€):', 'friends-gestionale'); ?></strong></label>
+                        <input type="number" id="fg_raccolto" name="fg_raccolto" value="<?php echo esc_attr($raccolto); ?>" step="0.01" min="0" class="widefat" readonly style="background-color: #f0f0f0;" />
+                        <small style="color: #666;"><?php _e('Calcolato automaticamente dai pagamenti', 'friends-gestionale'); ?></small>
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_data_inizio"><strong><?php _e('Data Inizio:', 'friends-gestionale'); ?></strong></label>
+                        <input type="date" id="fg_data_inizio" name="fg_data_inizio" value="<?php echo esc_attr($data_inizio); ?>" class="widefat" />
+                    </div>
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_data_fine"><strong><?php _e('Data Fine:', 'friends-gestionale'); ?></strong></label>
+                        <input type="date" id="fg_data_fine" name="fg_data_fine" value="<?php echo esc_attr($data_fine); ?>" class="widefat" />
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_stato"><strong><?php _e('Stato:', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_stato" name="fg_stato" class="widefat">
+                            <option value="attiva" <?php selected($stato, 'attiva'); ?>><?php _e('Attiva', 'friends-gestionale'); ?></option>
+                            <option value="completata" <?php selected($stato, 'completata'); ?>><?php _e('Completata', 'friends-gestionale'); ?></option>
+                            <option value="sospesa" <?php selected($stato, 'sospesa'); ?>><?php _e('Sospesa', 'friends-gestionale'); ?></option>
+                        </select>
+                    </div>
+                </div>
+                
+                <?php if ($obiettivo > 0): ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <label><strong><?php _e('Progresso:', 'friends-gestionale'); ?></strong></label>
+                            <div class="fg-progress-bar">
+                                <div class="fg-progress-fill" style="width: <?php echo min(100, ($raccolto / $obiettivo) * 100); ?>%"></div>
+                            </div>
+                            <small><?php echo number_format($raccolto, 2); ?>€ / <?php echo number_format($obiettivo, 2); ?>€ (<?php echo number_format(($raccolto / $obiettivo) * 100, 1); ?>%)</small>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
         <?php
     }
@@ -571,6 +742,11 @@ class Friends_Gestionale_Meta_Boxes {
             if (isset($_POST['fg_quota_annuale'])) {
                 update_post_meta($post_id, '_fg_quota_annuale', floatval($_POST['fg_quota_annuale']));
             }
+            // Auto-assign category if selected from dropdown
+            if (isset($_POST['fg_categoria_socio_selector']) && !empty($_POST['fg_categoria_socio_selector'])) {
+                $category_id = absint($_POST['fg_categoria_socio_selector']);
+                wp_set_post_terms($post_id, array($category_id), 'fg_categoria_socio', false);
+            }
             if (isset($_POST['fg_stato'])) {
                 update_post_meta($post_id, '_fg_stato', sanitize_text_field($_POST['fg_stato']));
             }
@@ -584,6 +760,15 @@ class Friends_Gestionale_Meta_Boxes {
                         'name' => sanitize_text_field($doc['name'])
                     );
                 }, $_POST['fg_documents']));
+            }
+            // Save photo as featured image
+            if (isset($_POST['fg_foto_id'])) {
+                $foto_id = absint($_POST['fg_foto_id']);
+                if ($foto_id > 0) {
+                    set_post_thumbnail($post_id, $foto_id);
+                } else {
+                    delete_post_thumbnail($post_id);
+                }
             }
         }
         
@@ -608,8 +793,25 @@ class Friends_Gestionale_Meta_Boxes {
             if (isset($_POST['fg_tipo_pagamento'])) {
                 update_post_meta($post_id, '_fg_tipo_pagamento', sanitize_text_field($_POST['fg_tipo_pagamento']));
             }
+            if (isset($_POST['fg_evento_id'])) {
+                update_post_meta($post_id, '_fg_evento_id', sanitize_text_field($_POST['fg_evento_id']));
+            }
+            if (isset($_POST['fg_evento_custom'])) {
+                update_post_meta($post_id, '_fg_evento_custom', sanitize_text_field($_POST['fg_evento_custom']));
+            }
+            if (isset($_POST['fg_categoria_socio_id'])) {
+                update_post_meta($post_id, '_fg_categoria_socio_id', absint($_POST['fg_categoria_socio_id']));
+            }
+            if (isset($_POST['fg_raccolta_id'])) {
+                update_post_meta($post_id, '_fg_raccolta_id', absint($_POST['fg_raccolta_id']));
+            }
             if (isset($_POST['fg_note'])) {
                 update_post_meta($post_id, '_fg_note', sanitize_textarea_field($_POST['fg_note']));
+            }
+            
+            // Update raccolta total if this is a raccolta payment
+            if (isset($_POST['fg_tipo_pagamento']) && $_POST['fg_tipo_pagamento'] === 'raccolta' && isset($_POST['fg_raccolta_id']) && !empty($_POST['fg_raccolta_id'])) {
+                $this->update_raccolta_total(absint($_POST['fg_raccolta_id']));
             }
         }
         
@@ -617,6 +819,21 @@ class Friends_Gestionale_Meta_Boxes {
         if ($post->post_type === 'fg_raccolta') {
             if (!isset($_POST['fg_raccolta_meta_box_nonce']) || !wp_verify_nonce($_POST['fg_raccolta_meta_box_nonce'], 'fg_raccolta_meta_box')) {
                 return;
+            }
+            
+            // Update post title with titolo_raccolta
+            if (isset($_POST['fg_titolo_raccolta'])) {
+                $titolo_raccolta = sanitize_text_field($_POST['fg_titolo_raccolta']);
+                
+                // Update post title
+                remove_action('save_post', array($this, 'save_meta_boxes'), 10);
+                wp_update_post(array(
+                    'ID' => $post_id,
+                    'post_title' => $titolo_raccolta
+                ));
+                add_action('save_post', array($this, 'save_meta_boxes'), 10, 2);
+                
+                update_post_meta($post_id, '_fg_titolo_raccolta', $titolo_raccolta);
             }
             
             if (isset($_POST['fg_obiettivo'])) {
@@ -720,6 +937,52 @@ class Friends_Gestionale_Meta_Boxes {
         } else {
             wp_send_json_error($movefile['error']);
         }
+    }
+    
+    /**
+     * Update total amount raised for a fundraising campaign
+     */
+    /**
+     * Before delete payment - update raccolta total if needed
+     */
+    public function before_delete_payment($post_id) {
+        $post = get_post($post_id);
+        if ($post && $post->post_type === 'fg_pagamento') {
+            $tipo_pagamento = get_post_meta($post_id, '_fg_tipo_pagamento', true);
+            $raccolta_id = get_post_meta($post_id, '_fg_raccolta_id', true);
+            
+            if ($tipo_pagamento === 'raccolta' && $raccolta_id) {
+                // Update total after this payment is deleted
+                // We need to do this on shutdown to ensure the post is actually deleted
+                add_action('shutdown', function() use ($raccolta_id) {
+                    $this->update_raccolta_total($raccolta_id);
+                });
+            }
+        }
+    }
+    
+    private function update_raccolta_total($raccolta_id) {
+        // Get all payments for this raccolta
+        $payments = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_raccolta_id',
+                    'value' => $raccolta_id,
+                    'compare' => '='
+                )
+            )
+        ));
+        
+        $total = 0;
+        foreach ($payments as $payment) {
+            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+            $total += floatval($importo);
+        }
+        
+        // Update the raccolta total
+        update_post_meta($raccolta_id, '_fg_raccolto', $total);
     }
 }
 

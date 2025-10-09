@@ -27,7 +27,7 @@ class Friends_Gestionale_Admin_Dashboard {
         add_menu_page(
             __('Friends Gestionale', 'friends-gestionale'),
             __('Friends Gestionale', 'friends-gestionale'),
-            'manage_options',
+            'edit_posts',
             'friends-gestionale',
             array($this, 'render_dashboard'),
             'dashicons-heart',
@@ -38,7 +38,7 @@ class Friends_Gestionale_Admin_Dashboard {
             'friends-gestionale',
             __('Dashboard', 'friends-gestionale'),
             __('Dashboard', 'friends-gestionale'),
-            'manage_options',
+            'edit_posts',
             'friends-gestionale',
             array($this, 'render_dashboard')
         );
@@ -47,7 +47,7 @@ class Friends_Gestionale_Admin_Dashboard {
             'friends-gestionale',
             __('Statistiche', 'friends-gestionale'),
             __('Statistiche', 'friends-gestionale'),
-            'manage_options',
+            'edit_posts',
             'fg-statistics',
             array($this, 'render_statistics')
         );
@@ -56,9 +56,20 @@ class Friends_Gestionale_Admin_Dashboard {
             'friends-gestionale',
             __('Impostazioni', 'friends-gestionale'),
             __('Impostazioni', 'friends-gestionale'),
-            'manage_options',
+            'edit_posts',
             'fg-settings',
             array($this, 'render_settings')
+        );
+        
+        // Add Calendario Pagamenti as a top-level menu item
+        add_menu_page(
+            __('Calendario Pagamenti', 'friends-gestionale'),
+            __('Calendario Pagamenti', 'friends-gestionale'),
+            'edit_posts',
+            'fg-payment-calendar',
+            array($this, 'render_payment_calendar'),
+            'dashicons-money-alt', // Changed icon to money instead of calendar
+            31
         );
     }
     
@@ -463,6 +474,352 @@ class Friends_Gestionale_Admin_Dashboard {
                 
                 <?php submit_button(); ?>
             </form>
+        </div>
+        <?php
+    }
+    
+    /**
+     * Render payment calendar page
+     */
+    public function render_payment_calendar() {
+        // Get current month and year from URL or use current date
+        $current_month = isset($_GET['month']) ? intval($_GET['month']) : date('n');
+        $current_year = isset($_GET['year']) ? intval($_GET['year']) : date('Y');
+        
+        // Calculate previous and next month
+        $prev_month = $current_month == 1 ? 12 : $current_month - 1;
+        $prev_year = $current_month == 1 ? $current_year - 1 : $current_year;
+        $next_month = $current_month == 12 ? 1 : $current_month + 1;
+        $next_year = $current_month == 12 ? $current_year + 1 : $current_year;
+        
+        // Calculate previous and next year
+        $prev_year_same_month = $current_year - 1;
+        $next_year_same_month = $current_year + 1;
+        
+        // Get month name
+        $month_name = date_i18n('F Y', strtotime("$current_year-$current_month-01"));
+        
+        // Get first and last day of month
+        $first_day = strtotime("$current_year-$current_month-01");
+        $last_day = strtotime(date('Y-m-t', $first_day));
+        
+        // Get all payments for this month
+        $payments = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_data_pagamento',
+                    'value' => array(date('Y-m-01', $first_day), date('Y-m-t', $first_day)),
+                    'compare' => 'BETWEEN',
+                    'type' => 'DATE'
+                )
+            )
+        ));
+        
+        // Get all soci with scadenza in this month (future payments)
+        $soci_scadenza = get_posts(array(
+            'post_type' => 'fg_socio',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_data_scadenza',
+                    'value' => array(date('Y-m-01', $first_day), date('Y-m-t', $first_day)),
+                    'compare' => 'BETWEEN',
+                    'type' => 'DATE'
+                )
+            )
+        ));
+        
+        // Organize payments by day
+        $payments_by_day = array();
+        foreach ($payments as $payment) {
+            $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+            if ($data_pagamento) {
+                $day = date('j', strtotime($data_pagamento));
+                if (!isset($payments_by_day[$day])) {
+                    $payments_by_day[$day] = array('paid' => array(), 'due' => array());
+                }
+                $payments_by_day[$day]['paid'][] = $payment;
+            }
+        }
+        
+        // Organize scadenze by day
+        foreach ($soci_scadenza as $socio) {
+            $data_scadenza = get_post_meta($socio->ID, '_fg_data_scadenza', true);
+            if ($data_scadenza) {
+                $day = date('j', strtotime($data_scadenza));
+                if (!isset($payments_by_day[$day])) {
+                    $payments_by_day[$day] = array('paid' => array(), 'due' => array());
+                }
+                $payments_by_day[$day]['due'][] = $socio;
+            }
+        }
+        
+        ?>
+        <div class="wrap">
+            <h1><?php _e('Calendario Pagamenti', 'friends-gestionale'); ?></h1>
+            
+            <div class="fg-calendar-navigation" style="margin: 20px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <a href="?page=fg-payment-calendar&month=<?php echo $prev_month; ?>&year=<?php echo $prev_year; ?>" class="button button-primary" style="display: inline-flex; align-items: center; gap: 5px;">
+                        <span class="dashicons dashicons-arrow-left-alt2"></span> <?php _e('Mese Precedente', 'friends-gestionale'); ?>
+                    </a>
+                    <h2 style="margin: 0;"><?php echo esc_html($month_name); ?></h2>
+                    <a href="?page=fg-payment-calendar&month=<?php echo $next_month; ?>&year=<?php echo $next_year; ?>" class="button button-primary" style="display: inline-flex; align-items: center; gap: 5px;">
+                        <?php _e('Mese Successivo', 'friends-gestionale'); ?> <span class="dashicons dashicons-arrow-right-alt2"></span>
+                    </a>
+                </div>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+                    <a href="?page=fg-payment-calendar&month=<?php echo $current_month; ?>&year=<?php echo $prev_year_same_month; ?>" class="button button-secondary" style="display: inline-flex; align-items: center; gap: 5px;">
+                        <span class="dashicons dashicons-arrow-left-alt2"></span> <?php _e('Anno Precedente', 'friends-gestionale'); ?>
+                    </a>
+                    <a href="?page=fg-payment-calendar&month=<?php echo $current_month; ?>&year=<?php echo $next_year_same_month; ?>" class="button button-secondary" style="display: inline-flex; align-items: center; gap: 5px;">
+                        <?php _e('Anno Successivo', 'friends-gestionale'); ?> <span class="dashicons dashicons-arrow-right-alt2"></span>
+                    </a>
+                </div>
+            </div>
+            
+            <style>
+                .fg-calendar {
+                    width: 100%;
+                    border-collapse: collapse;
+                    background: #fff;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }
+                .fg-calendar th {
+                    background: #0073aa;
+                    color: #fff;
+                    padding: 10px;
+                    text-align: center;
+                    font-weight: bold;
+                }
+                .fg-calendar td {
+                    border: 1px solid #ddd;
+                    padding: 5px;
+                    vertical-align: top;
+                    height: 100px;
+                    width: 14.28%;
+                }
+                .fg-calendar .day-number {
+                    font-weight: bold;
+                    font-size: 16px;
+                    margin-bottom: 5px;
+                }
+                .fg-calendar .today {
+                    background: #e7f5fe;
+                }
+                .fg-calendar .other-month {
+                    background: #f5f5f5;
+                    color: #999;
+                }
+                .fg-payment-item {
+                    font-size: 11px;
+                    padding: 3px 5px;
+                    margin: 2px 0;
+                    border-radius: 3px;
+                    background: #d4edda;
+                    border-left: 3px solid #28a745;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    position: relative;
+                }
+                .fg-payment-item:hover {
+                    background: #c3e6cb;
+                    transform: translateX(2px);
+                }
+                .fg-payment-due {
+                    font-size: 11px;
+                    padding: 3px 5px;
+                    margin: 2px 0;
+                    border-radius: 3px;
+                    background: #fff3cd;
+                    border-left: 3px solid #ffc107;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    position: relative;
+                }
+                .fg-payment-due:hover {
+                    background: #ffe8a1;
+                    transform: translateX(2px);
+                }
+                .fg-payment-overdue {
+                    font-size: 11px;
+                    padding: 3px 5px;
+                    margin: 2px 0;
+                    border-radius: 3px;
+                    background: #f8d7da;
+                    border-left: 3px solid #dc3545;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    position: relative;
+                }
+                .fg-payment-overdue:hover {
+                    background: #f5c6cb;
+                    transform: translateX(2px);
+                }
+                
+                /* Graphical popup tooltip */
+                .fg-payment-tooltip {
+                    display: none;
+                    position: absolute;
+                    z-index: 99999;
+                    background: #fff;
+                    border: 2px solid #0073aa;
+                    border-radius: 5px;
+                    padding: 12px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                    min-width: 250px;
+                    left: 100%;
+                    top: 0;
+                    margin-left: 10px;
+                }
+                .fg-payment-item:hover .fg-payment-tooltip,
+                .fg-payment-due:hover .fg-payment-tooltip,
+                .fg-payment-overdue:hover .fg-payment-tooltip {
+                    display: block;
+                }
+                .fg-payment-tooltip h4 {
+                    margin: 0 0 10px 0;
+                    padding: 0 0 8px 0;
+                    border-bottom: 1px solid #ddd;
+                    color: #0073aa;
+                    font-size: 14px;
+                }
+                .fg-payment-tooltip .tooltip-row {
+                    display: flex;
+                    margin: 5px 0;
+                    font-size: 12px;
+                }
+                .fg-payment-tooltip .tooltip-label {
+                    font-weight: bold;
+                    width: 80px;
+                    color: #666;
+                }
+                .fg-payment-tooltip .tooltip-value {
+                    flex: 1;
+                    color: #333;
+                }
+            </style>
+            
+            <table class="fg-calendar">
+                <thead>
+                    <tr>
+                        <th><?php _e('Lunedì', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Martedì', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Mercoledì', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Giovedì', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Venerdì', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Sabato', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Domenica', 'friends-gestionale'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $days_in_month = date('t', $first_day);
+                    $first_day_of_week = date('N', $first_day); // 1 (Monday) through 7 (Sunday)
+                    $today = date('Y-m-d');
+                    
+                    $day_counter = 1;
+                    $weeks = ceil(($days_in_month + $first_day_of_week - 1) / 7);
+                    
+                    for ($week = 0; $week < $weeks; $week++) {
+                        echo '<tr>';
+                        for ($day_of_week = 1; $day_of_week <= 7; $day_of_week++) {
+                            if ($week == 0 && $day_of_week < $first_day_of_week) {
+                                echo '<td class="other-month"></td>';
+                            } elseif ($day_counter > $days_in_month) {
+                                echo '<td class="other-month"></td>';
+                            } else {
+                                $current_date = sprintf('%04d-%02d-%02d', $current_year, $current_month, $day_counter);
+                                $is_today = ($current_date == $today) ? 'today' : '';
+                                
+                                echo '<td class="' . $is_today . '">';
+                                echo '<div class="day-number">' . $day_counter . '</div>';
+                                
+                                // Show payments
+                                if (isset($payments_by_day[$day_counter])) {
+                                    foreach ($payments_by_day[$day_counter]['paid'] as $payment) {
+                                        $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                                        $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
+                                        $socio_nome = $socio_id ? get_the_title($socio_id) : 'N/A';
+                                        $metodo = get_post_meta($payment->ID, '_fg_metodo_pagamento', true);
+                                        $tipo = get_post_meta($payment->ID, '_fg_tipo_pagamento', true);
+                                        $note = get_post_meta($payment->ID, '_fg_note', true);
+                                        
+                                        $edit_url = admin_url('post.php?post=' . $payment->ID . '&action=edit');
+                                        
+                                        echo '<div class="fg-payment-item" onclick="window.open(\'' . esc_url($edit_url) . '\', \'_blank\')">';
+                                        echo '✓ €' . number_format($importo, 2) . ' - ' . esc_html(substr($socio_nome, 0, 15));
+                                        
+                                        // Graphical popup tooltip
+                                        echo '<div class="fg-payment-tooltip">';
+                                        echo '<h4>Pagamento Effettuato</h4>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Socio:</span><span class="tooltip-value">' . esc_html($socio_nome) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Importo:</span><span class="tooltip-value">€' . number_format($importo, 2) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Tipo:</span><span class="tooltip-value">' . esc_html(ucfirst($tipo)) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Metodo:</span><span class="tooltip-value">' . esc_html(ucfirst($metodo)) . '</span></div>';
+                                        if ($note) {
+                                            echo '<div class="tooltip-row"><span class="tooltip-label">Note:</span><span class="tooltip-value">' . esc_html($note) . '</span></div>';
+                                        }
+                                        echo '</div>';
+                                        
+                                        echo '</div>';
+                                    }
+                                    
+                                    // Show due payments
+                                    foreach ($payments_by_day[$day_counter]['due'] as $socio) {
+                                        // Get member category and its quota
+                                        $terms = wp_get_post_terms($socio->ID, 'fg_categoria_socio');
+                                        $quota = 0;
+                                        if (!empty($terms) && !is_wp_error($terms)) {
+                                            $categoria_quota = get_term_meta($terms[0]->term_id, 'fg_quota_associativa', true);
+                                            $quota = $categoria_quota ? floatval($categoria_quota) : floatval(get_post_meta($socio->ID, '_fg_quota_annuale', true));
+                                        } else {
+                                            $quota = floatval(get_post_meta($socio->ID, '_fg_quota_annuale', true));
+                                        }
+                                        
+                                        $is_overdue = ($current_date < $today);
+                                        $class = $is_overdue ? 'fg-payment-overdue' : 'fg-payment-due';
+                                        $data_scadenza = get_post_meta($socio->ID, '_fg_data_scadenza', true);
+                                        
+                                        // Build URL for creating new payment with pre-filled data
+                                        $new_payment_url = admin_url('post-new.php?post_type=fg_pagamento&socio_id=' . $socio->ID);
+                                        
+                                        echo '<div class="' . $class . '" onclick="window.open(\'' . esc_url($new_payment_url) . '\', \'_blank\')">';
+                                        echo ($is_overdue ? '⚠' : '○') . ' €' . number_format($quota, 2) . ' - ' . esc_html(substr($socio->post_title, 0, 15));
+                                        
+                                        // Graphical popup tooltip
+                                        echo '<div class="fg-payment-tooltip">';
+                                        echo '<h4>' . ($is_overdue ? 'Pagamento Arretrato' : 'Pagamento in Scadenza') . '</h4>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Socio:</span><span class="tooltip-value">' . esc_html($socio->post_title) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Quota:</span><span class="tooltip-value">€' . number_format($quota, 2) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Scadenza:</span><span class="tooltip-value">' . date_i18n(get_option('date_format'), strtotime($data_scadenza)) . '</span></div>';
+                                        echo '<div class="tooltip-row"><span class="tooltip-label">Stato:</span><span class="tooltip-value">' . ($is_overdue ? 'Arretrato' : 'In scadenza') . '</span></div>';
+                                        echo '</div>';
+                                        
+                                        echo '</div>';
+                                    }
+                                }
+                                
+                                echo '</td>';
+                                $day_counter++;
+                            }
+                        }
+                        echo '</tr>';
+                    }
+                    ?>
+                </tbody>
+            </table>
+            
+            <div class="fg-calendar-legend" style="margin-top: 20px; padding: 15px; background: #fff; border: 1px solid #ddd;">
+                <h3><?php _e('Legenda', 'friends-gestionale'); ?></h3>
+                <div style="display: flex; gap: 20px;">
+                    <div><span style="display: inline-block; width: 20px; height: 10px; background: #28a745; margin-right: 5px;"></span> <?php _e('Pagamento Effettuato', 'friends-gestionale'); ?></div>
+                    <div><span style="display: inline-block; width: 20px; height: 10px; background: #ffc107; margin-right: 5px;"></span> <?php _e('Pagamento in Scadenza', 'friends-gestionale'); ?></div>
+                    <div><span style="display: inline-block; width: 20px; height: 10px; background: #dc3545; margin-right: 5px;"></span> <?php _e('Pagamento Arretrato', 'friends-gestionale'); ?></div>
+                </div>
+            </div>
         </div>
         <?php
     }

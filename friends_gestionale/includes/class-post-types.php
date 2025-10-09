@@ -28,6 +28,19 @@ class Friends_Gestionale_Post_Types {
         add_action('manage_fg_raccolta_posts_custom_column', array($this, 'render_raccolta_columns'), 10, 2);
         add_filter('manage_fg_evento_posts_columns', array($this, 'set_evento_columns'));
         add_action('manage_fg_evento_posts_custom_column', array($this, 'render_evento_columns'), 10, 2);
+        
+        // Taxonomy custom fields for categoria_socio
+        add_action('fg_categoria_socio_add_form_fields', array($this, 'add_categoria_quota_field'));
+        add_action('fg_categoria_socio_edit_form_fields', array($this, 'edit_categoria_quota_field'), 10, 2);
+        add_action('created_fg_categoria_socio', array($this, 'save_categoria_quota_field'));
+        add_action('edited_fg_categoria_socio', array($this, 'save_categoria_quota_field'));
+        
+        // Add filter dropdown for payment type
+        add_action('restrict_manage_posts', array($this, 'add_pagamento_filters'));
+        add_filter('parse_query', array($this, 'filter_pagamenti_by_type'));
+        
+        // Add admin footer script for participant popup
+        add_action('admin_footer', array($this, 'add_partecipanti_popup_script'));
     }
     
     /**
@@ -54,7 +67,7 @@ class Friends_Gestionale_Post_Types {
             'show_in_menu' => true,
             'menu_position' => 25,
             'menu_icon' => 'dashicons-groups',
-            'supports' => array('title', 'editor', 'thumbnail'),
+            'supports' => array('thumbnail'),
             'has_archive' => false,
             'rewrite' => array('slug' => 'soci'),
             'capability_type' => 'post',
@@ -84,7 +97,8 @@ class Friends_Gestionale_Post_Types {
             'supports' => array('title'),
             'has_archive' => false,
             'rewrite' => array('slug' => 'pagamenti'),
-            'capability_type' => 'post',
+            'capability_type' => array('fg_pagamento', 'fg_pagamentos'),
+            'map_meta_cap' => true,
             'show_in_rest' => true
         ));
         
@@ -108,7 +122,7 @@ class Friends_Gestionale_Post_Types {
             'show_in_menu' => true,
             'menu_position' => 27,
             'menu_icon' => 'dashicons-heart',
-            'supports' => array('title', 'editor', 'thumbnail'),
+            'supports' => array('thumbnail'),
             'has_archive' => true,
             'rewrite' => array('slug' => 'raccolte-fondi'),
             'capability_type' => 'post',
@@ -135,7 +149,7 @@ class Friends_Gestionale_Post_Types {
             'show_in_menu' => true,
             'menu_position' => 28,
             'menu_icon' => 'dashicons-calendar-alt',
-            'supports' => array('title', 'editor', 'thumbnail'),
+            'supports' => array('thumbnail'),
             'has_archive' => true,
             'rewrite' => array('slug' => 'eventi'),
             'capability_type' => 'post',
@@ -165,7 +179,13 @@ class Friends_Gestionale_Post_Types {
             'show_admin_column' => true,
             'query_var' => true,
             'rewrite' => array('slug' => 'categoria-socio'),
-            'show_in_rest' => true
+            'show_in_rest' => true,
+            'capabilities' => array(
+                'manage_terms' => 'manage_categories',
+                'edit_terms' => 'edit_categories',
+                'delete_terms' => 'delete_categories',
+                'assign_terms' => 'assign_categories',
+            ),
         ));
         
         // Register Stato Pagamento taxonomy
@@ -186,7 +206,13 @@ class Friends_Gestionale_Post_Types {
             'show_admin_column' => true,
             'query_var' => true,
             'rewrite' => array('slug' => 'stato-pagamento'),
-            'show_in_rest' => true
+            'show_in_rest' => true,
+            'capabilities' => array(
+                'manage_terms' => 'manage_categories',
+                'edit_terms' => 'edit_categories',
+                'delete_terms' => 'delete_categories',
+                'assign_terms' => 'assign_categories',
+            ),
         ));
     }
     
@@ -267,6 +293,55 @@ class Friends_Gestionale_Post_Types {
     }
     
     /**
+     * Add filter dropdown for payment type
+     */
+    public function add_pagamento_filters() {
+        global $typenow;
+        
+        if ($typenow == 'fg_pagamento') {
+            $current_tipo = isset($_GET['tipo_pagamento']) ? $_GET['tipo_pagamento'] : '';
+            
+            $tipi_pagamento = array(
+                'quota' => __('Quota Associativa', 'friends-gestionale'),
+                'donazione' => __('Donazione singola', 'friends-gestionale'),
+                'raccolta' => __('Raccolta Fondi', 'friends-gestionale'),
+                'evento' => __('Evento', 'friends-gestionale'),
+                'altro' => __('Altro', 'friends-gestionale')
+            );
+            
+            echo '<select name="tipo_pagamento">';
+            echo '<option value="">' . __('Tutti i tipi di pagamento', 'friends-gestionale') . '</option>';
+            foreach ($tipi_pagamento as $value => $label) {
+                printf(
+                    '<option value="%s"%s>%s</option>',
+                    esc_attr($value),
+                    selected($current_tipo, $value, false),
+                    esc_html($label)
+                );
+            }
+            echo '</select>';
+        }
+    }
+    
+    /**
+     * Filter payments by type
+     */
+    public function filter_pagamenti_by_type($query) {
+        global $pagenow, $typenow;
+        
+        if ($pagenow == 'edit.php' && $typenow == 'fg_pagamento' && isset($_GET['tipo_pagamento']) && $_GET['tipo_pagamento'] != '') {
+            $meta_query = array(
+                array(
+                    'key' => '_fg_tipo_pagamento',
+                    'value' => sanitize_text_field($_GET['tipo_pagamento']),
+                    'compare' => '='
+                )
+            );
+            $query->set('meta_query', $meta_query);
+        }
+    }
+    
+    /**
      * Render custom columns for Pagamenti
      */
     public function render_pagamento_columns($column, $post_id) {
@@ -338,7 +413,13 @@ class Friends_Gestionale_Post_Types {
                 $raccolto = floatval(get_post_meta($post_id, '_fg_raccolto', true));
                 if ($obiettivo > 0) {
                     $percentuale = ($raccolto / $obiettivo) * 100;
-                    echo number_format($percentuale, 1) . '%';
+                    $percentuale_display = min(100, $percentuale);
+                    echo '<div class="fg-progress-wrapper">';
+                    echo '<div class="fg-progress-bar-small" style="width: 100px; height: 18px; background: #e0e0e0; border-radius: 3px; position: relative; display: inline-block; vertical-align: middle; margin-right: 8px;">';
+                    echo '<div style="width: ' . esc_attr($percentuale_display) . '%; height: 100%; background: #0073aa; border-radius: 3px; transition: width 0.3s ease;"></div>';
+                    echo '</div>';
+                    echo '<span style="font-weight: 600;">' . number_format($percentuale, 1) . '%</span>';
+                    echo '</div>';
                 } else {
                     echo '-';
                 }
@@ -393,7 +474,8 @@ class Friends_Gestionale_Post_Types {
             case 'fg_partecipanti':
                 $partecipanti = get_post_meta($post_id, '_fg_partecipanti', true);
                 if (is_array($partecipanti) && !empty($partecipanti)) {
-                    echo count($partecipanti);
+                    $count = count($partecipanti);
+                    echo '<span class="fg-partecipanti-count" data-post-id="' . esc_attr($post_id) . '" style="cursor: pointer; color: #0073aa; text-decoration: underline;">' . $count . '</span>';
                 } else {
                     echo '0';
                 }
@@ -406,6 +488,213 @@ class Friends_Gestionale_Post_Types {
                     echo '-';
                 }
                 break;
+        }
+    }
+    
+    /**
+     * Add quota field to categoria_socio taxonomy (add form)
+     */
+    public function add_categoria_quota_field() {
+        ?>
+        <div class="form-field">
+            <label for="fg_quota_associativa"><?php _e('Quota Associativa (€)', 'friends-gestionale'); ?></label>
+            <input type="number" name="fg_quota_associativa" id="fg_quota_associativa" step="0.01" min="0" value="" />
+            <p class="description"><?php _e('Inserisci l\'importo della quota annuale per questa categoria di socio.', 'friends-gestionale'); ?></p>
+        </div>
+        <?php
+    }
+    
+    /**
+     * Add quota field to categoria_socio taxonomy (edit form)
+     */
+    public function edit_categoria_quota_field($term, $taxonomy) {
+        $quota = get_term_meta($term->term_id, 'fg_quota_associativa', true);
+        ?>
+        <tr class="form-field">
+            <th scope="row">
+                <label for="fg_quota_associativa"><?php _e('Quota Associativa (€)', 'friends-gestionale'); ?></label>
+            </th>
+            <td>
+                <input type="number" name="fg_quota_associativa" id="fg_quota_associativa" step="0.01" min="0" value="<?php echo esc_attr($quota); ?>" />
+                <p class="description"><?php _e('Inserisci l\'importo della quota annuale per questa categoria di socio.', 'friends-gestionale'); ?></p>
+            </td>
+        </tr>
+        <?php
+    }
+    
+    /**
+     * Save quota field for categoria_socio taxonomy
+     */
+    public function save_categoria_quota_field($term_id) {
+        if (isset($_POST['fg_quota_associativa'])) {
+            $quota = floatval($_POST['fg_quota_associativa']);
+            update_term_meta($term_id, 'fg_quota_associativa', $quota);
+        }
+    }
+    
+    /**
+     * Add participant popup script and styles
+     */
+    public function add_partecipanti_popup_script() {
+        $screen = get_current_screen();
+        if ($screen && $screen->post_type === 'fg_evento') {
+            ?>
+            <style>
+                /* Participant popup modal */
+                .fg-partecipanti-modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 100000;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                }
+                .fg-partecipanti-modal-content {
+                    background: #fff;
+                    margin: 5% auto;
+                    padding: 0;
+                    border: 2px solid #0073aa;
+                    border-radius: 5px;
+                    width: 80%;
+                    max-width: 600px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                }
+                .fg-partecipanti-modal-header {
+                    background: #0073aa;
+                    color: #fff;
+                    padding: 15px 20px;
+                    border-radius: 3px 3px 0 0;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .fg-partecipanti-modal-header h2 {
+                    margin: 0;
+                    font-size: 18px;
+                    color: #fff;
+                }
+                .fg-partecipanti-modal-close {
+                    color: #fff;
+                    font-size: 28px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    background: none;
+                    border: none;
+                    padding: 0;
+                    line-height: 1;
+                }
+                .fg-partecipanti-modal-close:hover {
+                    color: #ddd;
+                }
+                .fg-partecipanti-modal-body {
+                    padding: 20px;
+                    max-height: 60vh;
+                    overflow-y: auto;
+                }
+                .fg-partecipante-item {
+                    padding: 12px;
+                    border-bottom: 1px solid #eee;
+                    display: flex;
+                    align-items: center;
+                }
+                .fg-partecipante-item:last-child {
+                    border-bottom: none;
+                }
+                .fg-partecipante-number {
+                    background: #0073aa;
+                    color: #fff;
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: bold;
+                    margin-right: 15px;
+                    flex-shrink: 0;
+                }
+                .fg-partecipante-name {
+                    flex-grow: 1;
+                    font-size: 14px;
+                }
+                .fg-partecipante-name a {
+                    text-decoration: none;
+                    color: #0073aa;
+                }
+                .fg-partecipante-name a:hover {
+                    text-decoration: underline;
+                }
+            </style>
+            <script>
+            jQuery(document).ready(function($) {
+                // Create modal element
+                var modal = $('<div class="fg-partecipanti-modal"></div>');
+                var modalContent = $('<div class="fg-partecipanti-modal-content"></div>');
+                var modalHeader = $('<div class="fg-partecipanti-modal-header"><h2>Partecipanti all\'Evento</h2><button class="fg-partecipanti-modal-close">&times;</button></div>');
+                var modalBody = $('<div class="fg-partecipanti-modal-body"></div>');
+                
+                modalContent.append(modalHeader).append(modalBody);
+                modal.append(modalContent);
+                $('body').append(modal);
+                
+                // Close modal handlers
+                $('.fg-partecipanti-modal-close', modal).on('click', function() {
+                    modal.hide();
+                });
+                $(modal).on('click', function(e) {
+                    if (e.target === modal[0]) {
+                        modal.hide();
+                    }
+                });
+                
+                // Click handler for participant count
+                $(document).on('click', '.fg-partecipanti-count', function(e) {
+                    e.preventDefault();
+                    var postId = $(this).data('post-id');
+                    
+                    // Show loading
+                    modalBody.html('<p style="text-align:center;padding:20px;">Caricamento...</p>');
+                    modal.show();
+                    
+                    // AJAX request to get participants
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'fg_get_event_participants',
+                            post_id: postId,
+                            nonce: '<?php echo wp_create_nonce('fg_get_participants'); ?>'
+                        },
+                        success: function(response) {
+                            if (response.success && response.data.participants) {
+                                var html = '';
+                                $.each(response.data.participants, function(index, participant) {
+                                    html += '<div class="fg-partecipante-item">';
+                                    html += '<div class="fg-partecipante-number">' + (index + 1) + '</div>';
+                                    html += '<div class="fg-partecipante-name">';
+                                    if (participant.edit_link) {
+                                        html += '<a href="' + participant.edit_link + '" target="_blank">' + participant.name + '</a>';
+                                    } else {
+                                        html += participant.name;
+                                    }
+                                    html += '</div>';
+                                    html += '</div>';
+                                });
+                                modalBody.html(html);
+                            } else {
+                                modalBody.html('<p style="text-align:center;padding:20px;">Nessun partecipante trovato.</p>');
+                            }
+                        },
+                        error: function() {
+                            modalBody.html('<p style="text-align:center;padding:20px;color:#dc3545;">Errore nel caricamento dei partecipanti.</p>');
+                        }
+                    });
+                });
+            });
+            </script>
+            <?php
         }
     }
 }

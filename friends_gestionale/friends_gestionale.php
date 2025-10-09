@@ -91,6 +91,102 @@ class Friends_Gestionale {
         
         // Load text domain for translations
         add_action('plugins_loaded', array($this, 'load_textdomain'));
+        
+        // Ensure payment manager role exists
+        add_action('init', array($this, 'ensure_payment_manager_role'));
+        
+        // Restrict menu access for payment manager role
+        add_action('admin_menu', array($this, 'restrict_payment_manager_menu'), 999);
+        
+        // Redirect payment manager to payments page
+        add_action('admin_init', array($this, 'redirect_payment_manager'));
+        
+        // AJAX handlers
+        add_action('wp_ajax_fg_get_member_quota', array($this, 'ajax_get_member_quota'));
+        add_action('wp_ajax_fg_get_event_participants', array($this, 'ajax_get_event_participants'));
+        add_action('wp_ajax_fg_get_category_quota', array($this, 'ajax_get_category_quota'));
+    }
+    
+    /**
+     * Restrict admin menu for plugin manager role
+     */
+    public function restrict_payment_manager_menu() {
+        $user = wp_get_current_user();
+        
+        // Don't restrict administrators - they should have full access
+        if (in_array('administrator', $user->roles)) {
+            return;
+        }
+        
+        if (in_array('fg_payment_manager', $user->roles)) {
+            // Remove all default WordPress menus - keep only Friends Gestionale plugin menus
+            remove_menu_page('index.php');                  // Dashboard
+            remove_menu_page('edit.php');                   // Posts
+            remove_menu_page('upload.php');                 // Media
+            remove_menu_page('edit.php?post_type=page');    // Pages
+            remove_menu_page('edit-comments.php');          // Comments
+            remove_menu_page('themes.php');                 // Appearance
+            remove_menu_page('plugins.php');                // Plugins
+            remove_menu_page('users.php');                  // Users
+            remove_menu_page('tools.php');                  // Tools
+            // Keep Settings visible for plugin settings access
+            // remove_menu_page('options-general.php');     // Settings - now kept visible
+            
+            // Remove Visual Composer menus (try multiple possible slugs)
+            remove_menu_page('vc-general');                 // Visual Composer
+            remove_menu_page('vc-welcome');                 // VC Welcome
+            remove_menu_page('vcv-settings');               // VC Settings
+            remove_menu_page('vcv-about');                  // VC About
+            remove_menu_page('vcv-headers-footers');        // VC Headers/Footers
+            remove_menu_page('vcv-headers-footers-layouts'); // VC Layouts
+            
+            // Keep all Friends Gestionale post type menus visible:
+            // - Soci (fg_socio)
+            // - Pagamenti (fg_pagamento)
+            // - Raccolte Fondi (fg_raccolta)
+            // - Eventi (fg_evento)
+        }
+    }
+    
+    /**
+     * Redirect plugin manager appropriately
+     */
+    public function redirect_payment_manager() {
+        $user = wp_get_current_user();
+        
+        // Don't restrict administrators - they should have full access
+        if (in_array('administrator', $user->roles)) {
+            return;
+        }
+        
+        if (in_array('fg_payment_manager', $user->roles)) {
+            global $pagenow;
+            
+            // Prevent access to post types outside the plugin
+            if ($pagenow == 'post.php' && isset($_GET['post'])) {
+                $post_type = get_post_type($_GET['post']);
+                $allowed_types = array('fg_socio', 'fg_pagamento', 'fg_raccolta', 'fg_evento');
+                if ($post_type && !in_array($post_type, $allowed_types)) {
+                    wp_die(__('Non hai i permessi per accedere a questa pagina.', 'friends-gestionale'));
+                }
+            }
+            
+            // Prevent access to other post types via post_type parameter
+            if (isset($_GET['post_type'])) {
+                $allowed_types = array('fg_socio', 'fg_pagamento', 'fg_raccolta', 'fg_evento');
+                if (!in_array($_GET['post_type'], $allowed_types)) {
+                    wp_die(__('Non hai i permessi per accedere a questa pagina.', 'friends-gestionale'));
+                }
+            }
+        }
+    }
+    
+    /**
+     * Ensure payment manager role exists (called on init)
+     */
+    public function ensure_payment_manager_role() {
+        // Always recreate the role to ensure it has the latest name and capabilities
+        $this->create_payment_manager_role();
     }
     
     /**
@@ -105,6 +201,181 @@ class Friends_Gestionale {
         add_option('friends_gestionale_quota_annuale', 50);
         add_option('friends_gestionale_reminder_days', 30);
         add_option('friends_gestionale_email_notifications', true);
+        
+        // Create custom user role for plugin management
+        $this->create_payment_manager_role();
+    }
+    
+    /**
+     * Create custom user role for plugin management
+     */
+    private function create_payment_manager_role() {
+        // Remove role if it exists to ensure clean setup
+        remove_role('fg_payment_manager');
+        
+        // Add the role with capabilities for all plugin areas
+        add_role(
+            'fg_payment_manager',
+            __('Friends Gestionale - Gestore Soci', 'friends-gestionale'),
+            array(
+                'read' => true,
+                
+                // Basic post capabilities
+                'edit_posts' => true,
+                'edit_published_posts' => true,
+                'edit_others_posts' => true,
+                'publish_posts' => true,
+                'delete_posts' => true,
+                'delete_published_posts' => true,
+                'delete_others_posts' => true,
+                'read_private_posts' => true,
+                'edit_private_posts' => true,
+                'delete_private_posts' => true,
+                
+                // Upload files (for attachments)
+                'upload_files' => true,
+                
+                // Taxonomy management capabilities
+                'manage_categories' => true,
+                'edit_categories' => true,
+                'delete_categories' => true,
+                'assign_categories' => true,
+            )
+        );
+        
+        // Get the roles
+        $plugin_role = get_role('fg_payment_manager');
+        $admin_role = get_role('administrator');
+        
+        // Add capabilities for fg_pagamento (Pagamenti) to both roles
+        $capabilities = array(
+            'edit_fg_pagamento',
+            'read_fg_pagamento',
+            'delete_fg_pagamento',
+            'edit_fg_pagamentos',
+            'edit_others_fg_pagamentos',
+            'publish_fg_pagamentos',
+            'read_private_fg_pagamentos',
+            'delete_fg_pagamentos',
+            'delete_private_fg_pagamentos',
+            'delete_published_fg_pagamentos',
+            'delete_others_fg_pagamentos',
+            'edit_private_fg_pagamentos',
+            'edit_published_fg_pagamentos',
+        );
+        
+        foreach ($capabilities as $cap) {
+            if ($plugin_role) {
+                $plugin_role->add_cap($cap);
+            }
+            if ($admin_role) {
+                $admin_role->add_cap($cap);
+            }
+        }
+    }
+    
+    /**
+     * AJAX handler to get member quota from category
+     */
+    public function ajax_get_member_quota() {
+        $socio_id = isset($_POST['socio_id']) ? absint($_POST['socio_id']) : 0;
+        $categoria_id = isset($_POST['categoria_id']) ? absint($_POST['categoria_id']) : 0;
+        
+        if (!$socio_id) {
+            wp_send_json_error(array('message' => 'Invalid socio ID'));
+            return;
+        }
+        
+        $quota = 0;
+        
+        // If category is specified, get quota from category
+        if ($categoria_id) {
+            $quota = get_term_meta($categoria_id, 'fg_quota_associativa', true);
+        } else {
+            // Otherwise, get from member's assigned category
+            $categories = wp_get_post_terms($socio_id, 'fg_categoria_socio');
+            if (!empty($categories) && !is_wp_error($categories)) {
+                $categoria_id = $categories[0]->term_id;
+                $quota = get_term_meta($categoria_id, 'fg_quota_associativa', true);
+            }
+        }
+        
+        // Fallback to member's individual quota if no category quota
+        if (empty($quota)) {
+            $quota = get_post_meta($socio_id, '_fg_quota_annuale', true);
+        }
+        
+        wp_send_json_success(array(
+            'quota' => floatval($quota),
+            'categoria_id' => $categoria_id
+        ));
+    }
+    
+    /**
+     * AJAX handler to get event participants
+     */
+    public function ajax_get_event_participants() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'fg_get_participants')) {
+            wp_send_json_error(array('message' => 'Invalid nonce'));
+            return;
+        }
+        
+        $post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+        
+        if (!$post_id) {
+            wp_send_json_error(array('message' => 'Invalid event ID'));
+            return;
+        }
+        
+        // Get participants
+        $partecipanti = get_post_meta($post_id, '_fg_partecipanti', true);
+        
+        if (!is_array($partecipanti) || empty($partecipanti)) {
+            wp_send_json_success(array('participants' => array()));
+            return;
+        }
+        
+        $participants_data = array();
+        foreach ($partecipanti as $socio_id) {
+            $socio = get_post($socio_id);
+            if ($socio) {
+                $participants_data[] = array(
+                    'id' => $socio_id,
+                    'name' => $socio->post_title,
+                    'edit_link' => get_edit_post_link($socio_id)
+                );
+            }
+        }
+        
+        wp_send_json_success(array('participants' => $participants_data));
+    }
+    
+    /**
+     * AJAX handler to get category quota
+     */
+    public function ajax_get_category_quota() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'fg_get_category_quota')) {
+            wp_send_json_error(array('message' => 'Invalid nonce'));
+            return;
+        }
+        
+        $category_id = isset($_POST['category_id']) ? absint($_POST['category_id']) : 0;
+        
+        if (!$category_id) {
+            wp_send_json_error(array('message' => 'Invalid category ID'));
+            return;
+        }
+        
+        // Get quota from category
+        $quota = get_term_meta($category_id, 'fg_quota_associativa', true);
+        
+        if ($quota) {
+            wp_send_json_success(array('quota' => floatval($quota)));
+        } else {
+            wp_send_json_success(array('quota' => 0));
+        }
     }
     
     /**
