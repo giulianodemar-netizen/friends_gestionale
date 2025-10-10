@@ -1678,15 +1678,27 @@ class Friends_Gestionale_Admin_Dashboard {
                     padding: 3px 5px;
                     margin-bottom: 2px;
                     border-radius: 3px;
-                    background: #2271b1;
                     color: #fff;
                     cursor: pointer;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
                 }
-                .fg-event-item:hover {
+                .fg-event-future {
+                    background: #2271b1;
+                }
+                .fg-event-future:hover {
                     background: #135e96;
+                }
+                .fg-event-past {
+                    background: #95a5a6;
+                }
+                .fg-event-past:hover {
+                    background: #7f8c8d;
+                }
+                .fg-event-item a {
+                    color: #fff;
+                    text-decoration: none;
                 }
                 .fg-event-tooltip {
                     display: none;
@@ -1785,12 +1797,19 @@ class Friends_Gestionale_Admin_Dashboard {
                                         $ora = get_post_meta($evento->ID, '_fg_ora_evento', true);
                                         $luogo = get_post_meta($evento->ID, '_fg_luogo', true);
                                         $stato = get_post_meta($evento->ID, '_fg_stato_evento', true);
+                                        $data_evento = get_post_meta($evento->ID, '_fg_data_evento', true);
+                                        
+                                        // Determine if event is past or future
+                                        $today_date = date('Y-m-d');
+                                        $is_past_event = ($data_evento && $data_evento < $today_date);
+                                        $event_class = $is_past_event ? 'fg-event-item fg-event-past' : 'fg-event-item fg-event-future';
                                         
                                         $tooltip_id = 'event-tooltip-' . $evento->ID . '-' . $day_counter;
+                                        $edit_link = get_edit_post_link($evento->ID);
                                         
-                                        echo '<div class="fg-event-item" data-tooltip-id="' . esc_attr($tooltip_id) . '">';
+                                        echo '<a href="' . esc_url($edit_link) . '" target="_blank" class="' . $event_class . '" data-tooltip-id="' . esc_attr($tooltip_id) . '" style="text-decoration: none; display: block;">';
                                         echo esc_html($titolo ? $titolo : get_the_title($evento->ID));
-                                        echo '</div>';
+                                        echo '</a>';
                                         
                                         // Store tooltip data for later rendering (outside table)
                                         $tooltip_rows = array();
@@ -1803,10 +1822,6 @@ class Friends_Gestionale_Admin_Dashboard {
                                         if ($stato) {
                                             $tooltip_rows[] = array('label' => __('Stato:', 'friends-gestionale'), 'value' => esc_html(ucfirst($stato)));
                                         }
-                                        $tooltip_rows[] = array(
-                                            'label' => '', 
-                                            'value' => '<a href="' . get_edit_post_link($evento->ID) . '">' . __('Modifica', 'friends-gestionale') . '</a> | <a href="' . get_delete_post_link($evento->ID) . '" onclick="return confirm(\'' . esc_js(__('Sei sicuro di voler eliminare questo evento?', 'friends-gestionale')) . '\');">' . __('Elimina', 'friends-gestionale') . '</a>'
-                                        );
                                         
                                         $event_tooltips_data[$tooltip_id] = array(
                                             'title' => $titolo ? $titolo : get_the_title($evento->ID),
@@ -1939,7 +1954,8 @@ class Friends_Gestionale_Admin_Dashboard {
             <div class="fg-calendar-legend" style="margin-top: 20px; padding: 15px; background: #fff; border: 1px solid #ddd;">
                 <h3><?php _e('Legenda', 'friends-gestionale'); ?></h3>
                 <div style="display: flex; gap: 20px;">
-                    <div><span style="display: inline-block; width: 20px; height: 10px; background: #2271b1; margin-right: 5px;"></span> <?php _e('Evento Programmato', 'friends-gestionale'); ?></div>
+                    <div><span style="display: inline-block; width: 20px; height: 10px; background: #2271b1; margin-right: 5px;"></span> <?php _e('Evento Futuro', 'friends-gestionale'); ?></div>
+                    <div><span style="display: inline-block; width: 20px; height: 10px; background: #95a5a6; margin-right: 5px;"></span> <?php _e('Evento Passato', 'friends-gestionale'); ?></div>
                 </div>
                 <div style="margin-top: 10px;">
                     <a href="<?php echo admin_url('post-new.php?post_type=fg_evento'); ?>" class="button button-primary">
