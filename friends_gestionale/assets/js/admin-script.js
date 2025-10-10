@@ -429,6 +429,57 @@
             }
         });
         
+        // Handle click on event donations count to show details
+        $(document).on('click', '.fg-donatori-evento-count', function(e) {
+            e.preventDefault();
+            var eventoId = $(this).data('evento-id');
+            var eventoTitolo = $(this).closest('tr').find('strong a').text();
+            
+            if (!eventoId) {
+                return;
+            }
+            
+            // Show loading message
+            var modalHtml = '<div id="fg-donations-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100000; display: flex; align-items: center; justify-content: center;">' +
+                '<div style="background: #fff; border-radius: 8px; padding: 20px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">' +
+                '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #0073aa; padding-bottom: 10px;">' +
+                '<h2 style="margin: 0; color: #0073aa;">Donazioni per: ' + eventoTitolo + '</h2>' +
+                '<button id="fg-close-modal" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>' +
+                '</div>' +
+                '<div id="fg-modal-content" style="text-align: center; padding: 20px;"><p>Caricamento...</p></div>' +
+                '</div>' +
+                '</div>';
+            
+            $('body').append(modalHtml);
+            
+            // Load donations via AJAX
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'fg_get_evento_donations',
+                    evento_id: eventoId
+                },
+                success: function(response) {
+                    if (response.success && response.data.html) {
+                        $('#fg-modal-content').html(response.data.html);
+                    } else {
+                        $('#fg-modal-content').html('<p>Nessuna donazione trovata per questo evento.</p>');
+                    }
+                },
+                error: function() {
+                    $('#fg-modal-content').html('<p style="color: #d63638;">Errore nel caricamento dei dati.</p>');
+                }
+            });
+            
+            // Close modal on button click or background click
+            $(document).on('click', '#fg-close-modal, #fg-donations-modal', function(e) {
+                if (e.target.id === 'fg-close-modal' || e.target.id === 'fg-donations-modal') {
+                    $('#fg-donations-modal').remove();
+                }
+            });
+        });
+        
     });
     
 })(jQuery);

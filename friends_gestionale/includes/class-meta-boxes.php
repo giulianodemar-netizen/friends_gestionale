@@ -313,11 +313,74 @@ class Friends_Gestionale_Meta_Boxes {
                                     $importo = get_post_meta($payment->ID, '_fg_importo', true);
                                     $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
                                     $tipo_pagamento = get_post_meta($payment->ID, '_fg_tipo_pagamento', true);
-                                    $tipo_label = isset($tipo_labels[$tipo_pagamento]) ? $tipo_labels[$tipo_pagamento] : 'Pagamento';
+                                    $nota = get_post_meta($payment->ID, '_fg_nota', true);
+                                    
+                                    // Determine label, display text, and badge color based on payment type
+                                    $badge_label = '';
+                                    $badge_color = '#0073aa'; // Default blue
+                                    $display_text = '';
+                                    
+                                    if ($tipo_pagamento === 'evento') {
+                                        // Event: Show badge "Evento" and event name
+                                        $badge_label = 'Evento';
+                                        $badge_color = '#9b51e0'; // Purple
+                                        
+                                        $evento_id = get_post_meta($payment->ID, '_fg_evento_id', true);
+                                        $evento_custom = get_post_meta($payment->ID, '_fg_evento_custom', true);
+                                        
+                                        if ($evento_custom) {
+                                            $display_text = $evento_custom;
+                                        } elseif ($evento_id && $evento_id !== 'altro_evento') {
+                                            $evento_titolo = get_post_meta($evento_id, '_fg_titolo_evento', true);
+                                            if (!$evento_titolo) {
+                                                $evento_titolo = get_the_title($evento_id);
+                                            }
+                                            $display_text = $evento_titolo ? $evento_titolo : 'Evento';
+                                        } else {
+                                            $display_text = 'Evento';
+                                        }
+                                    } elseif ($tipo_pagamento === 'donazione') {
+                                        // Single donation: Show badge "Donazione Singola" and note
+                                        $badge_label = 'Donazione Singola';
+                                        $badge_color = '#00a86b'; // Green
+                                        $display_text = $nota ? $nota : 'Donazione';
+                                    } elseif ($tipo_pagamento === 'raccolta') {
+                                        // Fundraising: Show badge "Raccolta Fondi" and fundraising name
+                                        $badge_label = 'Raccolta Fondi';
+                                        $badge_color = '#e74c3c'; // Red
+                                        
+                                        $raccolta_id = get_post_meta($payment->ID, '_fg_raccolta_id', true);
+                                        if ($raccolta_id) {
+                                            $raccolta = get_post($raccolta_id);
+                                            $display_text = $raccolta ? get_the_title($raccolta) : 'Raccolta Fondi';
+                                        } else {
+                                            $display_text = 'Raccolta Fondi';
+                                        }
+                                    } elseif ($tipo_pagamento === 'altro') {
+                                        // Other: Show badge "Altro" and note
+                                        $badge_label = 'Altro';
+                                        $badge_color = '#95a5a6'; // Gray
+                                        $display_text = $nota ? $nota : 'Pagamento';
+                                    } elseif ($tipo_pagamento === 'quota') {
+                                        // Membership fee
+                                        $badge_label = 'Quota Associativa';
+                                        $badge_color = '#3498db'; // Blue
+                                        $display_text = 'Quota Associativa';
+                                    } else {
+                                        // Default fallback
+                                        $badge_label = 'Pagamento';
+                                        $badge_color = '#0073aa';
+                                        $display_text = 'Pagamento';
+                                    }
                                 ?>
                                     <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
                                         <div>
-                                            <strong><?php echo esc_html($tipo_label); ?></strong>
+                                            <div style="margin-bottom: 5px;">
+                                                <span style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; color: #fff; background-color: <?php echo $badge_color; ?>; margin-right: 5px;">
+                                                    <?php echo esc_html($badge_label); ?>
+                                                </span>
+                                                <strong><?php echo esc_html($display_text); ?></strong>
+                                            </div>
                                             <?php if ($data_pagamento): ?>
                                                 <small style="color: #666; display: block; margin-top: 3px;">
                                                     <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($data_pagamento))); ?>
@@ -780,6 +843,79 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                 </div>
             </div>
+            
+            <?php if ($post->ID): ?>
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Fondi Raccolti', 'friends-gestionale'); ?></h3>
+                <?php
+                // Calculate total funds collected for this event
+                $payments = get_posts(array(
+                    'post_type' => 'fg_pagamento',
+                    'posts_per_page' => -1,
+                    'meta_query' => array(
+                        array(
+                            'key' => '_fg_evento_id',
+                            'value' => $post->ID,
+                            'compare' => '='
+                        )
+                    )
+                ));
+                
+                $total_raccolto = 0;
+                foreach ($payments as $payment) {
+                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                    $total_raccolto += floatval($importo);
+                }
+                ?>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <div style="background: #f0f6fc; border: 2px solid #0073aa; border-radius: 4px; padding: 20px; text-align: center;">
+                            <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">
+                                <?php _e('Totale Raccolto per questo Evento:', 'friends-gestionale'); ?>
+                            </p>
+                            <p style="margin: 0; font-size: 32px; font-weight: bold; color: #0073aa;">
+                                €<?php echo number_format($total_raccolto, 2, ',', '.'); ?>
+                            </p>
+                            <?php if (count($payments) > 0): ?>
+                                <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+                                    <?php printf(_n('%d donazione', '%d donazioni', count($payments), 'friends-gestionale'), count($payments)); ?>
+                                </p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                
+                <?php if (count($payments) > 0): ?>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label><strong><?php _e('Elenco Donazioni per questo Evento:', 'friends-gestionale'); ?></strong></label>
+                        <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px; max-height: 300px; overflow-y: auto;">
+                            <?php foreach ($payments as $payment):
+                                $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                                $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+                                $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
+                                $socio_nome = $socio_id ? get_the_title($socio_id) : __('Anonimo', 'friends-gestionale');
+                            ?>
+                                <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <strong><?php echo esc_html($socio_nome); ?></strong>
+                                        <?php if ($data_pagamento): ?>
+                                            <small style="color: #666; display: block; margin-top: 3px;">
+                                                <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($data_pagamento))); ?>
+                                            </small>
+                                        <?php endif; ?>
+                                    </div>
+                                    <strong style="color: #0073aa; font-size: 14px;">
+                                        €<?php echo number_format(floatval($importo), 2, ',', '.'); ?>
+                                    </strong>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
         </div>
         <?php
     }
