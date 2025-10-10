@@ -313,27 +313,74 @@ class Friends_Gestionale_Meta_Boxes {
                                     $importo = get_post_meta($payment->ID, '_fg_importo', true);
                                     $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
                                     $tipo_pagamento = get_post_meta($payment->ID, '_fg_tipo_pagamento', true);
-                                    $tipo_label = isset($tipo_labels[$tipo_pagamento]) ? $tipo_labels[$tipo_pagamento] : 'Pagamento';
+                                    $nota = get_post_meta($payment->ID, '_fg_nota', true);
                                     
-                                    // If payment is for an event, show the event name instead of generic "Evento"
+                                    // Determine label, display text, and badge color based on payment type
+                                    $badge_label = '';
+                                    $badge_color = '#0073aa'; // Default blue
+                                    $display_text = '';
+                                    
                                     if ($tipo_pagamento === 'evento') {
+                                        // Event: Show badge "Evento" and event name
+                                        $badge_label = 'Evento';
+                                        $badge_color = '#9b51e0'; // Purple
+                                        
                                         $evento_id = get_post_meta($payment->ID, '_fg_evento_id', true);
                                         $evento_custom = get_post_meta($payment->ID, '_fg_evento_custom', true);
                                         
                                         if ($evento_custom) {
-                                            $tipo_label = $evento_custom;
+                                            $display_text = $evento_custom;
                                         } elseif ($evento_id && $evento_id !== 'altro_evento') {
                                             $evento_titolo = get_post_meta($evento_id, '_fg_titolo_evento', true);
                                             if (!$evento_titolo) {
                                                 $evento_titolo = get_the_title($evento_id);
                                             }
-                                            $tipo_label = $evento_titolo ? $evento_titolo : 'Evento';
+                                            $display_text = $evento_titolo ? $evento_titolo : 'Evento';
+                                        } else {
+                                            $display_text = 'Evento';
                                         }
+                                    } elseif ($tipo_pagamento === 'donazione') {
+                                        // Single donation: Show badge "Donazione Singola" and note
+                                        $badge_label = 'Donazione Singola';
+                                        $badge_color = '#00a86b'; // Green
+                                        $display_text = $nota ? $nota : 'Donazione';
+                                    } elseif ($tipo_pagamento === 'raccolta') {
+                                        // Fundraising: Show badge "Raccolta Fondi" and fundraising name
+                                        $badge_label = 'Raccolta Fondi';
+                                        $badge_color = '#e74c3c'; // Red
+                                        
+                                        $raccolta_id = get_post_meta($payment->ID, '_fg_raccolta_id', true);
+                                        if ($raccolta_id) {
+                                            $raccolta = get_post($raccolta_id);
+                                            $display_text = $raccolta ? get_the_title($raccolta) : 'Raccolta Fondi';
+                                        } else {
+                                            $display_text = 'Raccolta Fondi';
+                                        }
+                                    } elseif ($tipo_pagamento === 'altro') {
+                                        // Other: Show badge "Altro" and note
+                                        $badge_label = 'Altro';
+                                        $badge_color = '#95a5a6'; // Gray
+                                        $display_text = $nota ? $nota : 'Pagamento';
+                                    } elseif ($tipo_pagamento === 'quota') {
+                                        // Membership fee
+                                        $badge_label = 'Quota Associativa';
+                                        $badge_color = '#3498db'; // Blue
+                                        $display_text = 'Quota Associativa';
+                                    } else {
+                                        // Default fallback
+                                        $badge_label = 'Pagamento';
+                                        $badge_color = '#0073aa';
+                                        $display_text = 'Pagamento';
                                     }
                                 ?>
                                     <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
                                         <div>
-                                            <strong><?php echo esc_html($tipo_label); ?></strong>
+                                            <div style="margin-bottom: 5px;">
+                                                <span style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; color: #fff; background-color: <?php echo $badge_color; ?>; margin-right: 5px;">
+                                                    <?php echo esc_html($badge_label); ?>
+                                                </span>
+                                                <strong><?php echo esc_html($display_text); ?></strong>
+                                            </div>
                                             <?php if ($data_pagamento): ?>
                                                 <small style="color: #666; display: block; margin-top: 3px;">
                                                     <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($data_pagamento))); ?>

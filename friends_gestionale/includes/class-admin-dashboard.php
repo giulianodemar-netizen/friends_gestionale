@@ -746,29 +746,57 @@ class Friends_Gestionale_Admin_Dashboard {
         <div class="wrap fg-statistics-wrap">
             <h1><?php _e('Statistiche', 'friends-gestionale'); ?></h1>
             
-            <div class="fg-chart-container">
-                <h2><?php _e('Andamento Pagamenti (Ultimi 12 Mesi)', 'friends-gestionale'); ?></h2>
-                <canvas id="fg-payments-chart" width="400" height="150"></canvas>
-            </div>
+            <style>
+                .fg-charts-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+                    gap: 20px;
+                    margin-bottom: 30px;
+                }
+                .fg-chart-container {
+                    background: #fff;
+                    padding: 20px;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }
+                .fg-chart-container h2 {
+                    margin: 0 0 15px 0;
+                    font-size: 16px;
+                    color: #23282d;
+                }
+                @media screen and (max-width: 1024px) {
+                    .fg-charts-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+            </style>
             
-            <div class="fg-chart-container">
-                <h2><?php _e('Distribuzione Soci per Stato', 'friends-gestionale'); ?></h2>
-                <canvas id="fg-members-chart" width="400" height="150"></canvas>
-            </div>
-            
-            <div class="fg-chart-container">
-                <h2><?php _e('Donazioni per Tipo', 'friends-gestionale'); ?></h2>
-                <canvas id="fg-donations-type-chart" width="400" height="150"></canvas>
-            </div>
-            
-            <div class="fg-chart-container">
-                <h2><?php _e('Nuovi Soci (Ultimi 12 Mesi)', 'friends-gestionale'); ?></h2>
-                <canvas id="fg-new-members-chart" width="400" height="150"></canvas>
-            </div>
-            
-            <div class="fg-chart-container">
-                <h2><?php _e('Distribuzione Metodi di Pagamento', 'friends-gestionale'); ?></h2>
-                <canvas id="fg-payment-methods-chart" width="400" height="150"></canvas>
+            <div class="fg-charts-grid">
+                <div class="fg-chart-container">
+                    <h2><?php _e('Andamento Pagamenti (Ultimi 12 Mesi)', 'friends-gestionale'); ?></h2>
+                    <canvas id="fg-payments-chart" width="400" height="200"></canvas>
+                </div>
+                
+                <div class="fg-chart-container">
+                    <h2><?php _e('Distribuzione Soci per Stato', 'friends-gestionale'); ?></h2>
+                    <canvas id="fg-members-chart" width="400" height="200"></canvas>
+                </div>
+                
+                <div class="fg-chart-container">
+                    <h2><?php _e('Donazioni per Tipo', 'friends-gestionale'); ?></h2>
+                    <canvas id="fg-donations-type-chart" width="400" height="200"></canvas>
+                </div>
+                
+                <div class="fg-chart-container">
+                    <h2><?php _e('Nuovi Soci (Ultimi 12 Mesi)', 'friends-gestionale'); ?></h2>
+                    <canvas id="fg-new-members-chart" width="400" height="200"></canvas>
+                </div>
+                
+                <div class="fg-chart-container">
+                    <h2><?php _e('Distribuzione Metodi di Pagamento', 'friends-gestionale'); ?></h2>
+                    <canvas id="fg-payment-methods-chart" width="400" height="200"></canvas>
+                </div>
             </div>
             
             <div class="fg-dashboard-grid" style="margin-top: 30px;">
@@ -1661,23 +1689,42 @@ class Friends_Gestionale_Admin_Dashboard {
                     background: #135e96;
                 }
                 .fg-event-tooltip {
-                    position: absolute;
-                    background: #fff;
-                    border: 1px solid #ddd;
-                    padding: 10px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-                    z-index: 1000;
-                    min-width: 200px;
-                    max-width: 300px;
                     display: none;
+                    position: fixed;
+                    z-index: 999999 !important;
+                    background: #fff;
+                    border: 2px solid #0073aa;
+                    border-radius: 5px;
+                    padding: 12px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                    min-width: 250px;
+                    max-width: 350px;
+                    pointer-events: none;
+                    white-space: normal;
+                }
+                .fg-event-item {
+                    overflow: visible !important;
                 }
                 .fg-event-tooltip h4 {
-                    margin: 0 0 5px 0;
+                    margin: 0 0 10px 0;
+                    padding: 0 0 8px 0;
+                    border-bottom: 1px solid #ddd;
+                    color: #0073aa;
                     font-size: 14px;
                 }
-                .fg-event-tooltip p {
-                    margin: 3px 0;
+                .fg-event-tooltip .tooltip-row {
+                    display: flex;
+                    margin: 5px 0;
                     font-size: 12px;
+                }
+                .fg-event-tooltip .tooltip-label {
+                    font-weight: bold;
+                    width: 80px;
+                    color: #666;
+                }
+                .fg-event-tooltip .tooltip-value {
+                    flex: 1;
+                    color: #333;
                 }
             </style>
             
@@ -1728,6 +1775,11 @@ class Friends_Gestionale_Admin_Dashboard {
                                 
                                 // Display events for this day
                                 if (isset($events_by_day[$day_counter])) {
+                                    // Initialize tooltips data array if needed
+                                    if (!isset($event_tooltips_data)) {
+                                        $event_tooltips_data = array();
+                                    }
+                                    
                                     foreach ($events_by_day[$day_counter] as $evento) {
                                         $titolo = get_post_meta($evento->ID, '_fg_titolo_evento', true);
                                         $ora = get_post_meta($evento->ID, '_fg_ora_evento', true);
@@ -1740,21 +1792,26 @@ class Friends_Gestionale_Admin_Dashboard {
                                         echo esc_html($titolo ? $titolo : get_the_title($evento->ID));
                                         echo '</div>';
                                         
-                                        // Tooltip
-                                        echo '<div id="' . esc_attr($tooltip_id) . '" class="fg-event-tooltip">';
-                                        echo '<h4>' . esc_html($titolo ? $titolo : get_the_title($evento->ID)) . '</h4>';
+                                        // Store tooltip data for later rendering (outside table)
+                                        $tooltip_rows = array();
                                         if ($ora) {
-                                            echo '<p><strong>' . __('Ora:', 'friends-gestionale') . '</strong> ' . esc_html($ora) . '</p>';
+                                            $tooltip_rows[] = array('label' => __('Ora:', 'friends-gestionale'), 'value' => esc_html($ora));
                                         }
                                         if ($luogo) {
-                                            echo '<p><strong>' . __('Luogo:', 'friends-gestionale') . '</strong> ' . esc_html($luogo) . '</p>';
+                                            $tooltip_rows[] = array('label' => __('Luogo:', 'friends-gestionale'), 'value' => esc_html($luogo));
                                         }
                                         if ($stato) {
-                                            echo '<p><strong>' . __('Stato:', 'friends-gestionale') . '</strong> ' . esc_html(ucfirst($stato)) . '</p>';
+                                            $tooltip_rows[] = array('label' => __('Stato:', 'friends-gestionale'), 'value' => esc_html(ucfirst($stato)));
                                         }
-                                        echo '<p><a href="' . get_edit_post_link($evento->ID) . '">' . __('Modifica', 'friends-gestionale') . '</a> | ';
-                                        echo '<a href="' . get_delete_post_link($evento->ID) . '" onclick="return confirm(\'' . esc_js(__('Sei sicuro di voler eliminare questo evento?', 'friends-gestionale')) . '\');">' . __('Elimina', 'friends-gestionale') . '</a></p>';
-                                        echo '</div>';
+                                        $tooltip_rows[] = array(
+                                            'label' => '', 
+                                            'value' => '<a href="' . get_edit_post_link($evento->ID) . '">' . __('Modifica', 'friends-gestionale') . '</a> | <a href="' . get_delete_post_link($evento->ID) . '" onclick="return confirm(\'' . esc_js(__('Sei sicuro di voler eliminare questo evento?', 'friends-gestionale')) . '\');">' . __('Elimina', 'friends-gestionale') . '</a>'
+                                        );
+                                        
+                                        $event_tooltips_data[$tooltip_id] = array(
+                                            'title' => $titolo ? $titolo : get_the_title($evento->ID),
+                                            'rows' => $tooltip_rows
+                                        );
                                     }
                                 }
                                 
@@ -1770,38 +1827,112 @@ class Friends_Gestionale_Admin_Dashboard {
                 </tbody>
             </table>
             
-            <script>
-            jQuery(document).ready(function($) {
-                // Handle event hover to show tooltip
-                $('.fg-event-item').hover(
-                    function() {
-                        var tooltipId = $(this).data('tooltip-id');
-                        var $tooltip = $('#' + tooltipId);
-                        
-                        if ($tooltip.length) {
-                            var offset = $(this).offset();
-                            var itemWidth = $(this).outerWidth();
-                            
-                            $tooltip.css({
-                                'display': 'block',
-                                'visibility': 'visible',
-                                'left': (offset.left + itemWidth + 10) + 'px',
-                                'top': offset.top + 'px'
-                            });
+            <?php
+            // Render all event tooltips outside the table structure (appended to body via JS)
+            if (isset($event_tooltips_data) && !empty($event_tooltips_data)) {
+                echo '<div id="fg-event-tooltips-container" style="display: none;">';
+                foreach ($event_tooltips_data as $tooltip_id => $tooltip_data) {
+                    echo '<div id="' . esc_attr($tooltip_id) . '" class="fg-event-tooltip">';
+                    echo '<h4>' . esc_html($tooltip_data['title']) . '</h4>';
+                    foreach ($tooltip_data['rows'] as $row) {
+                        echo '<div class="tooltip-row">';
+                        if (!empty($row['label'])) {
+                            echo '<span class="tooltip-label">' . $row['label'] . '</span>';
                         }
-                    },
-                    function() {
-                        var tooltipId = $(this).data('tooltip-id');
-                        var $tooltip = $('#' + tooltipId);
-                        
-                        if ($tooltip.length) {
-                            $tooltip.css({
-                                'display': 'none',
-                                'visibility': 'hidden'
-                            });
-                        }
+                        echo '<span class="tooltip-value">' . $row['value'] . '</span>';
+                        echo '</div>';
                     }
-                );
+                    echo '</div>';
+                }
+                echo '</div>';
+            }
+            ?>
+            
+            <script type="text/javascript">
+            jQuery(document).ready(function($) {
+                // Move tooltips to body for proper positioning
+                $('#fg-event-tooltips-container .fg-event-tooltip').appendTo('body');
+                
+                // Position tooltips dynamically on hover
+                $('.fg-event-item').on('mouseenter', function(e) {
+                    var tooltipId = $(this).data('tooltip-id');
+                    var $tooltip = $('#' + tooltipId);
+                    
+                    if ($tooltip.length) {
+                        // Get element position
+                        var rect = this.getBoundingClientRect();
+                        
+                        // Show tooltip hidden to measure its natural size
+                        $tooltip.css({
+                            'display': 'block',
+                            'visibility': 'hidden',
+                            'position': 'fixed',
+                            'left': '0px',
+                            'top': '0px'
+                        });
+                        
+                        var tooltipWidth = $tooltip.outerWidth();
+                        var tooltipHeight = $tooltip.outerHeight();
+                        var windowWidth = $(window).width();
+                        var windowHeight = $(window).height();
+                        
+                        var left, top;
+                        
+                        // Default: position to the right of the element
+                        left = rect.right + 10;
+                        top = rect.top;
+                        
+                        // Check if it goes off the right edge of screen
+                        if (left + tooltipWidth > windowWidth - 10) {
+                            // Try positioning to the left instead
+                            left = rect.left - tooltipWidth - 10;
+                        }
+                        
+                        // If still off screen on the left, position below
+                        if (left < 10) {
+                            left = Math.max(10, rect.left);
+                            top = rect.bottom + 10;
+                        }
+                        
+                        // Check if it goes off the bottom of screen
+                        if (top + tooltipHeight > windowHeight - 10) {
+                            // Try positioning above the element
+                            top = rect.top - tooltipHeight - 10;
+                        }
+                        
+                        // Final safety checks
+                        if (top < 10) {
+                            top = 10;
+                        }
+                        
+                        if (left + tooltipWidth > windowWidth - 10) {
+                            left = windowWidth - tooltipWidth - 10;
+                        }
+                        
+                        if (left < 10) {
+                            left = 10;
+                        }
+                        
+                        // Apply final position and make visible
+                        $tooltip.css({
+                            'left': left + 'px',
+                            'top': top + 'px',
+                            'visibility': 'visible',
+                            'display': 'block'
+                        });
+                    }
+                }).on('mouseleave', function(e) {
+                    // Hide tooltip when mouse leaves
+                    var tooltipId = $(this).data('tooltip-id');
+                    var $tooltip = $('#' + tooltipId);
+                    
+                    if ($tooltip.length) {
+                        $tooltip.css({
+                            'display': 'none',
+                            'visibility': 'hidden'
+                        });
+                    }
+                });
             });
             </script>
             
