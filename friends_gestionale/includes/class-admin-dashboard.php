@@ -71,6 +71,17 @@ class Friends_Gestionale_Admin_Dashboard {
             'dashicons-money-alt', // Changed icon to money instead of calendar
             31
         );
+        
+        // Add Calendario Eventi as a top-level menu item
+        add_menu_page(
+            __('Calendario Eventi', 'friends-gestionale'),
+            __('Calendario Eventi', 'friends-gestionale'),
+            'edit_posts',
+            'fg-event-calendar',
+            array($this, 'render_event_calendar'),
+            'dashicons-calendar-alt',
+            32
+        );
     }
     
     /**
@@ -401,25 +412,18 @@ class Friends_Gestionale_Admin_Dashboard {
             
             <!-- Eventi Riepilogo -->
             <div class="fg-dashboard-grid" style="margin-top: 20px;">
-                <div class="fg-dashboard-box" style="grid-column: 1 / -1;">
-                    <h2><?php _e('Riepilogo Eventi', 'friends-gestionale'); ?></h2>
+                <div class="fg-dashboard-box">
+                    <h2><?php _e('Ultimi Eventi', 'friends-gestionale'); ?></h2>
                     <?php
-                    // Get upcoming events
+                    // Get last 10 events (past and future)
                     $eventi_dashboard = new WP_Query(array(
                         'post_type' => 'fg_evento',
-                        'posts_per_page' => 5,
+                        'posts_per_page' => 10,
                         'orderby' => 'meta_value',
-                        'order' => 'ASC',
-                        'meta_key' => '_fg_data_evento',
-                        'meta_query' => array(
-                            array(
-                                'key' => '_fg_data_evento',
-                                'value' => date('Y-m-d'),
-                                'compare' => '>=',
-                                'type' => 'DATE'
-                            )
-                        )
+                        'order' => 'DESC',
+                        'meta_key' => '_fg_data_evento'
                     ));
+                    $today = date('Y-m-d');
                     ?>
                     <?php if ($eventi_dashboard->have_posts()): ?>
                         <table class="widefat">
@@ -427,6 +431,7 @@ class Friends_Gestionale_Admin_Dashboard {
                                 <tr>
                                     <th><?php _e('Evento', 'friends-gestionale'); ?></th>
                                     <th><?php _e('Data', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Stato', 'friends-gestionale'); ?></th>
                                     <th><?php _e('Partecipanti', 'friends-gestionale'); ?></th>
                                     <th><?php _e('Luogo', 'friends-gestionale'); ?></th>
                                 </tr>
@@ -438,10 +443,14 @@ class Friends_Gestionale_Admin_Dashboard {
                                     $luogo = get_post_meta(get_the_ID(), '_fg_luogo', true);
                                     $invitati = get_post_meta(get_the_ID(), '_fg_invitati', true);
                                     $num_invitati = is_array($invitati) ? count($invitati) : 0;
+                                    $is_past = ($data_evento && $data_evento < $today);
+                                    $label = $is_past ? __('Passato', 'friends-gestionale') : __('Futuro', 'friends-gestionale');
+                                    $label_class = $is_past ? 'fg-badge fg-stato-completato' : 'fg-badge fg-stato-programmato';
                                     ?>
                                     <tr>
                                         <td><strong><a href="<?php echo get_edit_post_link(get_the_ID()); ?>"><?php the_title(); ?></a></strong></td>
                                         <td><?php echo $data_evento ? date_i18n(get_option('date_format'), strtotime($data_evento)) : '-'; ?></td>
+                                        <td><span class="<?php echo $label_class; ?>"><?php echo $label; ?></span></td>
                                         <td><?php echo $num_invitati; ?></td>
                                         <td><?php echo esc_html($luogo ? $luogo : '-'); ?></td>
                                     </tr>
@@ -449,9 +458,74 @@ class Friends_Gestionale_Admin_Dashboard {
                             </tbody>
                         </table>
                     <?php else: ?>
-                        <p><?php _e('Nessun evento in programma.', 'friends-gestionale'); ?></p>
+                        <p><?php _e('Nessun evento registrato.', 'friends-gestionale'); ?></p>
                     <?php endif; ?>
                     <?php wp_reset_postdata(); ?>
+                </div>
+                
+                <div class="fg-dashboard-box">
+                    <h2><?php _e('Top Donatori', 'friends-gestionale'); ?></h2>
+                    <?php
+                    // Calculate top donors (10 instead of 5)
+                    $soci_donations = array();
+                    $all_soci = get_posts(array(
+                        'post_type' => 'fg_socio',
+                        'posts_per_page' => -1
+                    ));
+                    
+                    foreach ($all_soci as $socio) {
+                        $payments = get_posts(array(
+                            'post_type' => 'fg_pagamento',
+                            'posts_per_page' => -1,
+                            'meta_query' => array(
+                                array(
+                                    'key' => '_fg_socio_id',
+                                    'value' => $socio->ID
+                                )
+                            )
+                        ));
+                        
+                        $total = 0;
+                        foreach ($payments as $payment) {
+                            $total += floatval(get_post_meta($payment->ID, '_fg_importo', true));
+                        }
+                        
+                        if ($total > 0) {
+                            $soci_donations[] = array(
+                                'nome' => $socio->post_title,
+                                'totale' => $total
+                            );
+                        }
+                    }
+                    
+                    // Sort by total and get top 10
+                    usort($soci_donations, function($a, $b) {
+                        return $b['totale'] - $a['totale'];
+                    });
+                    $top_donors_dashboard = array_slice($soci_donations, 0, 10);
+                    ?>
+                    <?php if (!empty($top_donors_dashboard)): ?>
+                        <table class="widefat">
+                            <thead>
+                                <tr>
+                                    <th><?php _e('Posizione', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Nome', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Totale Donato', 'friends-gestionale'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php $pos = 1; foreach ($top_donors_dashboard as $donor): ?>
+                                    <tr>
+                                        <td><strong><?php echo $pos++; ?>°</strong></td>
+                                        <td><?php echo esc_html($donor['nome']); ?></td>
+                                        <td><strong>€<?php echo number_format($donor['totale'], 2, ',', '.'); ?></strong></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <p><?php _e('Nessuna donazione registrata.', 'friends-gestionale'); ?></p>
+                    <?php endif; ?>
                 </div>
             </div>
             
@@ -473,6 +547,14 @@ class Friends_Gestionale_Admin_Dashboard {
                     <a href="<?php echo admin_url('post-new.php?post_type=fg_raccolta'); ?>" class="button button-primary button-hero">
                         <span class="dashicons dashicons-plus"></span>
                         <?php _e('Nuova Raccolta Fondi', 'friends-gestionale'); ?>
+                    </a>
+                    <a href="<?php echo admin_url('admin.php?page=fg-payment-calendar'); ?>" class="button button-hero">
+                        <span class="dashicons dashicons-money-alt"></span>
+                        <?php _e('Calendario Pagamenti', 'friends-gestionale'); ?>
+                    </a>
+                    <a href="<?php echo admin_url('admin.php?page=fg-event-calendar'); ?>" class="button button-hero">
+                        <span class="dashicons dashicons-calendar-alt"></span>
+                        <?php _e('Calendario Eventi', 'friends-gestionale'); ?>
                     </a>
                     <a href="<?php echo admin_url('admin.php?page=fg-statistics'); ?>" class="button button-hero">
                         <span class="dashicons dashicons-chart-bar"></span>
@@ -659,7 +741,7 @@ class Friends_Gestionale_Admin_Dashboard {
         usort($soci_donations, function($a, $b) {
             return $b['totale'] - $a['totale'];
         });
-        $top_donors = array_slice($soci_donations, 0, 5);
+        $top_donors = array_slice($soci_donations, 0, 10);
         ?>
         <div class="wrap fg-statistics-wrap">
             <h1><?php _e('Statistiche', 'friends-gestionale'); ?></h1>
@@ -1445,6 +1527,293 @@ class Friends_Gestionale_Admin_Dashboard {
                     <div><span style="display: inline-block; width: 20px; height: 10px; background: #28a745; margin-right: 5px;"></span> <?php _e('Pagamento Effettuato', 'friends-gestionale'); ?></div>
                     <div><span style="display: inline-block; width: 20px; height: 10px; background: #ffc107; margin-right: 5px;"></span> <?php _e('Pagamento in Scadenza', 'friends-gestionale'); ?></div>
                     <div><span style="display: inline-block; width: 20px; height: 10px; background: #dc3545; margin-right: 5px;"></span> <?php _e('Pagamento Arretrato', 'friends-gestionale'); ?></div>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+    
+    /**
+     * Render event calendar page
+     */
+    public function render_event_calendar() {
+        // Get current month and year from URL or use current date
+        $current_month = isset($_GET['month']) ? intval($_GET['month']) : date('n');
+        $current_year = isset($_GET['year']) ? intval($_GET['year']) : date('Y');
+        
+        // Calculate previous and next month
+        $prev_month = $current_month == 1 ? 12 : $current_month - 1;
+        $prev_year = $current_month == 1 ? $current_year - 1 : $current_year;
+        $next_month = $current_month == 12 ? 1 : $current_month + 1;
+        $next_year = $current_month == 12 ? $current_year + 1 : $current_year;
+        
+        // Calculate previous and next year
+        $prev_year_same_month = $current_year - 1;
+        $next_year_same_month = $current_year + 1;
+        
+        // Get month name
+        $month_name = date_i18n('F Y', strtotime("$current_year-$current_month-01"));
+        
+        // Get first and last day of month
+        $first_day = strtotime("$current_year-$current_month-01");
+        $last_day = strtotime(date('Y-m-t', $first_day));
+        
+        // Get all events for this month
+        $eventi = get_posts(array(
+            'post_type' => 'fg_evento',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_data_evento',
+                    'value' => array(date('Y-m-01', $first_day), date('Y-m-t', $first_day)),
+                    'compare' => 'BETWEEN',
+                    'type' => 'DATE'
+                )
+            )
+        ));
+        
+        // Organize events by day
+        $events_by_day = array();
+        foreach ($eventi as $evento) {
+            $data_evento = get_post_meta($evento->ID, '_fg_data_evento', true);
+            if ($data_evento) {
+                $day = date('j', strtotime($data_evento));
+                if (!isset($events_by_day[$day])) {
+                    $events_by_day[$day] = array();
+                }
+                $events_by_day[$day][] = $evento;
+            }
+        }
+        
+        ?>
+        <div class="wrap">
+            <h1><?php _e('Calendario Eventi', 'friends-gestionale'); ?></h1>
+            
+            <div class="fg-calendar-navigation" style="margin: 20px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <a href="?page=fg-event-calendar&month=<?php echo $prev_month; ?>&year=<?php echo $prev_year; ?>" class="button button-primary" style="display: inline-flex; align-items: center; gap: 5px;">
+                        <span class="dashicons dashicons-arrow-left-alt2"></span> <?php _e('Mese Precedente', 'friends-gestionale'); ?>
+                    </a>
+                    <h2 style="margin: 0;"><?php echo esc_html($month_name); ?></h2>
+                    <a href="?page=fg-event-calendar&month=<?php echo $next_month; ?>&year=<?php echo $next_year; ?>" class="button button-primary" style="display: inline-flex; align-items: center; gap: 5px;">
+                        <?php _e('Mese Successivo', 'friends-gestionale'); ?> <span class="dashicons dashicons-arrow-right-alt2"></span>
+                    </a>
+                </div>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+                    <a href="?page=fg-event-calendar&month=<?php echo $current_month; ?>&year=<?php echo $prev_year_same_month; ?>" class="button button-secondary" style="display: inline-flex; align-items: center; gap: 5px;">
+                        <span class="dashicons dashicons-arrow-left-alt2"></span> <?php _e('Anno Precedente', 'friends-gestionale'); ?>
+                    </a>
+                    <a href="?page=fg-event-calendar&month=<?php echo $current_month; ?>&year=<?php echo $next_year_same_month; ?>" class="button button-secondary" style="display: inline-flex; align-items: center; gap: 5px;">
+                        <?php _e('Anno Successivo', 'friends-gestionale'); ?> <span class="dashicons dashicons-arrow-right-alt2"></span>
+                    </a>
+                </div>
+            </div>
+            
+            <style>
+                .fg-calendar {
+                    width: 100%;
+                    border-collapse: collapse;
+                    background: #fff;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    overflow: visible;
+                }
+                .fg-calendar th {
+                    background: #0073aa;
+                    color: #fff;
+                    padding: 10px;
+                    text-align: center;
+                    font-weight: bold;
+                }
+                .fg-calendar td {
+                    border: 1px solid #ddd;
+                    padding: 5px;
+                    vertical-align: top;
+                    height: 100px;
+                    width: 14.28%;
+                    overflow: visible;
+                    position: relative;
+                }
+                .fg-calendar .day-number {
+                    font-weight: bold;
+                    font-size: 16px;
+                    margin-bottom: 5px;
+                }
+                .fg-calendar .today {
+                    background: #e7f5fe;
+                }
+                .fg-calendar .other-month {
+                    background: #f5f5f5;
+                    color: #999;
+                }
+                .fg-event-item {
+                    font-size: 11px;
+                    padding: 3px 5px;
+                    margin-bottom: 2px;
+                    border-radius: 3px;
+                    background: #2271b1;
+                    color: #fff;
+                    cursor: pointer;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .fg-event-item:hover {
+                    background: #135e96;
+                }
+                .fg-event-tooltip {
+                    position: absolute;
+                    background: #fff;
+                    border: 1px solid #ddd;
+                    padding: 10px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                    z-index: 1000;
+                    min-width: 200px;
+                    max-width: 300px;
+                    display: none;
+                }
+                .fg-event-tooltip h4 {
+                    margin: 0 0 5px 0;
+                    font-size: 14px;
+                }
+                .fg-event-tooltip p {
+                    margin: 3px 0;
+                    font-size: 12px;
+                }
+            </style>
+            
+            <table class="fg-calendar">
+                <thead>
+                    <tr>
+                        <th><?php _e('Lun', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Mar', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Mer', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Gio', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Ven', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Sab', 'friends-gestionale'); ?></th>
+                        <th><?php _e('Dom', 'friends-gestionale'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    // Get first day of month (1 = Monday, 7 = Sunday)
+                    $first_day_of_month = date('N', $first_day);
+                    $days_in_month = date('t', $first_day);
+                    $today = date('j');
+                    $current_month_check = date('n');
+                    $current_year_check = date('Y');
+                    
+                    $day_counter = 1;
+                    $week_counter = 0;
+                    
+                    // Calculate starting position
+                    $blank_days = $first_day_of_month - 1;
+                    
+                    while ($day_counter <= $days_in_month) {
+                        echo '<tr>';
+                        
+                        for ($i = 0; $i < 7; $i++) {
+                            if ($week_counter == 0 && $i < $blank_days) {
+                                // Empty cells before first day
+                                echo '<td class="other-month"></td>';
+                            } elseif ($day_counter > $days_in_month) {
+                                // Empty cells after last day
+                                echo '<td class="other-month"></td>';
+                            } else {
+                                // Current month day
+                                $is_today = ($day_counter == $today && $current_month == $current_month_check && $current_year == $current_year_check);
+                                $class = $is_today ? 'today' : '';
+                                
+                                echo '<td class="' . $class . '">';
+                                echo '<div class="day-number">' . $day_counter . '</div>';
+                                
+                                // Display events for this day
+                                if (isset($events_by_day[$day_counter])) {
+                                    foreach ($events_by_day[$day_counter] as $evento) {
+                                        $titolo = get_post_meta($evento->ID, '_fg_titolo_evento', true);
+                                        $ora = get_post_meta($evento->ID, '_fg_ora_evento', true);
+                                        $luogo = get_post_meta($evento->ID, '_fg_luogo', true);
+                                        $stato = get_post_meta($evento->ID, '_fg_stato_evento', true);
+                                        
+                                        $tooltip_id = 'event-tooltip-' . $evento->ID . '-' . $day_counter;
+                                        
+                                        echo '<div class="fg-event-item" data-tooltip-id="' . esc_attr($tooltip_id) . '">';
+                                        echo esc_html($titolo ? $titolo : get_the_title($evento->ID));
+                                        echo '</div>';
+                                        
+                                        // Tooltip
+                                        echo '<div id="' . esc_attr($tooltip_id) . '" class="fg-event-tooltip">';
+                                        echo '<h4>' . esc_html($titolo ? $titolo : get_the_title($evento->ID)) . '</h4>';
+                                        if ($ora) {
+                                            echo '<p><strong>' . __('Ora:', 'friends-gestionale') . '</strong> ' . esc_html($ora) . '</p>';
+                                        }
+                                        if ($luogo) {
+                                            echo '<p><strong>' . __('Luogo:', 'friends-gestionale') . '</strong> ' . esc_html($luogo) . '</p>';
+                                        }
+                                        if ($stato) {
+                                            echo '<p><strong>' . __('Stato:', 'friends-gestionale') . '</strong> ' . esc_html(ucfirst($stato)) . '</p>';
+                                        }
+                                        echo '<p><a href="' . get_edit_post_link($evento->ID) . '">' . __('Modifica', 'friends-gestionale') . '</a> | ';
+                                        echo '<a href="' . get_delete_post_link($evento->ID) . '" onclick="return confirm(\'' . esc_js(__('Sei sicuro di voler eliminare questo evento?', 'friends-gestionale')) . '\');">' . __('Elimina', 'friends-gestionale') . '</a></p>';
+                                        echo '</div>';
+                                    }
+                                }
+                                
+                                echo '</td>';
+                                $day_counter++;
+                            }
+                        }
+                        
+                        echo '</tr>';
+                        $week_counter++;
+                    }
+                    ?>
+                </tbody>
+            </table>
+            
+            <script>
+            jQuery(document).ready(function($) {
+                // Handle event hover to show tooltip
+                $('.fg-event-item').hover(
+                    function() {
+                        var tooltipId = $(this).data('tooltip-id');
+                        var $tooltip = $('#' + tooltipId);
+                        
+                        if ($tooltip.length) {
+                            var offset = $(this).offset();
+                            var itemWidth = $(this).outerWidth();
+                            
+                            $tooltip.css({
+                                'display': 'block',
+                                'visibility': 'visible',
+                                'left': (offset.left + itemWidth + 10) + 'px',
+                                'top': offset.top + 'px'
+                            });
+                        }
+                    },
+                    function() {
+                        var tooltipId = $(this).data('tooltip-id');
+                        var $tooltip = $('#' + tooltipId);
+                        
+                        if ($tooltip.length) {
+                            $tooltip.css({
+                                'display': 'none',
+                                'visibility': 'hidden'
+                            });
+                        }
+                    }
+                );
+            });
+            </script>
+            
+            <div class="fg-calendar-legend" style="margin-top: 20px; padding: 15px; background: #fff; border: 1px solid #ddd;">
+                <h3><?php _e('Legenda', 'friends-gestionale'); ?></h3>
+                <div style="display: flex; gap: 20px;">
+                    <div><span style="display: inline-block; width: 20px; height: 10px; background: #2271b1; margin-right: 5px;"></span> <?php _e('Evento Programmato', 'friends-gestionale'); ?></div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <a href="<?php echo admin_url('post-new.php?post_type=fg_evento'); ?>" class="button button-primary">
+                        <span class="dashicons dashicons-plus"></span> <?php _e('Aggiungi Nuovo Evento', 'friends-gestionale'); ?>
+                    </a>
                 </div>
             </div>
         </div>

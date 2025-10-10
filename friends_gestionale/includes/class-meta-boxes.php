@@ -314,6 +314,22 @@ class Friends_Gestionale_Meta_Boxes {
                                     $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
                                     $tipo_pagamento = get_post_meta($payment->ID, '_fg_tipo_pagamento', true);
                                     $tipo_label = isset($tipo_labels[$tipo_pagamento]) ? $tipo_labels[$tipo_pagamento] : 'Pagamento';
+                                    
+                                    // If payment is for an event, show the event name instead of generic "Evento"
+                                    if ($tipo_pagamento === 'evento') {
+                                        $evento_id = get_post_meta($payment->ID, '_fg_evento_id', true);
+                                        $evento_custom = get_post_meta($payment->ID, '_fg_evento_custom', true);
+                                        
+                                        if ($evento_custom) {
+                                            $tipo_label = $evento_custom;
+                                        } elseif ($evento_id && $evento_id !== 'altro_evento') {
+                                            $evento_titolo = get_post_meta($evento_id, '_fg_titolo_evento', true);
+                                            if (!$evento_titolo) {
+                                                $evento_titolo = get_the_title($evento_id);
+                                            }
+                                            $tipo_label = $evento_titolo ? $evento_titolo : 'Evento';
+                                        }
+                                    }
                                 ?>
                                     <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
                                         <div>
@@ -780,6 +796,79 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                 </div>
             </div>
+            
+            <?php if ($post->ID): ?>
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Fondi Raccolti', 'friends-gestionale'); ?></h3>
+                <?php
+                // Calculate total funds collected for this event
+                $payments = get_posts(array(
+                    'post_type' => 'fg_pagamento',
+                    'posts_per_page' => -1,
+                    'meta_query' => array(
+                        array(
+                            'key' => '_fg_evento_id',
+                            'value' => $post->ID,
+                            'compare' => '='
+                        )
+                    )
+                ));
+                
+                $total_raccolto = 0;
+                foreach ($payments as $payment) {
+                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                    $total_raccolto += floatval($importo);
+                }
+                ?>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <div style="background: #f0f6fc; border: 2px solid #0073aa; border-radius: 4px; padding: 20px; text-align: center;">
+                            <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">
+                                <?php _e('Totale Raccolto per questo Evento:', 'friends-gestionale'); ?>
+                            </p>
+                            <p style="margin: 0; font-size: 32px; font-weight: bold; color: #0073aa;">
+                                €<?php echo number_format($total_raccolto, 2, ',', '.'); ?>
+                            </p>
+                            <?php if (count($payments) > 0): ?>
+                                <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+                                    <?php printf(_n('%d donazione', '%d donazioni', count($payments), 'friends-gestionale'), count($payments)); ?>
+                                </p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                
+                <?php if (count($payments) > 0): ?>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label><strong><?php _e('Elenco Donazioni per questo Evento:', 'friends-gestionale'); ?></strong></label>
+                        <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px; max-height: 300px; overflow-y: auto;">
+                            <?php foreach ($payments as $payment):
+                                $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                                $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+                                $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
+                                $socio_nome = $socio_id ? get_the_title($socio_id) : __('Anonimo', 'friends-gestionale');
+                            ?>
+                                <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <strong><?php echo esc_html($socio_nome); ?></strong>
+                                        <?php if ($data_pagamento): ?>
+                                            <small style="color: #666; display: block; margin-top: 3px;">
+                                                <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($data_pagamento))); ?>
+                                            </small>
+                                        <?php endif; ?>
+                                    </div>
+                                    <strong style="color: #0073aa; font-size: 14px;">
+                                        €<?php echo number_format(floatval($importo), 2, ',', '.'); ?>
+                                    </strong>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
         </div>
         <?php
     }
