@@ -22,16 +22,11 @@ class Friends_Gestionale_Export {
     
     /**
      * Add export page
+     * Note: Submenu removed to avoid duplicate. Access via dashboard button.
      */
     public function add_export_page() {
-        add_submenu_page(
-            'friends-gestionale',
-            __('Esporta Dati', 'friends-gestionale'),
-            __('Esporta Dati', 'friends-gestionale'),
-            'edit_posts',
-            'fg-export',
-            array($this, 'render_export_page')
-        );
+        // Export page accessed via dashboard button, not submenu
+        // This prevents duplicate menu entries
     }
     
     /**
