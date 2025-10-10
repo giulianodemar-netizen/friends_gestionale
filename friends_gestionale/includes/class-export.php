@@ -28,7 +28,7 @@ class Friends_Gestionale_Export {
             'friends-gestionale',
             __('Esporta Dati', 'friends-gestionale'),
             __('Esporta Dati', 'friends-gestionale'),
-            'manage_options',
+            'edit_posts',
             'fg-export',
             array($this, 'render_export_page')
         );
@@ -134,7 +134,7 @@ class Friends_Gestionale_Export {
             return;
         }
         
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('edit_posts')) {
             wp_die(__('Non hai i permessi per esportare i dati.', 'friends-gestionale'));
         }
         

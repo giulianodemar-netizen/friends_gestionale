@@ -112,6 +112,7 @@ class Friends_Gestionale {
         add_action('wp_ajax_fg_get_event_participants', array($this, 'ajax_get_event_participants'));
         add_action('wp_ajax_fg_get_raccolta_donors', array($this, 'ajax_get_raccolta_donors'));
         add_action('wp_ajax_fg_get_socio_donations', array($this, 'ajax_get_socio_donations'));
+        add_action('wp_ajax_fg_get_evento_donations', array($this, 'ajax_get_evento_donations'));
         add_action('wp_ajax_fg_get_category_quota', array($this, 'ajax_get_category_quota'));
     }
     
@@ -502,6 +503,71 @@ class Friends_Gestionale {
                 'tipo' => $tipo_label,
                 'amount' => number_format(floatval($importo), 2, ',', '.'),
                 'date' => $data_pagamento ? date_i18n(get_option('date_format'), strtotime($data_pagamento)) : null
+            );
+        }
+        
+        wp_send_json_success(array('donations' => $donations_data));
+    }
+    
+    /**
+     * AJAX handler to get event donations
+     */
+    public function ajax_get_evento_donations() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'fg_admin_nonce')) {
+            wp_send_json_error(array('message' => 'Invalid nonce'));
+            return;
+        }
+        
+        $evento_id = isset($_POST['evento_id']) ? absint($_POST['evento_id']) : 0;
+        
+        if (!$evento_id) {
+            wp_send_json_error(array('message' => 'Invalid event ID'));
+            return;
+        }
+        
+        // Get all payments for this event
+        $payments = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'orderby' => 'meta_value',
+            'order' => 'DESC',
+            'meta_key' => '_fg_data_pagamento',
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_evento_id',
+                    'value' => $evento_id,
+                    'compare' => '='
+                )
+            )
+        ));
+        
+        if (empty($payments)) {
+            wp_send_json_success(array('donations' => array()));
+            return;
+        }
+        
+        $donations_data = array();
+        foreach ($payments as $payment) {
+            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+            $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+            $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
+            
+            $socio_nome = '-';
+            $socio_link = '';
+            if ($socio_id) {
+                $socio = get_post($socio_id);
+                if ($socio) {
+                    $socio_nome = $socio->post_title;
+                    $socio_link = get_edit_post_link($socio_id);
+                }
+            }
+            
+            $donations_data[] = array(
+                'socio_nome' => $socio_nome,
+                'socio_link' => $socio_link,
+                'importo' => number_format(floatval($importo), 2, ',', '.'),
+                'data' => $data_pagamento ? date_i18n(get_option('date_format'), strtotime($data_pagamento)) : '-'
             );
         }
         

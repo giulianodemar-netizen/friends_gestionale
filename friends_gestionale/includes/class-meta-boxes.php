@@ -621,6 +621,11 @@ class Friends_Gestionale_Meta_Boxes {
                                 <div class="fg-progress-fill" style="width: <?php echo min(100, ($raccolto / $obiettivo) * 100); ?>%"></div>
                             </div>
                             <small><?php echo number_format($raccolto, 2); ?>€ / <?php echo number_format($obiettivo, 2); ?>€ (<?php echo number_format(($raccolto / $obiettivo) * 100, 1); ?>%)</small>
+                            <?php if ($fondi_extra > 0): ?>
+                                <div style="margin-top: 10px; padding: 10px; background: #e7f3ff; border-left: 4px solid #0073aa; border-radius: 3px;">
+                                    <strong><?php _e('Fondi Raccolti Extra Piattaforma:', 'friends-gestionale'); ?></strong> €<?php echo number_format($fondi_extra, 2, ',', '.'); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endif; ?>

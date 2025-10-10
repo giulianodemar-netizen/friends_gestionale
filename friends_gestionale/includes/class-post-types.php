@@ -498,6 +498,7 @@ class Friends_Gestionale_Post_Types {
             'fg_data_evento' => __('Data Evento', 'friends-gestionale'),
             'fg_luogo' => __('Luogo', 'friends-gestionale'),
             'fg_partecipanti' => __('Partecipanti', 'friends-gestionale'),
+            'fg_totale_donazioni' => __('Totale Donazioni', 'friends-gestionale'),
             'fg_stato_evento' => __('Stato', 'friends-gestionale'),
             'date' => $columns['date']
         );
@@ -523,6 +524,32 @@ class Friends_Gestionale_Post_Types {
                     echo '<span class="fg-partecipanti-count" data-post-id="' . esc_attr($post_id) . '" style="cursor: pointer; color: #0073aa; text-decoration: underline;">' . $count . '</span>';
                 } else {
                     echo '0';
+                }
+                break;
+            case 'fg_totale_donazioni':
+                // Get all payments for this event
+                $payments = get_posts(array(
+                    'post_type' => 'fg_pagamento',
+                    'posts_per_page' => -1,
+                    'meta_query' => array(
+                        array(
+                            'key' => '_fg_evento_id',
+                            'value' => $post_id,
+                            'compare' => '='
+                        )
+                    )
+                ));
+                
+                $total = 0;
+                foreach ($payments as $payment) {
+                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                    $total += floatval($importo);
+                }
+                
+                if ($total > 0) {
+                    echo '<span class="fg-donatori-evento-count" data-evento-id="' . esc_attr($post_id) . '" style="cursor: pointer; color: #0073aa; text-decoration: underline;">€' . number_format($total, 2, ',', '.') . '</span>';
+                } else {
+                    echo '€0,00';
                 }
                 break;
             case 'fg_stato_evento':
@@ -1092,6 +1119,72 @@ class Friends_Gestionale_Post_Types {
                         },
                         error: function() {
                             modalBody.html('<p style="text-align:center;padding:20px;color:#dc3545;">Errore nel caricamento delle donazioni.</p>');
+                        }
+                    });
+                });
+                
+                // Event donations popup
+                var donationsModal = $('<div class="fg-partecipanti-modal"></div>');
+                var donationsModalContent = $('<div class="fg-partecipanti-modal-content"></div>');
+                var donationsModalHeader = $('<div class="fg-partecipanti-modal-header"><h2>Donazioni per l\'Evento</h2><button class="fg-partecipanti-modal-close">&times;</button></div>');
+                var donationsModalBody = $('<div class="fg-partecipanti-modal-body"></div>');
+                
+                donationsModalContent.append(donationsModalHeader).append(donationsModalBody);
+                donationsModal.append(donationsModalContent);
+                $('body').append(donationsModal);
+                
+                // Close donations modal handlers
+                $('.fg-partecipanti-modal-close', donationsModal).on('click', function() {
+                    donationsModal.hide();
+                });
+                $(donationsModal).on('click', function(e) {
+                    if (e.target === donationsModal[0]) {
+                        donationsModal.hide();
+                    }
+                });
+                
+                // Click handler for event donations
+                $(document).on('click', '.fg-donatori-evento-count', function(e) {
+                    e.preventDefault();
+                    var eventoId = $(this).data('evento-id');
+                    
+                    // Show loading
+                    donationsModalBody.html('<p style="text-align:center;padding:20px;">Caricamento...</p>');
+                    donationsModal.show();
+                    
+                    // AJAX request to get donations
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'fg_get_evento_donations',
+                            evento_id: eventoId,
+                            nonce: '<?php echo wp_create_nonce('fg_admin_nonce'); ?>'
+                        },
+                        success: function(response) {
+                            if (response.success && response.data.donations) {
+                                var html = '';
+                                $.each(response.data.donations, function(index, donation) {
+                                    html += '<div class="fg-partecipante-item">';
+                                    html += '<div class="fg-partecipante-number">' + (index + 1) + '</div>';
+                                    html += '<div class="fg-partecipante-name">';
+                                    if (donation.socio_link) {
+                                        html += '<a href="' + donation.socio_link + '" target="_blank">' + donation.socio_nome + '</a>';
+                                    } else {
+                                        html += donation.socio_nome;
+                                    }
+                                    html += '<br><small style="color:#666;">' + donation.data + '</small>';
+                                    html += '</div>';
+                                    html += '<div style="font-weight:bold;margin-left:auto;">€' + donation.importo + '</div>';
+                                    html += '</div>';
+                                });
+                                donationsModalBody.html(html);
+                            } else {
+                                donationsModalBody.html('<p style="text-align:center;padding:20px;">Nessuna donazione trovata.</p>');
+                            }
+                        },
+                        error: function() {
+                            donationsModalBody.html('<p style="text-align:center;padding:20px;color:#dc3545;">Errore nel caricamento delle donazioni.</p>');
                         }
                     });
                 });

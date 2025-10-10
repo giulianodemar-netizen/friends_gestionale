@@ -399,6 +399,62 @@ class Friends_Gestionale_Admin_Dashboard {
                 </div>
             </div>
             
+            <!-- Eventi Riepilogo -->
+            <div class="fg-dashboard-grid" style="margin-top: 20px;">
+                <div class="fg-dashboard-box" style="grid-column: 1 / -1;">
+                    <h2><?php _e('Riepilogo Eventi', 'friends-gestionale'); ?></h2>
+                    <?php
+                    // Get upcoming events
+                    $eventi_dashboard = new WP_Query(array(
+                        'post_type' => 'fg_evento',
+                        'posts_per_page' => 5,
+                        'orderby' => 'meta_value',
+                        'order' => 'ASC',
+                        'meta_key' => '_fg_data_evento',
+                        'meta_query' => array(
+                            array(
+                                'key' => '_fg_data_evento',
+                                'value' => date('Y-m-d'),
+                                'compare' => '>=',
+                                'type' => 'DATE'
+                            )
+                        )
+                    ));
+                    ?>
+                    <?php if ($eventi_dashboard->have_posts()): ?>
+                        <table class="widefat">
+                            <thead>
+                                <tr>
+                                    <th><?php _e('Evento', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Data', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Partecipanti', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Luogo', 'friends-gestionale'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php while ($eventi_dashboard->have_posts()): $eventi_dashboard->the_post(); ?>
+                                    <?php
+                                    $data_evento = get_post_meta(get_the_ID(), '_fg_data_evento', true);
+                                    $luogo = get_post_meta(get_the_ID(), '_fg_luogo', true);
+                                    $invitati = get_post_meta(get_the_ID(), '_fg_invitati', true);
+                                    $num_invitati = is_array($invitati) ? count($invitati) : 0;
+                                    ?>
+                                    <tr>
+                                        <td><strong><a href="<?php echo get_edit_post_link(get_the_ID()); ?>"><?php the_title(); ?></a></strong></td>
+                                        <td><?php echo $data_evento ? date_i18n(get_option('date_format'), strtotime($data_evento)) : '-'; ?></td>
+                                        <td><?php echo $num_invitati; ?></td>
+                                        <td><?php echo esc_html($luogo ? $luogo : '-'); ?></td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <p><?php _e('Nessun evento in programma.', 'friends-gestionale'); ?></p>
+                    <?php endif; ?>
+                    <?php wp_reset_postdata(); ?>
+                </div>
+            </div>
+            
             <div class="fg-quick-actions">
                 <h2><?php _e('Azioni Rapide', 'friends-gestionale'); ?></h2>
                 <div class="fg-actions-grid">
@@ -531,6 +587,24 @@ class Friends_Gestionale_Admin_Dashboard {
             $new_members_data[] = $new_members->found_posts;
         }
         
+        // Get payment methods distribution
+        $metodi_pagamento = array('contanti', 'bonifico', 'carta', 'paypal', 'altro');
+        $payments_by_method = array();
+        
+        foreach ($metodi_pagamento as $metodo) {
+            $pagamenti_metodo = get_posts(array(
+                'post_type' => 'fg_pagamento',
+                'posts_per_page' => -1,
+                'meta_query' => array(
+                    array(
+                        'key' => '_fg_metodo_pagamento',
+                        'value' => $metodo
+                    )
+                )
+            ));
+            $payments_by_method[$metodo] = count($pagamenti_metodo);
+        }
+        
         // Get upcoming events
         $today = date('Y-m-d');
         $eventi_prossimi = new WP_Query(array(
@@ -581,11 +655,11 @@ class Friends_Gestionale_Admin_Dashboard {
             }
         }
         
-        // Sort by total and get top 10
+        // Sort by total and get top 5
         usort($soci_donations, function($a, $b) {
             return $b['totale'] - $a['totale'];
         });
-        $top_donors = array_slice($soci_donations, 0, 10);
+        $top_donors = array_slice($soci_donations, 0, 5);
         ?>
         <div class="wrap fg-statistics-wrap">
             <h1><?php _e('Statistiche', 'friends-gestionale'); ?></h1>
@@ -608,6 +682,11 @@ class Friends_Gestionale_Admin_Dashboard {
             <div class="fg-chart-container">
                 <h2><?php _e('Nuovi Soci (Ultimi 12 Mesi)', 'friends-gestionale'); ?></h2>
                 <canvas id="fg-new-members-chart" width="400" height="150"></canvas>
+            </div>
+            
+            <div class="fg-chart-container">
+                <h2><?php _e('Distribuzione Metodi di Pagamento', 'friends-gestionale'); ?></h2>
+                <canvas id="fg-payment-methods-chart" width="400" height="150"></canvas>
             </div>
             
             <div class="fg-dashboard-grid" style="margin-top: 30px;">
@@ -792,6 +871,34 @@ class Friends_Gestionale_Admin_Dashboard {
                                 ticks: {
                                     stepSize: 1
                                 }
+                            }
+                        }
+                    }
+                });
+                
+                // Payment methods chart
+                var paymentMethodsCtx = document.getElementById('fg-payment-methods-chart').getContext('2d');
+                new Chart(paymentMethodsCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['<?php _e('Contanti', 'friends-gestionale'); ?>', '<?php _e('Bonifico Bancario', 'friends-gestionale'); ?>', '<?php _e('Carta di Credito', 'friends-gestionale'); ?>', '<?php _e('PayPal', 'friends-gestionale'); ?>', '<?php _e('Altro', 'friends-gestionale'); ?>'],
+                        datasets: [{
+                            data: <?php echo json_encode(array_values($payments_by_method)); ?>,
+                            backgroundColor: [
+                                'rgb(54, 162, 235)',
+                                'rgb(75, 192, 192)',
+                                'rgb(255, 99, 132)',
+                                'rgb(255, 205, 86)',
+                                'rgb(201, 203, 207)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'right'
                             }
                         }
                     }
