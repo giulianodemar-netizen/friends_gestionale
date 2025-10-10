@@ -210,7 +210,8 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                     <div class="fg-form-field fg-field-third">
                         <label for="fg_quota_annuale"><strong><?php _e('Quota Annuale (€):', 'friends-gestionale'); ?></strong></label>
-                        <input type="number" id="fg_quota_annuale" name="fg_quota_annuale" value="<?php echo esc_attr($quota_annuale); ?>" step="0.01" min="0" class="widefat" />
+                        <input type="number" id="fg_quota_annuale" name="fg_quota_annuale" value="<?php echo esc_attr($quota_annuale); ?>" step="0.01" min="0" class="widefat" readonly style="background-color: #f0f0f0;" />
+                        <p class="description"><?php _e('La quota viene calcolata automaticamente dalla categoria del socio.', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
@@ -258,6 +259,88 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                 </div>
             </div>
+            
+            <?php
+            // Display donations section if this is an existing member
+            if ($post->ID > 0):
+                // Get all payments for this member
+                $payments = get_posts(array(
+                    'post_type' => 'fg_pagamento',
+                    'posts_per_page' => -1,
+                    'orderby' => 'date',
+                    'order' => 'DESC',
+                    'meta_query' => array(
+                        array(
+                            'key' => '_fg_socio_id',
+                            'value' => $post->ID,
+                            'compare' => '='
+                        )
+                    )
+                ));
+                
+                $total_donato = 0;
+                foreach ($payments as $payment) {
+                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                    $total_donato += floatval($importo);
+                }
+            ?>
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Riepilogo Donazioni', 'friends-gestionale'); ?></h3>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label><strong><?php _e('Totale Donato:', 'friends-gestionale'); ?></strong></label>
+                        <p style="font-size: 18px; font-weight: bold; color: #0073aa; margin: 10px 0;">
+                            €<?php echo number_format($total_donato, 2, ',', '.'); ?>
+                        </p>
+                    </div>
+                </div>
+                
+                <?php if (!empty($payments)): ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <label><strong><?php _e('Elenco Donazioni:', 'friends-gestionale'); ?></strong></label>
+                            <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px; max-height: 300px; overflow-y: auto;">
+                                <?php 
+                                $tipo_labels = array(
+                                    'quota' => 'Quota Associativa',
+                                    'donazione' => 'Donazione singola',
+                                    'raccolta' => 'Raccolta Fondi',
+                                    'evento' => 'Evento',
+                                    'altro' => 'Altro'
+                                );
+                                
+                                foreach ($payments as $payment):
+                                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                                    $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+                                    $tipo_pagamento = get_post_meta($payment->ID, '_fg_tipo_pagamento', true);
+                                    $tipo_label = isset($tipo_labels[$tipo_pagamento]) ? $tipo_labels[$tipo_pagamento] : 'Pagamento';
+                                ?>
+                                    <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <strong><?php echo esc_html($tipo_label); ?></strong>
+                                            <?php if ($data_pagamento): ?>
+                                                <small style="color: #666; display: block; margin-top: 3px;">
+                                                    <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($data_pagamento))); ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        </div>
+                                        <strong style="color: #0073aa; font-size: 14px;">
+                                            €<?php echo number_format(floatval($importo), 2, ',', '.'); ?>
+                                        </strong>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <p style="color: #666; font-style: italic;"><?php _e('Nessuna donazione ancora per questo socio.', 'friends-gestionale'); ?></p>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
         </div>
         <?php
     }
@@ -464,9 +547,13 @@ class Friends_Gestionale_Meta_Boxes {
         }
         $obiettivo = get_post_meta($post->ID, '_fg_obiettivo', true);
         $raccolto = get_post_meta($post->ID, '_fg_raccolto', true);
+        $fondi_extra = get_post_meta($post->ID, '_fg_fondi_extra', true);
         $data_inizio = get_post_meta($post->ID, '_fg_data_inizio', true);
         $data_fine = get_post_meta($post->ID, '_fg_data_fine', true);
         $stato = get_post_meta($post->ID, '_fg_stato', true);
+        
+        // Calculate total collected (auto + extra)
+        $totale_raccolto = floatval($raccolto) + floatval($fondi_extra);
         ?>
         <div class="fg-meta-box fg-improved-form">
             <div class="fg-form-section">
@@ -485,9 +572,22 @@ class Friends_Gestionale_Meta_Boxes {
                         <input type="number" id="fg_obiettivo" name="fg_obiettivo" value="<?php echo esc_attr($obiettivo); ?>" step="0.01" min="0" class="widefat" />
                     </div>
                     <div class="fg-form-field fg-field-half">
-                        <label for="fg_raccolto"><strong><?php _e('Raccolto (€):', 'friends-gestionale'); ?></strong></label>
+                        <label for="fg_raccolto"><strong><?php _e('Raccolto Piattaforma (€):', 'friends-gestionale'); ?></strong></label>
                         <input type="number" id="fg_raccolto" name="fg_raccolto" value="<?php echo esc_attr($raccolto); ?>" step="0.01" min="0" class="widefat" readonly style="background-color: #f0f0f0;" />
                         <small style="color: #666;"><?php _e('Calcolato automaticamente dai pagamenti', 'friends-gestionale'); ?></small>
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_fondi_extra"><strong><?php _e('Fondi Raccolti Extra (€):', 'friends-gestionale'); ?></strong></label>
+                        <input type="number" id="fg_fondi_extra" name="fg_fondi_extra" value="<?php echo esc_attr($fondi_extra); ?>" step="0.01" min="0" class="widefat" />
+                        <small style="color: #666;"><?php _e('Fondi raccolti al di fuori della piattaforma', 'friends-gestionale'); ?></small>
+                    </div>
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_totale_raccolto"><strong><?php _e('Totale Raccolto (€):', 'friends-gestionale'); ?></strong></label>
+                        <input type="number" id="fg_totale_raccolto" name="fg_totale_raccolto" value="<?php echo esc_attr($totale_raccolto); ?>" step="0.01" min="0" class="widefat" readonly style="background-color: #f0f0f0;" />
+                        <small style="color: #666;"><?php _e('Piattaforma + Extra', 'friends-gestionale'); ?></small>
                     </div>
                 </div>
                 
@@ -521,9 +621,81 @@ class Friends_Gestionale_Meta_Boxes {
                                 <div class="fg-progress-fill" style="width: <?php echo min(100, ($raccolto / $obiettivo) * 100); ?>%"></div>
                             </div>
                             <small><?php echo number_format($raccolto, 2); ?>€ / <?php echo number_format($obiettivo, 2); ?>€ (<?php echo number_format(($raccolto / $obiettivo) * 100, 1); ?>%)</small>
+                            <?php if ($fondi_extra > 0): ?>
+                                <div style="margin-top: 10px; padding: 10px; background: #e7f3ff; border-left: 4px solid #0073aa; border-radius: 3px;">
+                                    <strong><?php _e('Fondi Raccolti Extra Piattaforma:', 'friends-gestionale'); ?></strong> €<?php echo number_format($fondi_extra, 2, ',', '.'); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endif; ?>
+                
+                <?php
+                // Display donor list if this is an existing raccolta
+                if ($post->ID > 0):
+                    // Get all payments for this raccolta
+                    $payments = get_posts(array(
+                        'post_type' => 'fg_pagamento',
+                        'posts_per_page' => -1,
+                        'meta_query' => array(
+                            array(
+                                'key' => '_fg_raccolta_id',
+                                'value' => $post->ID,
+                                'compare' => '='
+                            )
+                        )
+                    ));
+                    
+                    if (!empty($payments)):
+                ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <label><strong><?php _e('Donatori:', 'friends-gestionale'); ?></strong></label>
+                            <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px; max-height: 300px; overflow-y: auto;">
+                                <?php foreach ($payments as $payment):
+                                    $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
+                                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                                    $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+                                    
+                                    if ($socio_id):
+                                        $socio = get_post($socio_id);
+                                        if ($socio):
+                                ?>
+                                    <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <a href="<?php echo get_edit_post_link($socio_id); ?>" target="_blank" style="color: #0073aa; text-decoration: none; font-weight: 500;">
+                                                <?php echo esc_html($socio->post_title); ?>
+                                            </a>
+                                            <?php if ($data_pagamento): ?>
+                                                <small style="color: #666; display: block; margin-top: 3px;">
+                                                    <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($data_pagamento))); ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        </div>
+                                        <strong style="color: #0073aa; font-size: 14px;">
+                                            €<?php echo number_format(floatval($importo), 2, ',', '.'); ?>
+                                        </strong>
+                                    </div>
+                                <?php
+                                        endif;
+                                    endif;
+                                endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php
+                    else:
+                ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <label><strong><?php _e('Donatori:', 'friends-gestionale'); ?></strong></label>
+                            <p style="color: #666; font-style: italic;"><?php _e('Nessun donatore ancora per questa raccolta fondi.', 'friends-gestionale'); ?></p>
+                        </div>
+                    </div>
+                <?php
+                    endif;
+                endif;
+                ?>
             </div>
         </div>
         <?php
@@ -809,6 +981,60 @@ class Friends_Gestionale_Meta_Boxes {
                 update_post_meta($post_id, '_fg_note', sanitize_textarea_field($_POST['fg_note']));
             }
             
+            // Generate automatic reference title
+            $metodo_pagamento = isset($_POST['fg_metodo_pagamento']) ? sanitize_text_field($_POST['fg_metodo_pagamento']) : get_post_meta($post_id, '_fg_metodo_pagamento', true);
+            $tipo_pagamento = isset($_POST['fg_tipo_pagamento']) ? sanitize_text_field($_POST['fg_tipo_pagamento']) : get_post_meta($post_id, '_fg_tipo_pagamento', true);
+            
+            if ($metodo_pagamento && $tipo_pagamento) {
+                // Get or create progressive number for this payment
+                $progressive_number = get_post_meta($post_id, '_fg_progressive_number', true);
+                if (empty($progressive_number)) {
+                    // Get the highest progressive number
+                    global $wpdb;
+                    $max_number = $wpdb->get_var(
+                        "SELECT MAX(CAST(meta_value AS UNSIGNED)) 
+                        FROM {$wpdb->postmeta} 
+                        WHERE meta_key = '_fg_progressive_number'"
+                    );
+                    $progressive_number = $max_number ? intval($max_number) + 1 : 1;
+                    update_post_meta($post_id, '_fg_progressive_number', $progressive_number);
+                }
+                
+                // Format progressive number with leading zeros (4 digits)
+                $formatted_number = str_pad($progressive_number, 4, '0', STR_PAD_LEFT);
+                
+                // Translate payment method and type to Italian
+                $metodi_labels = array(
+                    'contanti' => 'Contanti',
+                    'bonifico' => 'Bonifico',
+                    'carta' => 'Carta',
+                    'paypal' => 'PayPal',
+                    'altro' => 'Altro'
+                );
+                
+                $tipi_labels = array(
+                    'quota' => 'Quota',
+                    'donazione' => 'Donazione',
+                    'raccolta' => 'Raccolta',
+                    'evento' => 'Evento',
+                    'altro' => 'Altro'
+                );
+                
+                $metodo_label = isset($metodi_labels[$metodo_pagamento]) ? $metodi_labels[$metodo_pagamento] : ucfirst($metodo_pagamento);
+                $tipo_label = isset($tipi_labels[$tipo_pagamento]) ? $tipi_labels[$tipo_pagamento] : ucfirst($tipo_pagamento);
+                
+                // Create reference title: #[4-digit number] - [metodo] - [tipo]
+                $reference_title = '#' . $formatted_number . ' - ' . $metodo_label . ' - ' . $tipo_label;
+                
+                // Update post title
+                remove_action('save_post', array($this, 'save_meta_boxes'), 10);
+                wp_update_post(array(
+                    'ID' => $post_id,
+                    'post_title' => $reference_title
+                ));
+                add_action('save_post', array($this, 'save_meta_boxes'), 10, 2);
+            }
+            
             // Update raccolta total if this is a raccolta payment
             if (isset($_POST['fg_tipo_pagamento']) && $_POST['fg_tipo_pagamento'] === 'raccolta' && isset($_POST['fg_raccolta_id']) && !empty($_POST['fg_raccolta_id'])) {
                 $this->update_raccolta_total(absint($_POST['fg_raccolta_id']));
@@ -841,6 +1067,9 @@ class Friends_Gestionale_Meta_Boxes {
             }
             if (isset($_POST['fg_raccolto'])) {
                 update_post_meta($post_id, '_fg_raccolto', floatval($_POST['fg_raccolto']));
+            }
+            if (isset($_POST['fg_fondi_extra'])) {
+                update_post_meta($post_id, '_fg_fondi_extra', floatval($_POST['fg_fondi_extra']));
             }
             if (isset($_POST['fg_data_inizio'])) {
                 update_post_meta($post_id, '_fg_data_inizio', sanitize_text_field($_POST['fg_data_inizio']));

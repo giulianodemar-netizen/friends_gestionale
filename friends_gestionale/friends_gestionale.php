@@ -95,16 +95,47 @@ class Friends_Gestionale {
         // Ensure payment manager role exists
         add_action('init', array($this, 'ensure_payment_manager_role'));
         
+        // Initialize Export class
+        add_action('init', array($this, 'init_export_class'));
+        
         // Restrict menu access for payment manager role
         add_action('admin_menu', array($this, 'restrict_payment_manager_menu'), 999);
         
         // Redirect payment manager to payments page
         add_action('admin_init', array($this, 'redirect_payment_manager'));
         
+        // Login redirect for payment manager
+        add_filter('login_redirect', array($this, 'redirect_after_login'), 10, 3);
+        
         // AJAX handlers
         add_action('wp_ajax_fg_get_member_quota', array($this, 'ajax_get_member_quota'));
         add_action('wp_ajax_fg_get_event_participants', array($this, 'ajax_get_event_participants'));
+        add_action('wp_ajax_fg_get_raccolta_donors', array($this, 'ajax_get_raccolta_donors'));
+        add_action('wp_ajax_fg_get_socio_donations', array($this, 'ajax_get_socio_donations'));
+        add_action('wp_ajax_fg_get_evento_donations', array($this, 'ajax_get_evento_donations'));
         add_action('wp_ajax_fg_get_category_quota', array($this, 'ajax_get_category_quota'));
+    }
+    
+    /**
+     * Initialize Export class
+     */
+    public function init_export_class() {
+        new Friends_Gestionale_Export();
+    }
+    
+    /**
+     * Redirect to plugin dashboard after login for payment managers
+     */
+    public function redirect_after_login($redirect_to, $request, $user) {
+        // Check if user object is valid and has roles
+        if (isset($user->roles) && is_array($user->roles)) {
+            // If user has payment manager role, redirect to plugin dashboard
+            if (in_array('fg_payment_manager', $user->roles)) {
+                return admin_url('admin.php?page=friends-gestionale');
+            }
+        }
+        // For all other users, use default redirect
+        return $redirect_to;
     }
     
     /**
@@ -349,6 +380,198 @@ class Friends_Gestionale {
         }
         
         wp_send_json_success(array('participants' => $participants_data));
+    }
+    
+    /**
+     * AJAX handler to get raccolta fondi donors
+     */
+    public function ajax_get_raccolta_donors() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'fg_get_donors')) {
+            wp_send_json_error(array('message' => 'Invalid nonce'));
+            return;
+        }
+        
+        $post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+        
+        if (!$post_id) {
+            wp_send_json_error(array('message' => 'Invalid raccolta ID'));
+            return;
+        }
+        
+        // Get all payments for this raccolta
+        $payments = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_raccolta_id',
+                    'value' => $post_id,
+                    'compare' => '='
+                )
+            )
+        ));
+        
+        if (empty($payments)) {
+            $fondi_extra = get_post_meta($post_id, '_fg_fondi_extra', true);
+            wp_send_json_success(array('donors' => array(), 'fondi_extra' => floatval($fondi_extra)));
+            return;
+        }
+        
+        $donors_data = array();
+        foreach ($payments as $payment) {
+            $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
+            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+            $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+            
+            if ($socio_id) {
+                $socio = get_post($socio_id);
+                if ($socio) {
+                    $donors_data[] = array(
+                        'id' => $socio_id,
+                        'name' => $socio->post_title,
+                        'amount' => number_format(floatval($importo), 2, ',', '.'),
+                        'date' => $data_pagamento ? date_i18n(get_option('date_format'), strtotime($data_pagamento)) : '-',
+                        'edit_link' => get_edit_post_link($socio_id)
+                    );
+                }
+            }
+        }
+        
+        // Get fondi extra
+        $fondi_extra = get_post_meta($post_id, '_fg_fondi_extra', true);
+        
+        wp_send_json_success(array('donors' => $donors_data, 'fondi_extra' => floatval($fondi_extra)));
+    }
+    
+    /**
+     * AJAX handler to get member donations
+     */
+    public function ajax_get_socio_donations() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'fg_get_socio_donations')) {
+            wp_send_json_error(array('message' => 'Invalid nonce'));
+            return;
+        }
+        
+        $post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+        
+        if (!$post_id) {
+            wp_send_json_error(array('message' => 'Invalid member ID'));
+            return;
+        }
+        
+        // Get all payments for this member
+        $payments = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_socio_id',
+                    'value' => $post_id,
+                    'compare' => '='
+                )
+            )
+        ));
+        
+        if (empty($payments)) {
+            wp_send_json_success(array('donations' => array()));
+            return;
+        }
+        
+        $donations_data = array();
+        foreach ($payments as $payment) {
+            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+            $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+            $tipo_pagamento = get_post_meta($payment->ID, '_fg_tipo_pagamento', true);
+            
+            // Translate payment type
+            $tipo_labels = array(
+                'quota' => 'Quota Associativa',
+                'donazione' => 'Donazione singola',
+                'raccolta' => 'Raccolta Fondi',
+                'evento' => 'Evento',
+                'altro' => 'Altro'
+            );
+            $tipo_label = isset($tipo_labels[$tipo_pagamento]) ? $tipo_labels[$tipo_pagamento] : 'Pagamento';
+            
+            $donations_data[] = array(
+                'tipo' => $tipo_label,
+                'amount' => number_format(floatval($importo), 2, ',', '.'),
+                'date' => $data_pagamento ? date_i18n(get_option('date_format'), strtotime($data_pagamento)) : null
+            );
+        }
+        
+        wp_send_json_success(array('donations' => $donations_data));
+    }
+    
+    /**
+     * AJAX handler to get event donations
+     */
+    public function ajax_get_evento_donations() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'fg_admin_nonce')) {
+            wp_send_json_error(array('message' => 'Invalid nonce'));
+            return;
+        }
+        
+        $evento_id = isset($_POST['evento_id']) ? absint($_POST['evento_id']) : 0;
+        
+        if (!$evento_id) {
+            wp_send_json_error(array('message' => 'Invalid event ID'));
+            return;
+        }
+        
+        // Get all payments for this event
+        $payments = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'orderby' => 'meta_value',
+            'order' => 'DESC',
+            'meta_key' => '_fg_data_pagamento',
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_evento_id',
+                    'value' => $evento_id,
+                    'compare' => '='
+                )
+            )
+        ));
+        
+        if (empty($payments)) {
+            wp_send_json_success(array('donations' => array()));
+            return;
+        }
+        
+        $donations_data = array();
+        foreach ($payments as $payment) {
+            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+            $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+            $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
+            
+            $socio_nome = '-';
+            $socio_link = '';
+            if ($socio_id) {
+                $socio = get_post($socio_id);
+                if ($socio) {
+                    $socio_nome = $socio->post_title;
+                    $socio_link = get_edit_post_link($socio_id);
+                }
+            }
+            
+            $donations_data[] = array(
+                'socio_nome' => $socio_nome,
+                'socio_link' => $socio_link,
+                'importo' => number_format(floatval($importo), 2, ',', '.'),
+                'data' => $data_pagamento ? date_i18n(get_option('date_format'), strtotime($data_pagamento)) : '-'
+            );
+        }
+        
+        wp_send_json_success(array('donations' => $donations_data));
     }
     
     /**

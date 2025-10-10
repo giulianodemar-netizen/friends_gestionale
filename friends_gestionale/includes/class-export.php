@@ -22,16 +22,11 @@ class Friends_Gestionale_Export {
     
     /**
      * Add export page
+     * Note: Submenu removed to avoid duplicate. Access via dashboard button.
      */
     public function add_export_page() {
-        add_submenu_page(
-            'friends-gestionale',
-            __('Esporta Dati', 'friends-gestionale'),
-            __('Esporta Dati', 'friends-gestionale'),
-            'manage_options',
-            'fg-export',
-            array($this, 'render_export_page')
-        );
+        // Export page accessed via dashboard button, not submenu
+        // This prevents duplicate menu entries
     }
     
     /**
@@ -134,7 +129,7 @@ class Friends_Gestionale_Export {
             return;
         }
         
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('edit_posts')) {
             wp_die(__('Non hai i permessi per esportare i dati.', 'friends-gestionale'));
         }
         
