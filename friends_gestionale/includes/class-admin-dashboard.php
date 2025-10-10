@@ -441,8 +441,8 @@ class Friends_Gestionale_Admin_Dashboard {
                                     <?php
                                     $data_evento = get_post_meta(get_the_ID(), '_fg_data_evento', true);
                                     $luogo = get_post_meta(get_the_ID(), '_fg_luogo', true);
-                                    $invitati = get_post_meta(get_the_ID(), '_fg_invitati', true);
-                                    $num_invitati = is_array($invitati) ? count($invitati) : 0;
+                                    $partecipanti = get_post_meta(get_the_ID(), '_fg_partecipanti', true);
+                                    $num_partecipanti = is_array($partecipanti) && !empty($partecipanti) ? count($partecipanti) : 0;
                                     $is_past = ($data_evento && $data_evento < $today);
                                     $label = $is_past ? __('Passato', 'friends-gestionale') : __('Futuro', 'friends-gestionale');
                                     $label_class = $is_past ? 'fg-badge fg-stato-completato' : 'fg-badge fg-stato-programmato';
@@ -451,7 +451,15 @@ class Friends_Gestionale_Admin_Dashboard {
                                         <td><strong><a href="<?php echo get_edit_post_link(get_the_ID()); ?>"><?php the_title(); ?></a></strong></td>
                                         <td><?php echo $data_evento ? date_i18n(get_option('date_format'), strtotime($data_evento)) : '-'; ?></td>
                                         <td><span class="<?php echo $label_class; ?>"><?php echo $label; ?></span></td>
-                                        <td><?php echo $num_invitati; ?></td>
+                                        <td>
+                                            <?php if ($num_partecipanti > 0): ?>
+                                                <span class="fg-partecipanti-count-dashboard" data-post-id="<?php echo esc_attr(get_the_ID()); ?>" style="cursor: pointer; color: #0073aa; text-decoration: underline; font-weight: bold;">
+                                                    <?php echo $num_partecipanti; ?>
+                                                </span>
+                                            <?php else: ?>
+                                                0
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?php echo esc_html($luogo ? $luogo : '-'); ?></td>
                                     </tr>
                                 <?php endwhile; ?>
@@ -567,6 +575,151 @@ class Friends_Gestionale_Admin_Dashboard {
                 </div>
             </div>
         </div>
+        
+        <!-- Participants Modal -->
+        <div id="fg-partecipanti-modal-dashboard" class="fg-partecipanti-modal" style="display: none;">
+            <div class="fg-partecipanti-modal-content">
+                <div class="fg-partecipanti-modal-header">
+                    <h2 style="margin: 0; color: #fff;"><?php _e('Partecipanti Evento', 'friends-gestionale'); ?></h2>
+                    <span class="fg-partecipanti-modal-close" style="float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+                </div>
+                <div class="fg-partecipanti-modal-body" style="padding: 20px;">
+                    <!-- Content will be loaded via AJAX -->
+                </div>
+            </div>
+        </div>
+        
+        <style>
+            .fg-partecipanti-modal {
+                display: none;
+                position: fixed;
+                z-index: 100000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+            }
+            .fg-partecipanti-modal-content {
+                background: #fff;
+                margin: 5% auto;
+                padding: 0;
+                border: 2px solid #0073aa;
+                border-radius: 5px;
+                width: 80%;
+                max-width: 600px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }
+            .fg-partecipanti-modal-header {
+                background: #0073aa;
+                color: #fff;
+                padding: 15px 20px;
+                border-radius: 3px 3px 0 0;
+            }
+            .fg-partecipanti-modal-body {
+                padding: 20px;
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            .fg-partecipante-item {
+                display: flex;
+                align-items: center;
+                padding: 10px;
+                border-bottom: 1px solid #eee;
+                transition: background 0.2s;
+            }
+            .fg-partecipante-item:hover {
+                background: #f9f9f9;
+            }
+            .fg-partecipante-number {
+                background: #0073aa;
+                color: #fff;
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                margin-right: 15px;
+                flex-shrink: 0;
+            }
+            .fg-partecipante-name {
+                flex: 1;
+                font-size: 14px;
+            }
+            .fg-partecipante-name a {
+                color: #0073aa;
+                text-decoration: none;
+                font-weight: 500;
+            }
+            .fg-partecipante-name a:hover {
+                text-decoration: underline;
+            }
+        </style>
+        
+        <script type="text/javascript">
+        jQuery(document).ready(function($) {
+            var modal = $('#fg-partecipanti-modal-dashboard');
+            var modalBody = modal.find('.fg-partecipanti-modal-body');
+            var closeBtn = modal.find('.fg-partecipanti-modal-close');
+            
+            // Close modal handlers
+            closeBtn.on('click', function() {
+                modal.hide();
+            });
+            
+            modal.on('click', function(e) {
+                if (e.target === this) {
+                    modal.hide();
+                }
+            });
+            
+            // Click handler for participant count in dashboard
+            $(document).on('click', '.fg-partecipanti-count-dashboard', function(e) {
+                e.preventDefault();
+                var postId = $(this).data('post-id');
+                
+                // Show loading
+                modalBody.html('<p style="text-align:center;padding:20px;">Caricamento...</p>');
+                modal.show();
+                
+                // AJAX request to get participants
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'fg_get_event_participants',
+                        post_id: postId,
+                        nonce: '<?php echo wp_create_nonce('fg_get_participants'); ?>'
+                    },
+                    success: function(response) {
+                        if (response.success && response.data.participants && response.data.participants.length > 0) {
+                            var html = '';
+                            $.each(response.data.participants, function(index, participant) {
+                                html += '<div class="fg-partecipante-item">';
+                                html += '<div class="fg-partecipante-number">' + (index + 1) + '</div>';
+                                html += '<div class="fg-partecipante-name">';
+                                if (participant.edit_link) {
+                                    html += '<a href="' + participant.edit_link + '" target="_blank">' + participant.name + '</a>';
+                                } else {
+                                    html += participant.name;
+                                }
+                                html += '</div>';
+                                html += '</div>';
+                            });
+                            modalBody.html(html);
+                        } else {
+                            modalBody.html('<p style="text-align:center;padding:20px;">Nessun partecipante trovato.</p>');
+                        }
+                    },
+                    error: function() {
+                        modalBody.html('<p style="text-align:center;padding:20px;color:#dc3545;">Errore nel caricamento dei partecipanti.</p>');
+                    }
+                });
+            });
+        });
+        </script>
         <?php
     }
     
