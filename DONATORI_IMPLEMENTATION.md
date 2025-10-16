@@ -50,6 +50,19 @@ Ogni donatore può ora essere classificato come:
 - **Scopo**: Classificare i donatori semplici
 - **Visibilità**: Solo per donatori di tipo "solo_donatore"
 - **Accesso**: Menu laterale sotto "Donatori"
+- **Inizializzazione**: La taxonomy viene registrata automaticamente all'attivazione del plugin
+- **Stato Iniziale**: Vuota - le categorie vanno create manualmente dall'amministratore
+- **Note**: Non sono previste categorie di default - ogni organizzazione definisce le proprie
+
+### Procedura di Inizializzazione:
+1. Il plugin registra automaticamente la taxonomy al caricamento
+2. L'amministratore crea le categorie necessarie tramite menu "Donatori" → "Categorie Donatore"
+3. Le categorie create sono disponibili nel form donatore per la selezione
+4. Esempi di categorie che potrebbero essere create:
+   - "Donatore Occasionale"
+   - "Donatore Ricorrente"
+   - "Grande Donatore"
+   - ecc.
 
 ## 4. Modifiche alle Colonne della Tabella
 
@@ -75,18 +88,39 @@ Ogni donatore può ora essere classificato come:
 
 ```php
 // Salvataggio basato sul tipo di donatore
+// Include validazione e gestione errori
+
+// Validazione input
+$tipo_donatore = isset($_POST['fg_tipo_donatore']) ? sanitize_text_field($_POST['fg_tipo_donatore']) : 'anche_socio';
+
 if ($tipo_donatore === 'anche_socio') {
-    // Salva tipologia socio
-    wp_set_post_terms($post_id, array($category_id), 'fg_categoria_socio', false);
+    // Salva tipologia socio con validazione
+    if (isset($_POST['fg_categoria_socio_selector']) && !empty($_POST['fg_categoria_socio_selector'])) {
+        $category_id = absint($_POST['fg_categoria_socio_selector']);
+        // Verifica che la categoria esista
+        $term = get_term($category_id, 'fg_categoria_socio');
+        if (!is_wp_error($term) && $term) {
+            wp_set_post_terms($post_id, array($category_id), 'fg_categoria_socio', false);
+        }
+    }
     // Rimuove categoria donatore se presente
     wp_set_post_terms($post_id, array(), 'fg_categoria_donatore', false);
 } else {
-    // Salva categoria donatore
-    wp_set_post_terms($post_id, array($donor_category_id), 'fg_categoria_donatore', false);
+    // Salva categoria donatore con validazione
+    if (isset($_POST['fg_categoria_donatore_selector']) && !empty($_POST['fg_categoria_donatore_selector'])) {
+        $donor_category_id = absint($_POST['fg_categoria_donatore_selector']);
+        // Verifica che la categoria esista
+        $term = get_term($donor_category_id, 'fg_categoria_donatore');
+        if (!is_wp_error($term) && $term) {
+            wp_set_post_terms($post_id, array($donor_category_id), 'fg_categoria_donatore', false);
+        }
+    }
     // Rimuove tipologia socio se presente
     wp_set_post_terms($post_id, array(), 'fg_categoria_socio', false);
 }
 ```
+
+Nota: Il codice di produzione include controlli di errore completi usando `is_wp_error()` e validazione dei term IDs.
 
 ## 6. Sezioni del Form
 
@@ -124,6 +158,24 @@ $('#fg_tipo_donatore').on('change', function() {
     } else if (tipoDonatore === 'anche_socio') {
         $('.fg-categoria-donatore-section').hide();
         $('.fg-iscrizione-section').show();
+    }
+});
+```
+
+**Nota AJAX**: Per chiamate AJAX in JavaScript separato, i nonce vengono passati tramite `wp_localize_script()` nel PHP:
+```php
+// In PHP (friends_gestionale.php)
+wp_localize_script('friends-gestionale-admin', 'friendsGestionale', array(
+    'ajaxUrl' => admin_url('admin-ajax.php'),
+    'nonce' => wp_create_nonce('friends_gestionale_nonce')
+));
+
+// In JavaScript
+$.ajax({
+    url: friendsGestionale.ajaxUrl,
+    data: {
+        nonce: friendsGestionale.nonce,
+        // altri parametri
     }
 });
 ```
@@ -177,11 +229,27 @@ Shortcode rimangono compatibili:
 - Taxonomy slug `fg_categoria_socio` mantiene lo stesso nome
 - Tutti i donatori esistenti vengono considerati "anche_socio" per default
 
+### Gestione Record Esistenti:
+Quando si accede a un donatore esistente senza il campo `_fg_tipo_donatore`:
+1. Il form assume "anche_socio" come valore default
+2. Al primo salvataggio, il campo viene creato con valore "anche_socio"
+3. Le categorie socio esistenti rimangono assegnate
+4. Il comportamento è identico al sistema precedente
+
+```php
+// Nel render del form (class-meta-boxes.php)
+$tipo_donatore = get_post_meta($post->ID, '_fg_tipo_donatore', true);
+if (empty($tipo_donatore)) {
+    $tipo_donatore = 'anche_socio'; // Default per retrocompatibilità
+}
+```
+
 ### Migrazione Dati:
 Non è necessaria una migrazione dati. Il sistema:
 1. Assume "anche_socio" come default per record esistenti
 2. Mantiene le categorie socio esistenti
 3. Le nuove categorie donatore sono vuote inizialmente
+4. I record vengono aggiornati progressivamente al salvataggio
 
 ## 14. Menu di Amministrazione
 
