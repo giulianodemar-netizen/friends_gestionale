@@ -171,6 +171,9 @@ class Friends_Gestionale {
             remove_menu_page('vcv-headers-footers');        // VC Headers/Footers
             remove_menu_page('vcv-headers-footers-layouts'); // VC Layouts
             
+            // Remove submenu items for plugin users - they'll access via dashboard buttons
+            remove_submenu_page('friends-gestionale', 'fg-export');
+            
             // Keep all Friends Gestionale post type menus visible:
             // - Soci (fg_socio)
             // - Pagamenti (fg_pagamento)
@@ -513,12 +516,6 @@ class Friends_Gestionale {
      * AJAX handler to get event donations
      */
     public function ajax_get_evento_donations() {
-        // Check nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'fg_admin_nonce')) {
-            wp_send_json_error(array('message' => 'Invalid nonce'));
-            return;
-        }
-        
         $evento_id = isset($_POST['evento_id']) ? absint($_POST['evento_id']) : 0;
         
         if (!$evento_id) {
@@ -543,35 +540,56 @@ class Friends_Gestionale {
         ));
         
         if (empty($payments)) {
-            wp_send_json_success(array('donations' => array()));
+            wp_send_json_success(array('html' => '<p style="text-align: center; color: #666; padding: 20px;">Nessuna donazione per questo evento.</p>'));
             return;
         }
         
-        $donations_data = array();
+        // Calculate total
+        $total = 0;
+        foreach ($payments as $payment) {
+            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+            $total += floatval($importo);
+        }
+        
+        // Build HTML
+        $html = '<div style="margin-bottom: 20px; text-align: center; padding: 15px; background: #f0f6fc; border: 2px solid #0073aa; border-radius: 4px;">';
+        $html .= '<p style="margin: 0 0 5px 0; font-size: 14px; color: #666;">Totale Raccolto:</p>';
+        $html .= '<p style="margin: 0; font-size: 28px; font-weight: bold; color: #0073aa;">€' . number_format($total, 2, ',', '.') . '</p>';
+        $html .= '<p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">' . count($payments) . ' ' . _n('donazione', 'donazioni', count($payments), 'friends-gestionale') . '</p>';
+        $html .= '</div>';
+        
+        $html .= '<div style="max-height: 400px; overflow-y: auto;">';
+        $html .= '<table class="widefat" style="border: 1px solid #ddd;">';
+        $html .= '<thead><tr>';
+        $html .= '<th style="padding: 10px; background: #f9f9f9;">' . __('Socio', 'friends-gestionale') . '</th>';
+        $html .= '<th style="padding: 10px; background: #f9f9f9;">' . __('Data', 'friends-gestionale') . '</th>';
+        $html .= '<th style="padding: 10px; background: #f9f9f9; text-align: right;">' . __('Importo', 'friends-gestionale') . '</th>';
+        $html .= '</tr></thead><tbody>';
+        
         foreach ($payments as $payment) {
             $importo = get_post_meta($payment->ID, '_fg_importo', true);
             $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
             $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
             
-            $socio_nome = '-';
-            $socio_link = '';
+            $socio_nome = __('Anonimo', 'friends-gestionale');
             if ($socio_id) {
                 $socio = get_post($socio_id);
                 if ($socio) {
-                    $socio_nome = $socio->post_title;
-                    $socio_link = get_edit_post_link($socio_id);
+                    $socio_nome = '<a href="' . get_edit_post_link($socio_id) . '" target="_blank">' . esc_html($socio->post_title) . '</a>';
                 }
             }
             
-            $donations_data[] = array(
-                'socio_nome' => $socio_nome,
-                'socio_link' => $socio_link,
-                'importo' => number_format(floatval($importo), 2, ',', '.'),
-                'data' => $data_pagamento ? date_i18n(get_option('date_format'), strtotime($data_pagamento)) : '-'
-            );
+            $html .= '<tr>';
+            $html .= '<td style="padding: 10px;">' . $socio_nome . '</td>';
+            $html .= '<td style="padding: 10px;">' . ($data_pagamento ? date_i18n(get_option('date_format'), strtotime($data_pagamento)) : '-') . '</td>';
+            $html .= '<td style="padding: 10px; text-align: right; font-weight: bold; color: #0073aa;">€' . number_format(floatval($importo), 2, ',', '.') . '</td>';
+            $html .= '</tr>';
         }
         
-        wp_send_json_success(array('donations' => $donations_data));
+        $html .= '</tbody></table>';
+        $html .= '</div>';
+        
+        wp_send_json_success(array('html' => $html));
     }
     
     /**
