@@ -175,7 +175,7 @@ class Friends_Gestionale {
             remove_submenu_page('friends-gestionale', 'fg-export');
             
             // Keep all Friends Gestionale post type menus visible:
-            // - Soci (fg_socio)
+            // - Donatori (fg_socio)
             // - Pagamenti (fg_pagamento)
             // - Raccolte Fondi (fg_raccolta)
             // - Eventi (fg_evento)
@@ -250,7 +250,7 @@ class Friends_Gestionale {
         // Add the role with capabilities for all plugin areas
         add_role(
             'fg_payment_manager',
-            __('Friends Gestionale - Gestore Soci', 'friends-gestionale'),
+            __('Friends Gestionale - Gestore Donatori', 'friends-gestionale'),
             array(
                 'read' => true,
                 

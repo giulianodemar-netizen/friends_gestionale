@@ -227,7 +227,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     </div>
                     <div class="fg-stat-content">
                         <h3><?php echo $total_soci; ?></h3>
-                        <p><?php _e('Totale Soci', 'friends-gestionale'); ?></p>
+                        <p><?php _e('Totale Donatori', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
@@ -237,7 +237,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     </div>
                     <div class="fg-stat-content">
                         <h3><?php echo $count_attivi; ?></h3>
-                        <p><?php _e('Soci Attivi', 'friends-gestionale'); ?></p>
+                        <p><?php _e('Donatori Attivi', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
@@ -247,7 +247,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     </div>
                     <div class="fg-stat-content">
                         <h3><?php echo $count_scaduti; ?></h3>
-                        <p><?php _e('Soci Scaduti', 'friends-gestionale'); ?></p>
+                        <p><?php _e('Donatori Scaduti', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
@@ -333,7 +333,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     </div>
                     <div class="fg-stat-content">
                         <h3><?php echo $count_nuovi_soci_mese; ?></h3>
-                        <p><?php _e('Nuovi Soci Questo Mese', 'friends-gestionale'); ?></p>
+                        <p><?php _e('Nuovi Donatori Questo Mese', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
@@ -356,7 +356,7 @@ class Friends_Gestionale_Admin_Dashboard {
                             <thead>
                                 <tr>
                                     <th><?php _e('Data', 'friends-gestionale'); ?></th>
-                                    <th><?php _e('Socio', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Donatore', 'friends-gestionale'); ?></th>
                                     <th><?php _e('Importo', 'friends-gestionale'); ?></th>
                                     <th><?php _e('Tipo', 'friends-gestionale'); ?></th>
                                 </tr>
@@ -542,7 +542,7 @@ class Friends_Gestionale_Admin_Dashboard {
                 <div class="fg-actions-grid">
                     <a href="<?php echo admin_url('post-new.php?post_type=fg_socio'); ?>" class="button button-primary button-hero">
                         <span class="dashicons dashicons-plus"></span>
-                        <?php _e('Aggiungi Socio', 'friends-gestionale'); ?>
+                        <?php _e('Aggiungi Donatore', 'friends-gestionale'); ?>
                     </a>
                     <a href="<?php echo admin_url('post-new.php?post_type=fg_pagamento'); ?>" class="button button-primary button-hero">
                         <span class="dashicons dashicons-plus"></span>
@@ -932,7 +932,7 @@ class Friends_Gestionale_Admin_Dashboard {
                 </div>
                 
                 <div class="fg-chart-container">
-                    <h2><?php _e('Distribuzione Soci per Stato', 'friends-gestionale'); ?></h2>
+                    <h2><?php _e('Distribuzione Donatori per Stato', 'friends-gestionale'); ?></h2>
                     <canvas id="fg-members-chart" width="400" height="200"></canvas>
                 </div>
                 
@@ -942,7 +942,7 @@ class Friends_Gestionale_Admin_Dashboard {
                 </div>
                 
                 <div class="fg-chart-container">
-                    <h2><?php _e('Nuovi Soci (Ultimi 12 Mesi)', 'friends-gestionale'); ?></h2>
+                    <h2><?php _e('Nuovi Donatori (Ultimi 12 Mesi)', 'friends-gestionale'); ?></h2>
                     <canvas id="fg-new-members-chart" width="400" height="200"></canvas>
                 </div>
                 
@@ -1114,7 +1114,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     data: {
                         labels: <?php echo json_encode($months); ?>,
                         datasets: [{
-                            label: '<?php _e('Nuovi Soci', 'friends-gestionale'); ?>',
+                            label: '<?php _e('Nuovi Donatori', 'friends-gestionale'); ?>',
                             data: <?php echo json_encode($new_members_data); ?>,
                             borderColor: 'rgb(153, 102, 255)',
                             backgroundColor: 'rgba(153, 102, 255, 0.2)',
@@ -1532,7 +1532,7 @@ class Friends_Gestionale_Admin_Dashboard {
                                         $tooltips_data[$tooltip_id] = array(
                                             'title' => 'Pagamento Effettuato',
                                             'rows' => array(
-                                                array('label' => 'Socio:', 'value' => esc_html($socio_nome)),
+                                                array('label' => 'Donatore:', 'value' => esc_html($socio_nome)),
                                                 array('label' => 'Importo:', 'value' => '€' . number_format($importo, 2)),
                                                 array('label' => 'Tipo:', 'value' => esc_html(ucfirst($tipo))),
                                                 array('label' => 'Metodo:', 'value' => esc_html(ucfirst($metodo))),
@@ -1576,7 +1576,7 @@ class Friends_Gestionale_Admin_Dashboard {
                                         $tooltips_data[$tooltip_id] = array(
                                             'title' => $is_overdue ? 'Pagamento Arretrato' : 'Pagamento in Scadenza',
                                             'rows' => array(
-                                                array('label' => 'Socio:', 'value' => esc_html($socio->post_title)),
+                                                array('label' => 'Donatore:', 'value' => esc_html($socio->post_title)),
                                                 array('label' => 'Quota:', 'value' => '€' . number_format($quota, 2)),
                                                 array('label' => 'Scadenza:', 'value' => date_i18n(get_option('date_format'), strtotime($data_scadenza))),
                                                 array('label' => 'Stato:', 'value' => $is_overdue ? 'Arretrato' : 'In scadenza'),
