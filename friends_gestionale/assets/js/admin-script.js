@@ -54,13 +54,13 @@
             var socioName = select.find('option:selected').text();
             
             if (!socioId) {
-                alert('Seleziona un socio dalla lista');
+                alert('Seleziona un donatore dalla lista');
                 return;
             }
             
             // Check if already added
             if ($('.fg-partecipante-item[data-socio-id="' + socioId + '"]').length > 0) {
-                alert('Questo socio è già stato aggiunto');
+                alert('Questo donatore è già stato aggiunto');
                 return;
             }
             

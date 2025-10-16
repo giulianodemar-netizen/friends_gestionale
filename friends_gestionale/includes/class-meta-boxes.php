@@ -995,7 +995,7 @@ class Friends_Gestionale_Meta_Boxes {
                 <div class="fg-form-row">
                     <div class="fg-form-field">
                         <select id="fg-add-partecipante" class="widefat">
-                            <option value=""><?php _e('Seleziona un socio...', 'friends-gestionale'); ?></option>
+                            <option value=""><?php _e('Seleziona un donatore...', 'friends-gestionale'); ?></option>
                             <?php foreach ($soci as $socio): ?>
                                 <option value="<?php echo $socio->ID; ?>"><?php echo esc_html($socio->post_title); ?></option>
                             <?php endforeach; ?>
