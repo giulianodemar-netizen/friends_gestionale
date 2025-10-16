@@ -47,20 +47,20 @@ class Friends_Gestionale_Post_Types {
      * Register custom post types
      */
     public static function register_post_types() {
-        // Register Soci (Members) post type
+        // Register Donatori (Donors) post type
         register_post_type('fg_socio', array(
             'labels' => array(
-                'name' => __('Soci', 'friends-gestionale'),
-                'singular_name' => __('Socio', 'friends-gestionale'),
-                'add_new' => __('Aggiungi Socio', 'friends-gestionale'),
-                'add_new_item' => __('Aggiungi Nuovo Socio', 'friends-gestionale'),
-                'edit_item' => __('Modifica Socio', 'friends-gestionale'),
-                'new_item' => __('Nuovo Socio', 'friends-gestionale'),
-                'view_item' => __('Visualizza Socio', 'friends-gestionale'),
-                'search_items' => __('Cerca Soci', 'friends-gestionale'),
-                'not_found' => __('Nessun socio trovato', 'friends-gestionale'),
-                'not_found_in_trash' => __('Nessun socio nel cestino', 'friends-gestionale'),
-                'menu_name' => __('Soci', 'friends-gestionale')
+                'name' => __('Donatori', 'friends-gestionale'),
+                'singular_name' => __('Donatore', 'friends-gestionale'),
+                'add_new' => __('Aggiungi Donatore', 'friends-gestionale'),
+                'add_new_item' => __('Aggiungi Nuovo Donatore', 'friends-gestionale'),
+                'edit_item' => __('Modifica Donatore', 'friends-gestionale'),
+                'new_item' => __('Nuovo Donatore', 'friends-gestionale'),
+                'view_item' => __('Visualizza Donatore', 'friends-gestionale'),
+                'search_items' => __('Cerca Donatori', 'friends-gestionale'),
+                'not_found' => __('Nessun donatore trovato', 'friends-gestionale'),
+                'not_found_in_trash' => __('Nessun donatore nel cestino', 'friends-gestionale'),
+                'menu_name' => __('Donatori', 'friends-gestionale')
             ),
             'public' => false,
             'show_ui' => true,
@@ -69,7 +69,7 @@ class Friends_Gestionale_Post_Types {
             'menu_icon' => 'dashicons-groups',
             'supports' => array('thumbnail'),
             'has_archive' => false,
-            'rewrite' => array('slug' => 'soci'),
+            'rewrite' => array('slug' => 'donatori'),
             'capability_type' => 'post',
             'show_in_rest' => true
         ));
@@ -161,24 +161,51 @@ class Friends_Gestionale_Post_Types {
      * Register custom taxonomies
      */
     public function register_taxonomies() {
-        // Register Categoria Socio taxonomy
+        // Register Tipologia Socio taxonomy (for donors who are also members)
         register_taxonomy('fg_categoria_socio', 'fg_socio', array(
             'labels' => array(
-                'name' => __('Categorie Soci', 'friends-gestionale'),
-                'singular_name' => __('Categoria Socio', 'friends-gestionale'),
+                'name' => __('Tipologie Socio', 'friends-gestionale'),
+                'singular_name' => __('Tipologia Socio', 'friends-gestionale'),
+                'search_items' => __('Cerca Tipologie', 'friends-gestionale'),
+                'all_items' => __('Tutte le Tipologie', 'friends-gestionale'),
+                'edit_item' => __('Modifica Tipologia', 'friends-gestionale'),
+                'update_item' => __('Aggiorna Tipologia', 'friends-gestionale'),
+                'add_new_item' => __('Aggiungi Tipologia', 'friends-gestionale'),
+                'new_item_name' => __('Nuova Tipologia', 'friends-gestionale'),
+                'menu_name' => __('Tipologie Socio', 'friends-gestionale')
+            ),
+            'hierarchical' => true,
+            'show_ui' => true,
+            'show_admin_column' => false,
+            'query_var' => true,
+            'rewrite' => array('slug' => 'tipologia-socio'),
+            'show_in_rest' => true,
+            'capabilities' => array(
+                'manage_terms' => 'manage_categories',
+                'edit_terms' => 'edit_categories',
+                'delete_terms' => 'delete_categories',
+                'assign_terms' => 'assign_categories',
+            ),
+        ));
+        
+        // Register Categoria Donatore taxonomy (for simple donors)
+        register_taxonomy('fg_categoria_donatore', 'fg_socio', array(
+            'labels' => array(
+                'name' => __('Categorie Donatore', 'friends-gestionale'),
+                'singular_name' => __('Categoria Donatore', 'friends-gestionale'),
                 'search_items' => __('Cerca Categorie', 'friends-gestionale'),
                 'all_items' => __('Tutte le Categorie', 'friends-gestionale'),
                 'edit_item' => __('Modifica Categoria', 'friends-gestionale'),
                 'update_item' => __('Aggiorna Categoria', 'friends-gestionale'),
                 'add_new_item' => __('Aggiungi Categoria', 'friends-gestionale'),
                 'new_item_name' => __('Nuova Categoria', 'friends-gestionale'),
-                'menu_name' => __('Categorie', 'friends-gestionale')
+                'menu_name' => __('Categorie Donatore', 'friends-gestionale')
             ),
             'hierarchical' => true,
             'show_ui' => true,
-            'show_admin_column' => true,
+            'show_admin_column' => false,
             'query_var' => true,
-            'rewrite' => array('slug' => 'categoria-socio'),
+            'rewrite' => array('slug' => 'categoria-donatore'),
             'show_in_rest' => true,
             'capabilities' => array(
                 'manage_terms' => 'manage_categories',
@@ -226,12 +253,14 @@ class Friends_Gestionale_Post_Types {
             'fg_email' => __('Email', 'friends-gestionale'),
             'fg_telefono' => __('Telefono', 'friends-gestionale'),
             'fg_codice_fiscale' => __('Codice Fiscale', 'friends-gestionale'),
+            'fg_tipo_donatore' => __('Tipo', 'friends-gestionale'),
             'fg_stato' => __('Stato', 'friends-gestionale'),
             'fg_data_iscrizione' => __('Data Iscrizione', 'friends-gestionale'),
             'fg_data_scadenza' => __('Data Scadenza', 'friends-gestionale'),
             'fg_quota_annuale' => __('Quota Annuale', 'friends-gestionale'),
             'fg_totale_donato' => __('Totale Donato', 'friends-gestionale'),
-            'taxonomy-fg_categoria_socio' => __('Categoria', 'friends-gestionale'),
+            'fg_tipologia_socio' => __('Tipologia Socio', 'friends-gestionale'),
+            'fg_categoria_donatore' => __('Categoria', 'friends-gestionale'),
             'date' => $columns['date']
         );
     }
@@ -253,6 +282,40 @@ class Friends_Gestionale_Post_Types {
                     if ($foto_url) {
                         echo '<br><img src="' . esc_url($foto_url[0]) . '" style="max-width: 60px; height: auto; margin-top: 5px; border-radius: 3px; border: 1px solid #ddd;" />';
                     }
+                }
+                break;
+            case 'fg_tipo_donatore':
+                $tipo = get_post_meta($post_id, '_fg_tipo_donatore', true);
+                if ($tipo === 'anche_socio') {
+                    echo '<span class="fg-badge fg-stato-attivo">Socio</span>';
+                } else {
+                    echo '<span class="fg-badge">Donatore</span>';
+                }
+                break;
+            case 'fg_tipologia_socio':
+                $tipo_donatore = get_post_meta($post_id, '_fg_tipo_donatore', true);
+                if ($tipo_donatore === 'anche_socio') {
+                    $categories = wp_get_post_terms($post_id, 'fg_categoria_socio');
+                    if (!empty($categories) && !is_wp_error($categories)) {
+                        echo esc_html($categories[0]->name);
+                    } else {
+                        echo '-';
+                    }
+                } else {
+                    echo '-';
+                }
+                break;
+            case 'fg_categoria_donatore':
+                $tipo_donatore = get_post_meta($post_id, '_fg_tipo_donatore', true);
+                if ($tipo_donatore !== 'anche_socio') {
+                    $categories = wp_get_post_terms($post_id, 'fg_categoria_donatore');
+                    if (!empty($categories) && !is_wp_error($categories)) {
+                        echo esc_html($categories[0]->name);
+                    } else {
+                        echo '-';
+                    }
+                } else {
+                    echo '-';
                 }
                 break;
             case 'fg_totale_donato':
@@ -324,7 +387,7 @@ class Friends_Gestionale_Post_Types {
         return array(
             'cb' => $columns['cb'],
             'title' => __('Riferimento', 'friends-gestionale'),
-            'fg_socio' => __('Socio', 'friends-gestionale'),
+            'fg_socio' => __('Donatore', 'friends-gestionale'),
             'fg_importo' => __('Importo', 'friends-gestionale'),
             'fg_data_pagamento' => __('Data Pagamento', 'friends-gestionale'),
             'fg_metodo_pagamento' => __('Metodo', 'friends-gestionale'),
@@ -1060,7 +1123,7 @@ class Friends_Gestionale_Post_Types {
                 // Create modal element for member donations
                 var modal = $('<div class="fg-donazioni-socio-modal"></div>');
                 var modalContent = $('<div class="fg-donazioni-socio-modal-content"></div>');
-                var modalHeader = $('<div class="fg-donazioni-socio-modal-header"><h2>Donazioni del Socio</h2><button class="fg-donazioni-socio-modal-close">&times;</button></div>');
+                var modalHeader = $('<div class="fg-donazioni-socio-modal-header"><h2>Donazioni del Donatore</h2><button class="fg-donazioni-socio-modal-close">&times;</button></div>');
                 var modalBody = $('<div class="fg-donazioni-socio-modal-body"></div>');
                 
                 modalContent.append(modalHeader).append(modalBody);

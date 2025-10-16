@@ -40,10 +40,10 @@ class Friends_Gestionale_Meta_Boxes {
      * Add meta boxes
      */
     public function add_meta_boxes() {
-        // Soci meta boxes
+        // Donatori meta boxes
         add_meta_box(
             'fg_socio_info',
-            __('Informazioni Socio', 'friends-gestionale'),
+            __('Informazioni Donatore', 'friends-gestionale'),
             array($this, 'render_socio_info_meta_box'),
             'fg_socio',
             'normal',
@@ -116,8 +116,26 @@ class Friends_Gestionale_Meta_Boxes {
         $quota_annuale = get_post_meta($post->ID, '_fg_quota_annuale', true);
         $stato = get_post_meta($post->ID, '_fg_stato', true);
         $note = get_post_meta($post->ID, '_fg_note', true);
+        $tipo_donatore = get_post_meta($post->ID, '_fg_tipo_donatore', true);
+        if (empty($tipo_donatore)) {
+            $tipo_donatore = 'anche_socio'; // Default to member for backward compatibility
+        }
         ?>
         <div class="fg-meta-box fg-improved-form">
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Tipo Donatore', 'friends-gestionale'); ?></h3>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_tipo_donatore"><strong><?php _e('Questa persona è:', 'friends-gestionale'); ?></strong> <span class="required">*</span></label>
+                        <select id="fg_tipo_donatore" name="fg_tipo_donatore" class="widefat" required>
+                            <option value="solo_donatore" <?php selected($tipo_donatore, 'solo_donatore'); ?>><?php _e('Solo Donatore', 'friends-gestionale'); ?></option>
+                            <option value="anche_socio" <?php selected($tipo_donatore, 'anche_socio'); ?>><?php _e('Donatore e Socio', 'friends-gestionale'); ?></option>
+                        </select>
+                        <p class="description"><?php _e('Seleziona se questa persona è solo un donatore o anche un socio dell\'associazione.', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+            </div>
+            
             <div class="fg-form-section">
                 <h3 class="fg-section-title"><?php _e('Dati Anagrafici', 'friends-gestionale'); ?></h3>
                 <div class="fg-form-row">
@@ -160,13 +178,47 @@ class Friends_Gestionale_Meta_Boxes {
                 </div>
             </div>
             
-            <div class="fg-form-section">
+            <!-- Categoria Donatore section - shown only for solo_donatore -->
+            <div class="fg-form-section fg-categoria-donatore-section" style="display: <?php echo $tipo_donatore === 'solo_donatore' ? 'block' : 'none'; ?>;">
+                <h3 class="fg-section-title"><?php _e('Categoria Donatore', 'friends-gestionale'); ?></h3>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_categoria_donatore_selector"><strong><?php _e('Categoria:', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_categoria_donatore_selector" name="fg_categoria_donatore_selector" class="widefat">
+                            <option value=""><?php _e('Seleziona categoria...', 'friends-gestionale'); ?></option>
+                            <?php
+                            $donor_categories = get_terms(array(
+                                'taxonomy' => 'fg_categoria_donatore',
+                                'hide_empty' => false
+                            ));
+                            $member_donor_categories = wp_get_post_terms($post->ID, 'fg_categoria_donatore', array('fields' => 'ids'));
+                            $selected_donor_category = !empty($member_donor_categories) ? $member_donor_categories[0] : '';
+                            
+                            if (!empty($donor_categories) && !is_wp_error($donor_categories)) {
+                                foreach ($donor_categories as $cat) {
+                                    printf(
+                                        '<option value="%d" %s>%s</option>',
+                                        $cat->term_id,
+                                        selected($selected_donor_category, $cat->term_id, false),
+                                        esc_html($cat->name)
+                                    );
+                                }
+                            }
+                            ?>
+                        </select>
+                        <p class="description"><?php _e('Seleziona la categoria del donatore.', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Iscrizione section - shown only for anche_socio -->
+            <div class="fg-form-section fg-iscrizione-section" style="display: <?php echo $tipo_donatore === 'anche_socio' ? 'block' : 'none'; ?>;">
                 <h3 class="fg-section-title"><?php _e('Iscrizione', 'friends-gestionale'); ?></h3>
                 
                 <!-- Category selector for auto-filling quota -->
                 <div class="fg-form-row">
                     <div class="fg-form-field">
-                        <label for="fg_categoria_socio_selector"><strong><?php _e('Categoria Socio (per quota automatica):', 'friends-gestionale'); ?></strong></label>
+                        <label for="fg_categoria_socio_selector"><strong><?php _e('Tipologia Socio (per quota automatica):', 'friends-gestionale'); ?></strong></label>
                         <select id="fg_categoria_socio_selector" name="fg_categoria_socio_selector" class="widefat">
                             <option value=""><?php _e('Seleziona categoria...', 'friends-gestionale'); ?></option>
                             <?php
@@ -239,7 +291,7 @@ class Friends_Gestionale_Meta_Boxes {
             </div>
             
             <div class="fg-form-section">
-                <h3 class="fg-section-title"><?php _e('Foto Socio', 'friends-gestionale'); ?></h3>
+                <h3 class="fg-section-title"><?php _e('Foto Donatore', 'friends-gestionale'); ?></h3>
                 <div class="fg-form-row">
                     <div class="fg-form-field">
                         <?php
@@ -489,9 +541,9 @@ class Friends_Gestionale_Meta_Boxes {
                 
                 <div class="fg-form-row">
                     <div class="fg-form-field">
-                        <label for="fg_socio_id"><strong><?php _e('Socio:', 'friends-gestionale'); ?></strong></label>
+                        <label for="fg_socio_id"><strong><?php _e('Donatore:', 'friends-gestionale'); ?></strong></label>
                         <select id="fg_socio_id" name="fg_socio_id" class="widefat">
-                            <option value=""><?php _e('Seleziona Socio', 'friends-gestionale'); ?></option>
+                            <option value=""><?php _e('Seleziona Donatore', 'friends-gestionale'); ?></option>
                             <?php foreach ($soci as $socio): ?>
                                 <option value="<?php echo $socio->ID; ?>" <?php selected($socio_id, $socio->ID); ?>>
                                     <?php echo esc_html($socio->post_title); ?>
@@ -1011,6 +1063,11 @@ class Friends_Gestionale_Meta_Boxes {
                 return;
             }
             
+            // Save donor type
+            if (isset($_POST['fg_tipo_donatore'])) {
+                update_post_meta($post_id, '_fg_tipo_donatore', sanitize_text_field($_POST['fg_tipo_donatore']));
+            }
+            
             // Update post title with nome + cognome
             if (isset($_POST['fg_nome']) && isset($_POST['fg_cognome'])) {
                 $nome = sanitize_text_field($_POST['fg_nome']);
@@ -1041,6 +1098,28 @@ class Friends_Gestionale_Meta_Boxes {
             if (isset($_POST['fg_indirizzo'])) {
                 update_post_meta($post_id, '_fg_indirizzo', sanitize_textarea_field($_POST['fg_indirizzo']));
             }
+            
+            // Handle taxonomies based on donor type
+            $tipo_donatore = isset($_POST['fg_tipo_donatore']) ? sanitize_text_field($_POST['fg_tipo_donatore']) : 'anche_socio';
+            
+            if ($tipo_donatore === 'anche_socio') {
+                // This is a member - handle member category
+                if (isset($_POST['fg_categoria_socio_selector']) && !empty($_POST['fg_categoria_socio_selector'])) {
+                    $category_id = absint($_POST['fg_categoria_socio_selector']);
+                    wp_set_post_terms($post_id, array($category_id), 'fg_categoria_socio', false);
+                }
+                // Remove donor category if any
+                wp_set_post_terms($post_id, array(), 'fg_categoria_donatore', false);
+            } else {
+                // This is a simple donor - handle donor category
+                if (isset($_POST['fg_categoria_donatore_selector']) && !empty($_POST['fg_categoria_donatore_selector'])) {
+                    $donor_category_id = absint($_POST['fg_categoria_donatore_selector']);
+                    wp_set_post_terms($post_id, array($donor_category_id), 'fg_categoria_donatore', false);
+                }
+                // Remove member category if any
+                wp_set_post_terms($post_id, array(), 'fg_categoria_socio', false);
+            }
+            
             if (isset($_POST['fg_data_iscrizione'])) {
                 update_post_meta($post_id, '_fg_data_iscrizione', sanitize_text_field($_POST['fg_data_iscrizione']));
             }
@@ -1049,11 +1128,6 @@ class Friends_Gestionale_Meta_Boxes {
             }
             if (isset($_POST['fg_quota_annuale'])) {
                 update_post_meta($post_id, '_fg_quota_annuale', floatval($_POST['fg_quota_annuale']));
-            }
-            // Auto-assign category if selected from dropdown
-            if (isset($_POST['fg_categoria_socio_selector']) && !empty($_POST['fg_categoria_socio_selector'])) {
-                $category_id = absint($_POST['fg_categoria_socio_selector']);
-                wp_set_post_terms($post_id, array($category_id), 'fg_categoria_socio', false);
             }
             if (isset($_POST['fg_stato'])) {
                 update_post_meta($post_id, '_fg_stato', sanitize_text_field($_POST['fg_stato']));

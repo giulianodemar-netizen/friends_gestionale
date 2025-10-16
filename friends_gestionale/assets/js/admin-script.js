@@ -138,6 +138,21 @@
             });
         }
         
+        // Handle donor type change to show/hide relevant sections
+        $('#fg_tipo_donatore').on('change', function() {
+            var tipoDonatore = $(this).val();
+            
+            if (tipoDonatore === 'solo_donatore') {
+                // Show donor category section, hide membership section
+                $('.fg-categoria-donatore-section').show();
+                $('.fg-iscrizione-section').hide();
+            } else if (tipoDonatore === 'anche_socio') {
+                // Show membership section, hide donor category section
+                $('.fg-categoria-donatore-section').hide();
+                $('.fg-iscrizione-section').show();
+            }
+        });
+        
         // Auto-calculate expiry date based on subscription date
         $('#fg_data_iscrizione').on('change', function() {
             var dataIscrizione = $(this).val();
