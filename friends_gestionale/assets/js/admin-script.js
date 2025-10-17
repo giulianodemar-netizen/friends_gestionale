@@ -206,6 +206,8 @@
                         $('#fg_tipo_pagamento').val('donazione');
                         togglePaymentFields();
                     }
+                    // Also hide categoria socio field for simple donors
+                    $('#fg_categoria_socio_field').hide();
                 } else {
                     // Member donor - show quota option
                     quotaOption.show();

@@ -495,9 +495,16 @@ class Friends_Gestionale_Post_Types {
                     'compare' => '='
                 ),
                 array(
-                    'key' => '_fg_tipo_donatore',
-                    'value' => 'anche_socio',
-                    'compare' => '='
+                    'relation' => 'OR',
+                    array(
+                        'key' => '_fg_tipo_donatore',
+                        'value' => 'anche_socio',
+                        'compare' => '='
+                    ),
+                    array(
+                        'key' => '_fg_tipo_donatore',
+                        'compare' => 'NOT EXISTS'
+                    )
                 )
             );
             $query->set('meta_query', $meta_query);

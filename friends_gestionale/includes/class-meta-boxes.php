@@ -788,6 +788,17 @@ class Friends_Gestionale_Meta_Boxes {
                                             <a href="<?php echo get_edit_post_link($socio_id); ?>" target="_blank" style="color: #0073aa; text-decoration: none; font-weight: 500;">
                                                 <?php echo esc_html($socio->post_title); ?>
                                             </a>
+                                            <?php 
+                                            $tipo_donatore = get_post_meta($socio_id, '_fg_tipo_donatore', true);
+                                            if (empty($tipo_donatore)) {
+                                                $tipo_donatore = 'anche_socio';
+                                            }
+                                            if ($tipo_donatore === 'anche_socio'):
+                                            ?>
+                                                <span class="fg-badge fg-stato-attivo" style="margin-left: 8px; font-size: 10px;">Socio</span>
+                                            <?php else: ?>
+                                                <span class="fg-badge" style="margin-left: 8px; font-size: 10px;">Donatore</span>
+                                            <?php endif; ?>
                                             <?php if ($data_pagamento): ?>
                                                 <small style="color: #666; display: block; margin-top: 3px;">
                                                     <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($data_pagamento))); ?>
@@ -1213,6 +1224,36 @@ class Friends_Gestionale_Meta_Boxes {
             }
             if (isset($_POST['fg_note'])) {
                 update_post_meta($post_id, '_fg_note', sanitize_textarea_field($_POST['fg_note']));
+            }
+            
+            // Update member expiry date if this is a quota payment
+            $tipo_pagamento = isset($_POST['fg_tipo_pagamento']) ? sanitize_text_field($_POST['fg_tipo_pagamento']) : get_post_meta($post_id, '_fg_tipo_pagamento', true);
+            $socio_id = isset($_POST['fg_socio_id']) ? absint($_POST['fg_socio_id']) : get_post_meta($post_id, '_fg_socio_id', true);
+            
+            if ($tipo_pagamento === 'quota' && $socio_id) {
+                // Get current expiry date
+                $current_expiry = get_post_meta($socio_id, '_fg_data_scadenza', true);
+                
+                if ($current_expiry) {
+                    // Add one year to current expiry date
+                    $expiry_date = new DateTime($current_expiry);
+                    $expiry_date->modify('+1 year');
+                    $new_expiry = $expiry_date->format('Y-m-d');
+                } else {
+                    // If no expiry date exists, set to one year from today
+                    $expiry_date = new DateTime();
+                    $expiry_date->modify('+1 year');
+                    $new_expiry = $expiry_date->format('Y-m-d');
+                }
+                
+                // Update the member's expiry date
+                update_post_meta($socio_id, '_fg_data_scadenza', $new_expiry);
+                
+                // Also update stato to 'attivo' if it's currently scaduto
+                $current_stato = get_post_meta($socio_id, '_fg_stato', true);
+                if ($current_stato === 'scaduto' || empty($current_stato)) {
+                    update_post_meta($socio_id, '_fg_stato', 'attivo');
+                }
             }
             
             // Generate automatic reference title
