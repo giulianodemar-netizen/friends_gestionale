@@ -487,26 +487,61 @@ class Friends_Gestionale_Post_Types {
         global $pagenow, $typenow;
         
         if ($pagenow == 'edit.php' && $typenow == 'fg_socio' && isset($_GET['fg_stato_filter']) && $_GET['fg_stato_filter'] != '') {
-            $meta_query = array(
-                'relation' => 'AND',
-                array(
-                    'key' => '_fg_stato',
-                    'value' => sanitize_text_field($_GET['fg_stato_filter']),
-                    'compare' => '='
-                ),
-                array(
-                    'relation' => 'OR',
+            $filter_stato = sanitize_text_field($_GET['fg_stato_filter']);
+            
+            if ($filter_stato === 'scaduto') {
+                // For scaduto filter, check expiry date instead of stato field
+                $today = date('Y-m-d');
+                $meta_query = array(
+                    'relation' => 'AND',
                     array(
-                        'key' => '_fg_tipo_donatore',
-                        'value' => 'anche_socio',
+                        'relation' => 'OR',
+                        array(
+                            'key' => '_fg_tipo_donatore',
+                            'value' => 'anche_socio',
+                            'compare' => '='
+                        ),
+                        array(
+                            'key' => '_fg_tipo_donatore',
+                            'compare' => 'NOT EXISTS'
+                        )
+                    ),
+                    array(
+                        'key' => '_fg_data_scadenza',
+                        'value' => '',
+                        'compare' => '!='
+                    ),
+                    array(
+                        'key' => '_fg_data_scadenza',
+                        'value' => $today,
+                        'compare' => '<',
+                        'type' => 'DATE'
+                    )
+                );
+            } else {
+                // For other statuses, filter by stato field
+                $meta_query = array(
+                    'relation' => 'AND',
+                    array(
+                        'key' => '_fg_stato',
+                        'value' => $filter_stato,
                         'compare' => '='
                     ),
                     array(
-                        'key' => '_fg_tipo_donatore',
-                        'compare' => 'NOT EXISTS'
+                        'relation' => 'OR',
+                        array(
+                            'key' => '_fg_tipo_donatore',
+                            'value' => 'anche_socio',
+                            'compare' => '='
+                        ),
+                        array(
+                            'key' => '_fg_tipo_donatore',
+                            'compare' => 'NOT EXISTS'
+                        )
                     )
-                )
-            );
+                );
+            }
+            
             $query->set('meta_query', $meta_query);
         }
     }
