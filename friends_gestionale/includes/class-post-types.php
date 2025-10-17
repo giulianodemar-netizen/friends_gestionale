@@ -39,6 +39,10 @@ class Friends_Gestionale_Post_Types {
         add_action('restrict_manage_posts', array($this, 'add_pagamento_filters'));
         add_filter('parse_query', array($this, 'filter_pagamenti_by_type'));
         
+        // Add filter dropdown for donor status
+        add_action('restrict_manage_posts', array($this, 'add_donor_stato_filter'));
+        add_filter('parse_query', array($this, 'filter_donors_by_stato'));
+        
         // Add admin footer script for participant popup
         add_action('admin_footer', array($this, 'add_partecipanti_popup_script'));
     }
@@ -388,6 +392,7 @@ class Friends_Gestionale_Post_Types {
             'cb' => $columns['cb'],
             'title' => __('Riferimento', 'friends-gestionale'),
             'fg_socio' => __('Donatore', 'friends-gestionale'),
+            'fg_tipo_donatore' => __('Tipo Donatore', 'friends-gestionale'),
             'fg_importo' => __('Importo', 'friends-gestionale'),
             'fg_data_pagamento' => __('Data Pagamento', 'friends-gestionale'),
             'fg_metodo_pagamento' => __('Metodo', 'friends-gestionale'),
@@ -446,6 +451,54 @@ class Friends_Gestionale_Post_Types {
     }
     
     /**
+     * Add filter dropdown for donor status
+     */
+    public function add_donor_stato_filter() {
+        global $typenow;
+        
+        if ($typenow == 'fg_socio') {
+            $current_stato = isset($_GET['fg_stato_filter']) ? $_GET['fg_stato_filter'] : '';
+            
+            $stati = array(
+                'attivo' => __('Attivo', 'friends-gestionale'),
+                'sospeso' => __('Sospeso', 'friends-gestionale'),
+                'scaduto' => __('Scaduto', 'friends-gestionale'),
+                'inattivo' => __('Inattivo', 'friends-gestionale')
+            );
+            
+            echo '<select name="fg_stato_filter">';
+            echo '<option value="">' . __('Tutti gli stati', 'friends-gestionale') . '</option>';
+            foreach ($stati as $value => $label) {
+                printf(
+                    '<option value="%s"%s>%s</option>',
+                    esc_attr($value),
+                    selected($current_stato, $value, false),
+                    esc_html($label)
+                );
+            }
+            echo '</select>';
+        }
+    }
+    
+    /**
+     * Filter donors by status
+     */
+    public function filter_donors_by_stato($query) {
+        global $pagenow, $typenow;
+        
+        if ($pagenow == 'edit.php' && $typenow == 'fg_socio' && isset($_GET['fg_stato_filter']) && $_GET['fg_stato_filter'] != '') {
+            $meta_query = array(
+                array(
+                    'key' => '_fg_stato',
+                    'value' => sanitize_text_field($_GET['fg_stato_filter']),
+                    'compare' => '='
+                )
+            );
+            $query->set('meta_query', $meta_query);
+        }
+    }
+    
+    /**
      * Render custom columns for Pagamenti
      */
     public function render_pagamento_columns($column, $post_id) {
@@ -458,6 +511,22 @@ class Friends_Gestionale_Post_Types {
                         echo '<a href="' . get_edit_post_link($socio_id) . '">' . esc_html($socio->post_title) . '</a>';
                     } else {
                         echo '-';
+                    }
+                } else {
+                    echo '-';
+                }
+                break;
+            case 'fg_tipo_donatore':
+                $socio_id = get_post_meta($post_id, '_fg_socio_id', true);
+                if ($socio_id) {
+                    $tipo_donatore = get_post_meta($socio_id, '_fg_tipo_donatore', true);
+                    if (empty($tipo_donatore)) {
+                        $tipo_donatore = 'anche_socio'; // Default for backward compatibility
+                    }
+                    if ($tipo_donatore === 'anche_socio') {
+                        echo '<span class="fg-badge fg-stato-attivo">Socio</span>';
+                    } else {
+                        echo '<span class="fg-badge">Donatore</span>';
                     }
                 } else {
                     echo '-';

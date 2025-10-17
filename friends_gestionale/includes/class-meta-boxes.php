@@ -542,14 +542,21 @@ class Friends_Gestionale_Meta_Boxes {
                 <div class="fg-form-row">
                     <div class="fg-form-field">
                         <label for="fg_socio_id"><strong><?php _e('Donatore:', 'friends-gestionale'); ?></strong></label>
-                        <select id="fg_socio_id" name="fg_socio_id" class="widefat">
+                        <select id="fg_socio_id" name="fg_socio_id" class="widefat fg-select2-donor">
                             <option value=""><?php _e('Seleziona Donatore', 'friends-gestionale'); ?></option>
-                            <?php foreach ($soci as $socio): ?>
+                            <?php foreach ($soci as $socio): 
+                                $tipo_donatore = get_post_meta($socio->ID, '_fg_tipo_donatore', true);
+                                if (empty($tipo_donatore)) {
+                                    $tipo_donatore = 'anche_socio'; // Default
+                                }
+                                $tipo_label = ($tipo_donatore === 'anche_socio') ? ' [Socio]' : ' [Donatore]';
+                            ?>
                                 <option value="<?php echo $socio->ID; ?>" <?php selected($socio_id, $socio->ID); ?>>
-                                    <?php echo esc_html($socio->post_title); ?>
+                                    <?php echo esc_html($socio->post_title . $tipo_label); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        <p class="description"><?php _e('Cerca per nome. [Socio] indica un donatore che è anche socio, [Donatore] indica un donatore semplice.', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 

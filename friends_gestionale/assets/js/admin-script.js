@@ -7,6 +7,15 @@
     
     $(document).ready(function() {
         
+        // Initialize Select2 for donor dropdown in payments
+        if (typeof $.fn.select2 !== 'undefined') {
+            $('.fg-select2-donor').select2({
+                placeholder: 'Cerca donatore per nome...',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+        
         // Document Upload Handler
         $('#fg-upload-document').on('click', function(e) {
             e.preventDefault();
