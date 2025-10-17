@@ -258,6 +258,7 @@ class Friends_Gestionale_Post_Types {
             'fg_telefono' => __('Telefono', 'friends-gestionale'),
             'fg_codice_fiscale' => __('Codice Fiscale', 'friends-gestionale'),
             'fg_tipo_donatore' => __('Tipo', 'friends-gestionale'),
+            'fg_tipo_persona' => __('Persona', 'friends-gestionale'),
             'fg_stato' => __('Stato', 'friends-gestionale'),
             'fg_data_iscrizione' => __('Data Iscrizione', 'friends-gestionale'),
             'fg_data_scadenza' => __('Data Scadenza', 'friends-gestionale'),
@@ -294,6 +295,17 @@ class Friends_Gestionale_Post_Types {
                     echo '<span class="fg-badge fg-stato-attivo">Socio</span>';
                 } else {
                     echo '<span class="fg-badge">Donatore</span>';
+                }
+                break;
+            case 'fg_tipo_persona':
+                $tipo_persona = get_post_meta($post_id, '_fg_tipo_persona', true);
+                if (empty($tipo_persona)) {
+                    $tipo_persona = 'privato'; // Default
+                }
+                if ($tipo_persona === 'societa') {
+                    echo '<span class="fg-badge" style="background-color: #8b5cf6; color: white;">Società</span>';
+                } else {
+                    echo '<span class="fg-badge" style="background-color: #10b981; color: white;">Privato</span>';
                 }
                 break;
             case 'fg_tipologia_socio':

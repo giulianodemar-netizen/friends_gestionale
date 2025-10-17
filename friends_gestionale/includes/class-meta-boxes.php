@@ -284,7 +284,7 @@ class Friends_Gestionale_Meta_Boxes {
                 <div class="fg-form-row">
                     <div class="fg-form-field fg-field-third">
                         <label for="fg_data_iscrizione"><strong><?php _e('Data Iscrizione:', 'friends-gestionale'); ?></strong></label>
-                        <input type="date" id="fg_data_iscrizione" name="fg_data_iscrizione" value="<?php echo esc_attr($data_iscrizione); ?>" class="widefat" />
+                        <input type="date" id="fg_data_iscrizione" name="fg_data_iscrizione" value="<?php echo esc_attr($data_iscrizione ? $data_iscrizione : ($post->ID ? '' : date('Y-m-d'))); ?>" class="widefat" />
                     </div>
                     <div class="fg-form-field fg-field-third">
                         <label for="fg_data_scadenza"><strong><?php _e('Data Scadenza:', 'friends-gestionale'); ?></strong></label>
@@ -663,7 +663,7 @@ class Friends_Gestionale_Meta_Boxes {
                 <div class="fg-form-row" id="fg_categoria_socio_field" style="display: none;">
                     <div class="fg-form-field">
                         <label for="fg_categoria_socio_id"><strong><?php _e('Categoria Socio:', 'friends-gestionale'); ?></strong></label>
-                        <select id="fg_categoria_socio_id" name="fg_categoria_socio_id" class="widefat">
+                        <select id="fg_categoria_socio_id" name="fg_categoria_socio_id" class="widefat" disabled>
                             <option value=""><?php _e('Seleziona Categoria', 'friends-gestionale'); ?></option>
                             <?php if (!empty($categorie) && !is_wp_error($categorie)): ?>
                                 <?php foreach ($categorie as $categoria): ?>
@@ -673,6 +673,7 @@ class Friends_Gestionale_Meta_Boxes {
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </select>
+                        <p class="description" style="color: #666;"><?php _e('La categoria socio può essere modificata solo dalla scheda del donatore.', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
