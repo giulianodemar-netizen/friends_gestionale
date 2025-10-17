@@ -43,7 +43,7 @@ class Friends_Gestionale_Export {
             <h1><?php _e('Esporta Dati', 'friends-gestionale'); ?></h1>
             
             <div class="fg-export-section">
-                <h2><?php _e('Esporta Soci', 'friends-gestionale'); ?></h2>
+                <h2><?php _e('Esporta Donatori', 'friends-gestionale'); ?></h2>
                 <p><?php _e('Esporta l\'elenco completo dei soci in formato CSV.', 'friends-gestionale'); ?></p>
                 <form method="post" action="">
                     <?php wp_nonce_field('fg_export_soci', 'fg_export_nonce'); ?>
@@ -52,23 +52,23 @@ class Friends_Gestionale_Export {
                     <p>
                         <label>
                             <input type="checkbox" name="fg_export_stato[]" value="attivo" checked />
-                            <?php _e('Soci Attivi', 'friends-gestionale'); ?>
+                            <?php _e('Donatori Attivi', 'friends-gestionale'); ?>
                         </label><br>
                         <label>
                             <input type="checkbox" name="fg_export_stato[]" value="sospeso" />
-                            <?php _e('Soci Sospesi', 'friends-gestionale'); ?>
+                            <?php _e('Donatori Sospesi', 'friends-gestionale'); ?>
                         </label><br>
                         <label>
                             <input type="checkbox" name="fg_export_stato[]" value="scaduto" />
-                            <?php _e('Soci Scaduti', 'friends-gestionale'); ?>
+                            <?php _e('Donatori Scaduti', 'friends-gestionale'); ?>
                         </label><br>
                         <label>
                             <input type="checkbox" name="fg_export_stato[]" value="inattivo" />
-                            <?php _e('Soci Inattivi', 'friends-gestionale'); ?>
+                            <?php _e('Donatori Inattivi', 'friends-gestionale'); ?>
                         </label>
                     </p>
                     
-                    <?php submit_button(__('Esporta Soci CSV', 'friends-gestionale'), 'primary', 'submit', false); ?>
+                    <?php submit_button(__('Esporta Donatori CSV', 'friends-gestionale'), 'primary', 'submit', false); ?>
                 </form>
             </div>
             
@@ -295,8 +295,8 @@ class Friends_Gestionale_Export {
         fputcsv($output, array(
             'ID',
             'Data Pagamento',
-            'Socio ID',
-            'Nome Socio',
+            'Donatore ID',
+            'Nome Donatore',
             'Importo',
             'Metodo Pagamento',
             'Tipo Pagamento',

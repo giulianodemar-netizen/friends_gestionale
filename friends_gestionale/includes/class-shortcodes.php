@@ -26,7 +26,7 @@ class Friends_Gestionale_Shortcodes {
     }
     
     /**
-     * Elenco Soci Shortcode
+     * Elenco Donatori Shortcode
      * Usage: [fg_elenco_soci categoria="" stato="attivo" limite="10"]
      */
     public function elenco_soci_shortcode($atts) {
@@ -115,7 +115,7 @@ class Friends_Gestionale_Shortcodes {
     }
     
     /**
-     * Dettaglio Socio Shortcode
+     * Dettaglio Donatore Shortcode
      * Usage: [fg_dettaglio_socio id="123"]
      */
     public function dettaglio_socio_shortcode($atts) {
@@ -127,7 +127,7 @@ class Friends_Gestionale_Shortcodes {
         $post = get_post($post_id);
         
         if (!$post || $post->post_type !== 'fg_socio') {
-            return '<p>' . __('Socio non trovato.', 'friends-gestionale') . '</p>';
+            return '<p>' . __('Donatore non trovato.', 'friends-gestionale') . '</p>';
         }
         
         $codice_fiscale = get_post_meta($post_id, '_fg_codice_fiscale', true);
@@ -434,7 +434,7 @@ class Friends_Gestionale_Shortcodes {
                     <div class="fg-stat-icon dashicons dashicons-groups"></div>
                     <div class="fg-stat-content">
                         <div class="fg-stat-number"><?php echo $total_soci; ?></div>
-                        <div class="fg-stat-label"><?php _e('Totale Soci', 'friends-gestionale'); ?></div>
+                        <div class="fg-stat-label"><?php _e('Totale Donatori', 'friends-gestionale'); ?></div>
                     </div>
                 </div>
                 
@@ -442,7 +442,7 @@ class Friends_Gestionale_Shortcodes {
                     <div class="fg-stat-icon dashicons dashicons-yes"></div>
                     <div class="fg-stat-content">
                         <div class="fg-stat-number"><?php echo $count_attivi; ?></div>
-                        <div class="fg-stat-label"><?php _e('Soci Attivi', 'friends-gestionale'); ?></div>
+                        <div class="fg-stat-label"><?php _e('Donatori Attivi', 'friends-gestionale'); ?></div>
                     </div>
                 </div>
                 
@@ -466,7 +466,7 @@ class Friends_Gestionale_Shortcodes {
             <div class="fg-export-section">
                 <h3><?php _e('Esportazione Dati', 'friends-gestionale'); ?></h3>
                 <p>
-                    <a href="<?php echo admin_url('admin.php?page=fg-export&type=soci'); ?>" class="button button-primary"><?php _e('Esporta Soci (CSV)', 'friends-gestionale'); ?></a>
+                    <a href="<?php echo admin_url('admin.php?page=fg-export&type=soci'); ?>" class="button button-primary"><?php _e('Esporta Donatori (CSV)', 'friends-gestionale'); ?></a>
                     <a href="<?php echo admin_url('admin.php?page=fg-export&type=pagamenti'); ?>" class="button button-primary"><?php _e('Esporta Pagamenti (CSV)', 'friends-gestionale'); ?></a>
                     <a href="<?php echo admin_url('admin.php?page=fg-export&type=raccolte'); ?>" class="button button-primary"><?php _e('Esporta Raccolte (CSV)', 'friends-gestionale'); ?></a>
                 </p>
@@ -477,7 +477,7 @@ class Friends_Gestionale_Shortcodes {
     }
     
     /**
-     * Filtro Soci Shortcode
+     * Filtro Donatori Shortcode
      * Usage: [fg_filtro_soci]
      */
     public function filtro_soci_shortcode($atts) {
