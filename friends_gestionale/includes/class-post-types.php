@@ -254,11 +254,11 @@ class Friends_Gestionale_Post_Types {
         return array(
             'cb' => $columns['cb'],
             'fg_nome_foto' => __('Nome Completo', 'friends-gestionale'),
+            'fg_tipo_persona' => __('Privato/Società', 'friends-gestionale'),
             'fg_email' => __('Email', 'friends-gestionale'),
             'fg_telefono' => __('Telefono', 'friends-gestionale'),
             'fg_codice_fiscale' => __('Codice Fiscale', 'friends-gestionale'),
             'fg_tipo_donatore' => __('Tipo', 'friends-gestionale'),
-            'fg_tipo_persona' => __('Persona', 'friends-gestionale'),
             'fg_stato' => __('Stato', 'friends-gestionale'),
             'fg_data_iscrizione' => __('Data Iscrizione', 'friends-gestionale'),
             'fg_data_scadenza' => __('Data Scadenza', 'friends-gestionale'),

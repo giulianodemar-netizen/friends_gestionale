@@ -284,7 +284,7 @@ class Friends_Gestionale_Meta_Boxes {
                 <div class="fg-form-row">
                     <div class="fg-form-field fg-field-third">
                         <label for="fg_data_iscrizione"><strong><?php _e('Data Iscrizione:', 'friends-gestionale'); ?></strong></label>
-                        <input type="date" id="fg_data_iscrizione" name="fg_data_iscrizione" value="<?php echo esc_attr($data_iscrizione ? $data_iscrizione : ($post->ID ? '' : date('Y-m-d'))); ?>" class="widefat" />
+                        <input type="date" id="fg_data_iscrizione" name="fg_data_iscrizione" value="<?php echo esc_attr($data_iscrizione ? $data_iscrizione : date('Y-m-d')); ?>" class="widefat" />
                     </div>
                     <div class="fg-form-field fg-field-third">
                         <label for="fg_data_scadenza"><strong><?php _e('Data Scadenza:', 'friends-gestionale'); ?></strong></label>
