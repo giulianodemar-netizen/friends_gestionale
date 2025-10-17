@@ -60,7 +60,9 @@
             
             var select = $('#fg-add-partecipante');
             var socioId = select.val();
-            var socioName = select.find('option:selected').text();
+            var selectedOption = select.find('option:selected');
+            var socioName = selectedOption.text();
+            var tipoDonatore = selectedOption.data('tipo');
             
             if (!socioId) {
                 alert('Seleziona un donatore dalla lista');
@@ -76,8 +78,19 @@
             // Remove "no partecipanti" message if exists
             $('.fg-no-partecipanti').remove();
             
+            // Extract clean name (remove label)
+            var cleanName = socioName.replace(/\s*\[(Socio|Donatore)\]\s*$/, '');
+            
+            // Create badge HTML
+            var badgeHtml = '';
+            if (tipoDonatore === 'anche_socio') {
+                badgeHtml = '<span class="fg-badge fg-stato-attivo" style="margin-left: 5px; font-size: 10px;">Socio</span>';
+            } else {
+                badgeHtml = '<span class="fg-badge" style="margin-left: 5px; font-size: 10px;">Donatore</span>';
+            }
+            
             var partecipanteHtml = '<div class="fg-partecipante-item" data-socio-id="' + socioId + '">' +
-                '<span class="fg-partecipante-name">' + socioName + '</span>' +
+                '<span class="fg-partecipante-name">' + cleanName + badgeHtml + '</span>' +
                 '<button type="button" class="button fg-remove-partecipante" data-socio-id="' + socioId + '">Rimuovi</button>' +
                 '<input type="hidden" name="fg_partecipanti[]" value="' + socioId + '" />' +
                 '</div>';
@@ -176,10 +189,28 @@
             }
         });
         
-        // Auto-populate payment amount from member's quota
+        // Auto-populate payment amount from member's quota and manage payment type options
         $('#fg_socio_id').on('change', function() {
             var socioId = $(this).val();
             if (socioId) {
+                // Get donor type from the selected option text
+                var selectedText = $(this).find('option:selected').text();
+                var isDonorOnly = selectedText.indexOf('[Donatore]') !== -1;
+                
+                // Hide/show "Quota Associativa" option based on donor type
+                var quotaOption = $('#fg_tipo_pagamento option[value="quota"]');
+                if (isDonorOnly) {
+                    // Simple donor - hide quota option and select another option if quota was selected
+                    quotaOption.hide();
+                    if ($('#fg_tipo_pagamento').val() === 'quota') {
+                        $('#fg_tipo_pagamento').val('donazione');
+                        togglePaymentFields();
+                    }
+                } else {
+                    // Member donor - show quota option
+                    quotaOption.show();
+                }
+                
                 $.ajax({
                     url: ajaxurl,
                     type: 'POST',
@@ -194,8 +225,16 @@
                         }
                     }
                 });
+            } else {
+                // No donor selected - show all options
+                $('#fg_tipo_pagamento option[value="quota"]').show();
             }
         });
+        
+        // Trigger donor type check on page load
+        if ($('#fg_socio_id').val()) {
+            $('#fg_socio_id').trigger('change');
+        }
         
         // Show/hide conditional payment fields based on payment type
         function togglePaymentFields() {

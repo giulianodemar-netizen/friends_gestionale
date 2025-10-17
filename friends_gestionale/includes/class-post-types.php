@@ -488,9 +488,15 @@ class Friends_Gestionale_Post_Types {
         
         if ($pagenow == 'edit.php' && $typenow == 'fg_socio' && isset($_GET['fg_stato_filter']) && $_GET['fg_stato_filter'] != '') {
             $meta_query = array(
+                'relation' => 'AND',
                 array(
                     'key' => '_fg_stato',
                     'value' => sanitize_text_field($_GET['fg_stato_filter']),
+                    'compare' => '='
+                ),
+                array(
+                    'key' => '_fg_tipo_donatore',
+                    'value' => 'anche_socio',
                     'compare' => '='
                 )
             );
@@ -1063,6 +1069,10 @@ class Friends_Gestionale_Post_Types {
                                         html += '<a href="' + donor.edit_link + '" target="_blank">' + donor.name + '</a>';
                                     } else {
                                         html += donor.name;
+                                    }
+                                    if (donor.tipo) {
+                                        var badgeColor = donor.tipo === 'Socio' ? '#0073aa' : '#7e8993';
+                                        html += '<span style="display: inline-block; margin-left: 8px; padding: 2px 6px; background: ' + badgeColor + '; color: white; border-radius: 3px; font-size: 10px; font-weight: bold;">' + donor.tipo + '</span>';
                                     }
                                     if (donor.date) {
                                         html += '<div style="font-size: 12px; color: #666; margin-top: 3px;">' + donor.date + '</div>';

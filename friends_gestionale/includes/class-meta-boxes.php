@@ -567,7 +567,7 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                     <div class="fg-form-field fg-field-half">
                         <label for="fg_data_pagamento"><strong><?php _e('Data Pagamento:', 'friends-gestionale'); ?></strong></label>
-                        <input type="date" id="fg_data_pagamento" name="fg_data_pagamento" value="<?php echo esc_attr($data_pagamento); ?>" class="widefat" />
+                        <input type="date" id="fg_data_pagamento" name="fg_data_pagamento" value="<?php echo esc_attr($data_pagamento ? $data_pagamento : date('Y-m-d')); ?>" class="widefat" />
                     </div>
                 </div>
                 
@@ -1003,8 +1003,14 @@ class Friends_Gestionale_Meta_Boxes {
                     <div class="fg-form-field">
                         <select id="fg-add-partecipante" class="widefat">
                             <option value=""><?php _e('Seleziona un donatore...', 'friends-gestionale'); ?></option>
-                            <?php foreach ($soci as $socio): ?>
-                                <option value="<?php echo $socio->ID; ?>"><?php echo esc_html($socio->post_title); ?></option>
+                            <?php foreach ($soci as $socio): 
+                                $tipo_donatore = get_post_meta($socio->ID, '_fg_tipo_donatore', true);
+                                if (empty($tipo_donatore)) {
+                                    $tipo_donatore = 'anche_socio';
+                                }
+                                $tipo_label = ($tipo_donatore === 'anche_socio') ? ' [Socio]' : ' [Donatore]';
+                            ?>
+                                <option value="<?php echo $socio->ID; ?>" data-tipo="<?php echo $tipo_donatore; ?>"><?php echo esc_html($socio->post_title . $tipo_label); ?></option>
                             <?php endforeach; ?>
                         </select>
                         <button type="button" class="button button-primary" id="fg-add-partecipante-btn" style="margin-top: 10px;">
@@ -1023,9 +1029,20 @@ class Friends_Gestionale_Meta_Boxes {
                             $socio = get_post($socio_id);
                             if ($socio):
                                 $email = get_post_meta($socio_id, '_fg_email', true);
+                                $tipo_donatore = get_post_meta($socio_id, '_fg_tipo_donatore', true);
+                                if (empty($tipo_donatore)) {
+                                    $tipo_donatore = 'anche_socio'; // Default
+                                }
                             ?>
                                 <div class="fg-partecipante-item" data-socio-id="<?php echo $socio_id; ?>">
-                                    <span class="fg-partecipante-name"><?php echo esc_html($socio->post_title); ?></span>
+                                    <span class="fg-partecipante-name">
+                                        <?php echo esc_html($socio->post_title); ?>
+                                        <?php if ($tipo_donatore === 'anche_socio'): ?>
+                                            <span class="fg-badge fg-stato-attivo" style="margin-left: 5px; font-size: 10px;">Socio</span>
+                                        <?php else: ?>
+                                            <span class="fg-badge" style="margin-left: 5px; font-size: 10px;">Donatore</span>
+                                        <?php endif; ?>
+                                    </span>
                                     <?php if ($email): ?>
                                         <span class="fg-partecipante-email">(<?php echo esc_html($email); ?>)</span>
                                     <?php endif; ?>
