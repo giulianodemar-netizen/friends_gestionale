@@ -175,6 +175,38 @@
             }
         });
         
+        // Handle person type change (privato/società)
+        $('input[name="fg_tipo_persona"]').on('change', function() {
+            var tipoPersona = $(this).val();
+            
+            if (tipoPersona === 'societa') {
+                // Show ragione sociale, change labels, remove required from nome/cognome
+                $('.fg-ragione-sociale-field').show();
+                $('#fg_ragione_sociale').prop('required', true);
+                $('#fg_nome').prop('required', false);
+                $('#fg_cognome').prop('required', false);
+                $('.fg-nome-required').hide();
+                $('.fg-cognome-required').hide();
+                $('#fg_nome_label strong').text('Nome Referente:');
+                $('#fg_cognome_label strong').text('Cognome Referente:');
+            } else {
+                // Hide ragione sociale, change labels back, add required to nome/cognome
+                $('.fg-ragione-sociale-field').hide();
+                $('#fg_ragione_sociale').prop('required', false);
+                $('#fg_nome').prop('required', true);
+                $('#fg_cognome').prop('required', true);
+                $('.fg-nome-required').show();
+                $('.fg-cognome-required').show();
+                $('#fg_nome_label strong').text('Nome:');
+                $('#fg_cognome_label strong').text('Cognome:');
+            }
+        });
+        
+        // Trigger on page load
+        if ($('input[name="fg_tipo_persona"]:checked').length > 0) {
+            $('input[name="fg_tipo_persona"]:checked').trigger('change');
+        }
+        
         // Auto-calculate expiry date based on subscription date
         $('#fg_data_iscrizione').on('change', function() {
             var dataIscrizione = $(this).val();
@@ -247,6 +279,7 @@
             $('#fg_evento_custom_field').hide();
             $('#fg_categoria_socio_field').hide();
             $('#fg_raccolta_field').hide();
+            $('#fg_quota_warning').hide();
             
             // Show fields based on payment type
             if (tipoPagamento === 'evento') {
@@ -262,6 +295,7 @@
                 $('#fg_importo').css('background-color', '');
             } else if (tipoPagamento === 'quota') {
                 $('#fg_categoria_socio_field').show();
+                $('#fg_quota_warning').show();
                 // Auto-populate amount when quota type is selected
                 updatePaymentAmountFromCategory();
             } else if (tipoPagamento === 'raccolta') {

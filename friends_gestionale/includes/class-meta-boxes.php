@@ -120,6 +120,11 @@ class Friends_Gestionale_Meta_Boxes {
         if (empty($tipo_donatore)) {
             $tipo_donatore = 'anche_socio'; // Default to member for backward compatibility
         }
+        $tipo_persona = get_post_meta($post->ID, '_fg_tipo_persona', true);
+        if (empty($tipo_persona)) {
+            $tipo_persona = 'privato'; // Default to individual
+        }
+        $ragione_sociale = get_post_meta($post->ID, '_fg_ragione_sociale', true);
         ?>
         <div class="fg-meta-box fg-improved-form">
             <div class="fg-form-section">
@@ -138,14 +143,39 @@ class Friends_Gestionale_Meta_Boxes {
             
             <div class="fg-form-section">
                 <h3 class="fg-section-title"><?php _e('Dati Anagrafici', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label><strong><?php _e('Tipo Persona:', 'friends-gestionale'); ?></strong></label>
+                        <div style="margin-top: 8px;">
+                            <label style="display: inline-block; margin-right: 20px;">
+                                <input type="radio" name="fg_tipo_persona" value="privato" <?php checked($tipo_persona, 'privato'); ?> id="fg_tipo_persona_privato" />
+                                <?php _e('Privato', 'friends-gestionale'); ?>
+                            </label>
+                            <label style="display: inline-block;">
+                                <input type="radio" name="fg_tipo_persona" value="societa" <?php checked($tipo_persona, 'societa'); ?> id="fg_tipo_persona_societa" />
+                                <?php _e('Società', 'friends-gestionale'); ?>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Ragione Sociale field - shown only for società -->
+                <div class="fg-form-row fg-ragione-sociale-field" style="display: <?php echo $tipo_persona === 'societa' ? 'block' : 'none'; ?>;">
+                    <div class="fg-form-field">
+                        <label for="fg_ragione_sociale"><strong><?php _e('Ragione Sociale:', 'friends-gestionale'); ?></strong> <span class="required">*</span></label>
+                        <input type="text" id="fg_ragione_sociale" name="fg_ragione_sociale" value="<?php echo esc_attr($ragione_sociale); ?>" class="widefat" />
+                    </div>
+                </div>
+                
                 <div class="fg-form-row">
                     <div class="fg-form-field fg-field-half">
-                        <label for="fg_nome"><strong><?php _e('Nome:', 'friends-gestionale'); ?></strong> <span class="required">*</span></label>
-                        <input type="text" id="fg_nome" name="fg_nome" value="<?php echo esc_attr($nome); ?>" class="widefat" required />
+                        <label for="fg_nome" id="fg_nome_label"><strong><?php echo $tipo_persona === 'societa' ? __('Nome Referente:', 'friends-gestionale') : __('Nome:', 'friends-gestionale'); ?></strong> <span class="required fg-nome-required" style="display: <?php echo $tipo_persona === 'societa' ? 'none' : 'inline'; ?>;">*</span></label>
+                        <input type="text" id="fg_nome" name="fg_nome" value="<?php echo esc_attr($nome); ?>" class="widefat" <?php echo $tipo_persona !== 'societa' ? 'required' : ''; ?> />
                     </div>
                     <div class="fg-form-field fg-field-half">
-                        <label for="fg_cognome"><strong><?php _e('Cognome:', 'friends-gestionale'); ?></strong> <span class="required">*</span></label>
-                        <input type="text" id="fg_cognome" name="fg_cognome" value="<?php echo esc_attr($cognome); ?>" class="widefat" required />
+                        <label for="fg_cognome" id="fg_cognome_label"><strong><?php echo $tipo_persona === 'societa' ? __('Cognome Referente:', 'friends-gestionale') : __('Cognome:', 'friends-gestionale'); ?></strong> <span class="required fg-cognome-required" style="display: <?php echo $tipo_persona === 'societa' ? 'none' : 'inline'; ?>;">*</span></label>
+                        <input type="text" id="fg_cognome" name="fg_cognome" value="<?php echo esc_attr($cognome); ?>" class="widefat" <?php echo $tipo_persona !== 'societa' ? 'required' : ''; ?> />
                     </div>
                 </div>
                 
@@ -646,6 +676,16 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                 </div>
                 
+                <!-- Warning message for quota payments -->
+                <div class="fg-form-row" id="fg_quota_warning" style="display: none;">
+                    <div class="notice notice-info inline" style="margin: 0; padding: 12px;">
+                        <p style="margin: 0;">
+                            <strong><?php _e('Attenzione:', 'friends-gestionale'); ?></strong>
+                            <?php _e('L\'inserimento di questo pagamento comporterà l\'automatico aggiornamento della data di scadenza del socio di un anno rispetto alla scadenza attuale. È comunque possibile modificare manualmente la data di scadenza dalla sezione Donatori.', 'friends-gestionale'); ?>
+                        </p>
+                    </div>
+                </div>
+                
                 <div class="fg-form-row">
                     <div class="fg-form-field">
                         <label for="fg_note"><strong><?php _e('Note:', 'friends-gestionale'); ?></strong></label>
@@ -1103,22 +1143,46 @@ class Friends_Gestionale_Meta_Boxes {
                 update_post_meta($post_id, '_fg_tipo_donatore', sanitize_text_field($_POST['fg_tipo_donatore']));
             }
             
-            // Update post title with nome + cognome
-            if (isset($_POST['fg_nome']) && isset($_POST['fg_cognome'])) {
+            // Save person type (privato/società)
+            if (isset($_POST['fg_tipo_persona'])) {
+                update_post_meta($post_id, '_fg_tipo_persona', sanitize_text_field($_POST['fg_tipo_persona']));
+            }
+            
+            // Save ragione sociale
+            if (isset($_POST['fg_ragione_sociale'])) {
+                update_post_meta($post_id, '_fg_ragione_sociale', sanitize_text_field($_POST['fg_ragione_sociale']));
+            }
+            
+            // Update post title based on person type
+            $tipo_persona = isset($_POST['fg_tipo_persona']) ? sanitize_text_field($_POST['fg_tipo_persona']) : 'privato';
+            
+            if ($tipo_persona === 'societa' && isset($_POST['fg_ragione_sociale']) && !empty($_POST['fg_ragione_sociale'])) {
+                // For società, use ragione sociale as title
+                $post_title = sanitize_text_field($_POST['fg_ragione_sociale']);
+            } else if (isset($_POST['fg_nome']) && isset($_POST['fg_cognome'])) {
+                // For privato, use nome + cognome
                 $nome = sanitize_text_field($_POST['fg_nome']);
                 $cognome = sanitize_text_field($_POST['fg_cognome']);
-                $nome_completo = trim($nome . ' ' . $cognome);
-                
+                $post_title = trim($nome . ' ' . $cognome);
+            } else {
+                $post_title = null;
+            }
+            
+            if ($post_title) {
                 // Update post title
                 remove_action('save_post', array($this, 'save_meta_boxes'), 10);
                 wp_update_post(array(
                     'ID' => $post_id,
-                    'post_title' => $nome_completo
+                    'post_title' => $post_title
                 ));
                 add_action('save_post', array($this, 'save_meta_boxes'), 10, 2);
-                
-                update_post_meta($post_id, '_fg_nome', $nome);
-                update_post_meta($post_id, '_fg_cognome', $cognome);
+            }
+            
+            if (isset($_POST['fg_nome'])) {
+                update_post_meta($post_id, '_fg_nome', sanitize_text_field($_POST['fg_nome']));
+            }
+            if (isset($_POST['fg_cognome'])) {
+                update_post_meta($post_id, '_fg_cognome', sanitize_text_field($_POST['fg_cognome']));
             }
             
             if (isset($_POST['fg_codice_fiscale'])) {
