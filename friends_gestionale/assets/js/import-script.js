@@ -178,8 +178,12 @@
                 html += '<option value="">-- Non importare --</option>';
                 
                 // Add column options
+                var hasSelected = false;
                 $.each(self.headers, function(i, header) {
                     var selected = self.autoMapField(key, header) ? ' selected' : '';
+                    if (selected) {
+                        hasSelected = true;
+                    }
                     html += '<option value="' + header + '"' + selected + '>' + header + '</option>';
                 });
                 
@@ -188,12 +192,10 @@
                 html += '<input type="text" class="fg-mapping-static" data-field="' + key + '" placeholder="Inserisci valore statico" />';
                 html += '</div>';
                 
-                // Set initial mapping
-                if (self.autoMapField(key, self.headers)) {
-                    var matched = self.findMatchingHeader(key);
-                    if (matched) {
-                        self.mapping[key] = matched;
-                    }
+                // Set initial mapping based on auto-match
+                var matched = self.findMatchingHeader(key);
+                if (matched) {
+                    self.mapping[key] = matched;
                 }
             });
             
