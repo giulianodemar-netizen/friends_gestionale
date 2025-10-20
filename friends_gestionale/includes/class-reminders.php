@@ -217,11 +217,22 @@ class Friends_Gestionale_Reminders {
                 )
             ));
             
-            // Count expired members
+            // Count expired members (only donors who are also members with expiry dates)
             $expired = new WP_Query(array(
                 'post_type' => 'fg_socio',
                 'posts_per_page' => -1,
                 'meta_query' => array(
+                    'relation' => 'AND',
+                    array(
+                        'key' => '_fg_tipo_donatore',
+                        'value' => 'anche_socio',
+                        'compare' => '='
+                    ),
+                    array(
+                        'key' => '_fg_data_scadenza',
+                        'value' => '',
+                        'compare' => '!=',
+                    ),
                     array(
                         'key' => '_fg_data_scadenza',
                         'value' => $today,
@@ -259,14 +270,14 @@ class Friends_Gestionale_Reminders {
                         <strong><?php _e('Attenzione:', 'friends-gestionale'); ?></strong>
                         <?php printf(
                             _n(
-                                'C\'è %d socio con quota scaduta.',
-                                'Ci sono %d soci con quota scaduta.',
+                                'C\'è %d donatore con quota scaduta.',
+                                'Ci sono %d donatori con quota scaduta.',
                                 $expired->found_posts,
                                 'friends-gestionale'
                             ),
                             $expired->found_posts
                         ); ?>
-                        <a href="<?php echo admin_url('edit.php?post_type=fg_socio'); ?>"><?php _e('Visualizza elenco', 'friends-gestionale'); ?></a>
+                        <a href="<?php echo admin_url('edit.php?post_type=fg_socio&fg_stato_filter=scaduto'); ?>"><?php _e('Visualizza elenco', 'friends-gestionale'); ?></a>
                     </p>
                 </div>
                 <?php

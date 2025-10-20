@@ -227,7 +227,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     </div>
                     <div class="fg-stat-content">
                         <h3><?php echo $total_soci; ?></h3>
-                        <p><?php _e('Totale Soci', 'friends-gestionale'); ?></p>
+                        <p><?php _e('Totale Donatori', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
@@ -237,7 +237,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     </div>
                     <div class="fg-stat-content">
                         <h3><?php echo $count_attivi; ?></h3>
-                        <p><?php _e('Soci Attivi', 'friends-gestionale'); ?></p>
+                        <p><?php _e('Donatori Attivi', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
@@ -247,7 +247,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     </div>
                     <div class="fg-stat-content">
                         <h3><?php echo $count_scaduti; ?></h3>
-                        <p><?php _e('Soci Scaduti', 'friends-gestionale'); ?></p>
+                        <p><?php _e('Donatori Scaduti', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
@@ -333,7 +333,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     </div>
                     <div class="fg-stat-content">
                         <h3><?php echo $count_nuovi_soci_mese; ?></h3>
-                        <p><?php _e('Nuovi Soci Questo Mese', 'friends-gestionale'); ?></p>
+                        <p><?php _e('Nuovi Donatori Questo Mese', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
@@ -356,9 +356,10 @@ class Friends_Gestionale_Admin_Dashboard {
                             <thead>
                                 <tr>
                                     <th><?php _e('Data', 'friends-gestionale'); ?></th>
-                                    <th><?php _e('Socio', 'friends-gestionale'); ?></th>
-                                    <th><?php _e('Importo', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Donatore', 'friends-gestionale'); ?></th>
                                     <th><?php _e('Tipo', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Importo', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Metodo', 'friends-gestionale'); ?></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -369,10 +370,25 @@ class Friends_Gestionale_Admin_Dashboard {
                                     $tipo = get_post_meta($pagamento->ID, '_fg_tipo_pagamento', true);
                                     $socio_id = get_post_meta($pagamento->ID, '_fg_socio_id', true);
                                     $socio_nome = $socio_id ? get_the_title($socio_id) : '-';
+                                    $tipo_donatore = $socio_id ? get_post_meta($socio_id, '_fg_tipo_donatore', true) : '';
+                                    if (empty($tipo_donatore)) {
+                                        $tipo_donatore = 'anche_socio'; // Default
+                                    }
                                     ?>
                                     <tr>
                                         <td><?php echo $data ? date_i18n(get_option('date_format'), strtotime($data)) : '-'; ?></td>
                                         <td><?php echo esc_html($socio_nome); ?></td>
+                                        <td>
+                                            <?php if ($socio_id): ?>
+                                                <?php if ($tipo_donatore === 'anche_socio'): ?>
+                                                    <span class="fg-badge fg-stato-attivo">Socio</span>
+                                                <?php else: ?>
+                                                    <span class="fg-badge">Donatore</span>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                -
+                                            <?php endif; ?>
+                                        </td>
                                         <td>€<?php echo number_format($importo, 2, ',', '.'); ?></td>
                                         <td><?php echo esc_html(ucfirst($tipo)); ?></td>
                                     </tr>
@@ -499,9 +515,14 @@ class Friends_Gestionale_Admin_Dashboard {
                         }
                         
                         if ($total > 0) {
+                            $tipo_donatore = get_post_meta($socio->ID, '_fg_tipo_donatore', true);
+                            if (empty($tipo_donatore)) {
+                                $tipo_donatore = 'anche_socio'; // Default
+                            }
                             $soci_donations[] = array(
                                 'nome' => $socio->post_title,
-                                'totale' => $total
+                                'totale' => $total,
+                                'tipo' => $tipo_donatore
                             );
                         }
                     }
@@ -518,6 +539,7 @@ class Friends_Gestionale_Admin_Dashboard {
                                 <tr>
                                     <th><?php _e('Posizione', 'friends-gestionale'); ?></th>
                                     <th><?php _e('Nome', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Tipo', 'friends-gestionale'); ?></th>
                                     <th><?php _e('Totale Donato', 'friends-gestionale'); ?></th>
                                 </tr>
                             </thead>
@@ -526,6 +548,13 @@ class Friends_Gestionale_Admin_Dashboard {
                                     <tr>
                                         <td><strong><?php echo $pos++; ?>°</strong></td>
                                         <td><?php echo esc_html($donor['nome']); ?></td>
+                                        <td>
+                                            <?php if ($donor['tipo'] === 'anche_socio'): ?>
+                                                <span class="fg-badge fg-stato-attivo">Socio</span>
+                                            <?php else: ?>
+                                                <span class="fg-badge">Donatore</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><strong>€<?php echo number_format($donor['totale'], 2, ',', '.'); ?></strong></td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -542,7 +571,7 @@ class Friends_Gestionale_Admin_Dashboard {
                 <div class="fg-actions-grid">
                     <a href="<?php echo admin_url('post-new.php?post_type=fg_socio'); ?>" class="button button-primary button-hero">
                         <span class="dashicons dashicons-plus"></span>
-                        <?php _e('Aggiungi Socio', 'friends-gestionale'); ?>
+                        <?php _e('Aggiungi Donatore', 'friends-gestionale'); ?>
                     </a>
                     <a href="<?php echo admin_url('post-new.php?post_type=fg_pagamento'); ?>" class="button button-primary button-hero">
                         <span class="dashicons dashicons-plus"></span>
@@ -883,9 +912,14 @@ class Friends_Gestionale_Admin_Dashboard {
             }
             
             if ($total > 0) {
+                $tipo_donatore = get_post_meta($socio->ID, '_fg_tipo_donatore', true);
+                if (empty($tipo_donatore)) {
+                    $tipo_donatore = 'anche_socio'; // Default
+                }
                 $soci_donations[] = array(
                     'nome' => $socio->post_title,
-                    'totale' => $total
+                    'totale' => $total,
+                    'tipo' => $tipo_donatore
                 );
             }
         }
@@ -932,7 +966,7 @@ class Friends_Gestionale_Admin_Dashboard {
                 </div>
                 
                 <div class="fg-chart-container">
-                    <h2><?php _e('Distribuzione Soci per Stato', 'friends-gestionale'); ?></h2>
+                    <h2><?php _e('Distribuzione Donatori per Stato', 'friends-gestionale'); ?></h2>
                     <canvas id="fg-members-chart" width="400" height="200"></canvas>
                 </div>
                 
@@ -942,7 +976,7 @@ class Friends_Gestionale_Admin_Dashboard {
                 </div>
                 
                 <div class="fg-chart-container">
-                    <h2><?php _e('Nuovi Soci (Ultimi 12 Mesi)', 'friends-gestionale'); ?></h2>
+                    <h2><?php _e('Nuovi Donatori (Ultimi 12 Mesi)', 'friends-gestionale'); ?></h2>
                     <canvas id="fg-new-members-chart" width="400" height="200"></canvas>
                 </div>
                 
@@ -993,6 +1027,7 @@ class Friends_Gestionale_Admin_Dashboard {
                                 <tr>
                                     <th><?php _e('Posizione', 'friends-gestionale'); ?></th>
                                     <th><?php _e('Nome', 'friends-gestionale'); ?></th>
+                                    <th><?php _e('Tipo', 'friends-gestionale'); ?></th>
                                     <th><?php _e('Totale Donato', 'friends-gestionale'); ?></th>
                                 </tr>
                             </thead>
@@ -1001,6 +1036,13 @@ class Friends_Gestionale_Admin_Dashboard {
                                     <tr>
                                         <td><strong><?php echo $pos++; ?>°</strong></td>
                                         <td><?php echo esc_html($donor['nome']); ?></td>
+                                        <td>
+                                            <?php if ($donor['tipo'] === 'anche_socio'): ?>
+                                                <span class="fg-badge fg-stato-attivo">Socio</span>
+                                            <?php else: ?>
+                                                <span class="fg-badge">Donatore</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><strong>€<?php echo number_format($donor['totale'], 2, ',', '.'); ?></strong></td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -1114,7 +1156,7 @@ class Friends_Gestionale_Admin_Dashboard {
                     data: {
                         labels: <?php echo json_encode($months); ?>,
                         datasets: [{
-                            label: '<?php _e('Nuovi Soci', 'friends-gestionale'); ?>',
+                            label: '<?php _e('Nuovi Donatori', 'friends-gestionale'); ?>',
                             data: <?php echo json_encode($new_members_data); ?>,
                             borderColor: 'rgb(153, 102, 255)',
                             backgroundColor: 'rgba(153, 102, 255, 0.2)',
@@ -1532,7 +1574,7 @@ class Friends_Gestionale_Admin_Dashboard {
                                         $tooltips_data[$tooltip_id] = array(
                                             'title' => 'Pagamento Effettuato',
                                             'rows' => array(
-                                                array('label' => 'Socio:', 'value' => esc_html($socio_nome)),
+                                                array('label' => 'Donatore:', 'value' => esc_html($socio_nome)),
                                                 array('label' => 'Importo:', 'value' => '€' . number_format($importo, 2)),
                                                 array('label' => 'Tipo:', 'value' => esc_html(ucfirst($tipo))),
                                                 array('label' => 'Metodo:', 'value' => esc_html(ucfirst($metodo))),
@@ -1576,7 +1618,7 @@ class Friends_Gestionale_Admin_Dashboard {
                                         $tooltips_data[$tooltip_id] = array(
                                             'title' => $is_overdue ? 'Pagamento Arretrato' : 'Pagamento in Scadenza',
                                             'rows' => array(
-                                                array('label' => 'Socio:', 'value' => esc_html($socio->post_title)),
+                                                array('label' => 'Donatore:', 'value' => esc_html($socio->post_title)),
                                                 array('label' => 'Quota:', 'value' => '€' . number_format($quota, 2)),
                                                 array('label' => 'Scadenza:', 'value' => date_i18n(get_option('date_format'), strtotime($data_scadenza))),
                                                 array('label' => 'Stato:', 'value' => $is_overdue ? 'Arretrato' : 'In scadenza'),

@@ -7,6 +7,15 @@
     
     $(document).ready(function() {
         
+        // Initialize Select2 for donor dropdown in payments
+        if (typeof $.fn.select2 !== 'undefined') {
+            $('.fg-select2-donor').select2({
+                placeholder: 'Cerca donatore per nome...',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+        
         // Document Upload Handler
         $('#fg-upload-document').on('click', function(e) {
             e.preventDefault();
@@ -51,24 +60,37 @@
             
             var select = $('#fg-add-partecipante');
             var socioId = select.val();
-            var socioName = select.find('option:selected').text();
+            var selectedOption = select.find('option:selected');
+            var socioName = selectedOption.text();
+            var tipoDonatore = selectedOption.data('tipo');
             
             if (!socioId) {
-                alert('Seleziona un socio dalla lista');
+                alert('Seleziona un donatore dalla lista');
                 return;
             }
             
             // Check if already added
             if ($('.fg-partecipante-item[data-socio-id="' + socioId + '"]').length > 0) {
-                alert('Questo socio è già stato aggiunto');
+                alert('Questo donatore è già stato aggiunto');
                 return;
             }
             
             // Remove "no partecipanti" message if exists
             $('.fg-no-partecipanti').remove();
             
+            // Extract clean name (remove label)
+            var cleanName = socioName.replace(/\s*\[(Socio|Donatore)\]\s*$/, '');
+            
+            // Create badge HTML
+            var badgeHtml = '';
+            if (tipoDonatore === 'anche_socio') {
+                badgeHtml = '<span class="fg-badge fg-stato-attivo" style="margin-left: 5px; font-size: 10px;">Socio</span>';
+            } else {
+                badgeHtml = '<span class="fg-badge" style="margin-left: 5px; font-size: 10px;">Donatore</span>';
+            }
+            
             var partecipanteHtml = '<div class="fg-partecipante-item" data-socio-id="' + socioId + '">' +
-                '<span class="fg-partecipante-name">' + socioName + '</span>' +
+                '<span class="fg-partecipante-name">' + cleanName + badgeHtml + '</span>' +
                 '<button type="button" class="button fg-remove-partecipante" data-socio-id="' + socioId + '">Rimuovi</button>' +
                 '<input type="hidden" name="fg_partecipanti[]" value="' + socioId + '" />' +
                 '</div>';
@@ -138,6 +160,53 @@
             });
         }
         
+        // Handle donor type change to show/hide relevant sections
+        $('#fg_tipo_donatore').on('change', function() {
+            var tipoDonatore = $(this).val();
+            
+            if (tipoDonatore === 'solo_donatore') {
+                // Show donor category section, hide membership section
+                $('.fg-categoria-donatore-section').show();
+                $('.fg-iscrizione-section').hide();
+            } else if (tipoDonatore === 'anche_socio') {
+                // Show membership section, hide donor category section
+                $('.fg-categoria-donatore-section').hide();
+                $('.fg-iscrizione-section').show();
+            }
+        });
+        
+        // Handle person type change (privato/società)
+        $('input[name="fg_tipo_persona"]').on('change', function() {
+            var tipoPersona = $(this).val();
+            
+            if (tipoPersona === 'societa') {
+                // Show ragione sociale, change labels, remove required from nome/cognome
+                $('.fg-ragione-sociale-field').show();
+                $('#fg_ragione_sociale').prop('required', true);
+                $('#fg_nome').prop('required', false);
+                $('#fg_cognome').prop('required', false);
+                $('.fg-nome-required').hide();
+                $('.fg-cognome-required').hide();
+                $('#fg_nome_label strong').text('Nome Referente:');
+                $('#fg_cognome_label strong').text('Cognome Referente:');
+            } else {
+                // Hide ragione sociale, change labels back, add required to nome/cognome
+                $('.fg-ragione-sociale-field').hide();
+                $('#fg_ragione_sociale').prop('required', false);
+                $('#fg_nome').prop('required', true);
+                $('#fg_cognome').prop('required', true);
+                $('.fg-nome-required').show();
+                $('.fg-cognome-required').show();
+                $('#fg_nome_label strong').text('Nome:');
+                $('#fg_cognome_label strong').text('Cognome:');
+            }
+        });
+        
+        // Trigger on page load
+        if ($('input[name="fg_tipo_persona"]:checked').length > 0) {
+            $('input[name="fg_tipo_persona"]:checked').trigger('change');
+        }
+        
         // Auto-calculate expiry date based on subscription date
         $('#fg_data_iscrizione').on('change', function() {
             var dataIscrizione = $(this).val();
@@ -152,10 +221,30 @@
             }
         });
         
-        // Auto-populate payment amount from member's quota
+        // Auto-populate payment amount from member's quota and manage payment type options
         $('#fg_socio_id').on('change', function() {
             var socioId = $(this).val();
             if (socioId) {
+                // Get donor type from the selected option text
+                var selectedText = $(this).find('option:selected').text();
+                var isDonorOnly = selectedText.indexOf('[Donatore]') !== -1;
+                
+                // Hide/show "Quota Associativa" option based on donor type
+                var quotaOption = $('#fg_tipo_pagamento option[value="quota"]');
+                if (isDonorOnly) {
+                    // Simple donor - hide quota option and select another option if quota was selected
+                    quotaOption.hide();
+                    if ($('#fg_tipo_pagamento').val() === 'quota') {
+                        $('#fg_tipo_pagamento').val('donazione');
+                        togglePaymentFields();
+                    }
+                    // Also hide categoria socio field for simple donors
+                    $('#fg_categoria_socio_field').hide();
+                } else {
+                    // Member donor - show quota option
+                    quotaOption.show();
+                }
+                
                 $.ajax({
                     url: ajaxurl,
                     type: 'POST',
@@ -170,8 +259,16 @@
                         }
                     }
                 });
+            } else {
+                // No donor selected - show all options
+                $('#fg_tipo_pagamento option[value="quota"]').show();
             }
         });
+        
+        // Trigger donor type check on page load
+        if ($('#fg_socio_id').val()) {
+            $('#fg_socio_id').trigger('change');
+        }
         
         // Show/hide conditional payment fields based on payment type
         function togglePaymentFields() {
@@ -182,6 +279,7 @@
             $('#fg_evento_custom_field').hide();
             $('#fg_categoria_socio_field').hide();
             $('#fg_raccolta_field').hide();
+            $('#fg_quota_warning').hide();
             
             // Show fields based on payment type
             if (tipoPagamento === 'evento') {
@@ -197,6 +295,7 @@
                 $('#fg_importo').css('background-color', '');
             } else if (tipoPagamento === 'quota') {
                 $('#fg_categoria_socio_field').show();
+                $('#fg_quota_warning').show();
                 // Auto-populate amount when quota type is selected
                 updatePaymentAmountFromCategory();
             } else if (tipoPagamento === 'raccolta') {

@@ -175,7 +175,7 @@ class Friends_Gestionale {
             remove_submenu_page('friends-gestionale', 'fg-export');
             
             // Keep all Friends Gestionale post type menus visible:
-            // - Soci (fg_socio)
+            // - Donatori (fg_socio)
             // - Pagamenti (fg_pagamento)
             // - Raccolte Fondi (fg_raccolta)
             // - Eventi (fg_evento)
@@ -250,7 +250,7 @@ class Friends_Gestionale {
         // Add the role with capabilities for all plugin areas
         add_role(
             'fg_payment_manager',
-            __('Friends Gestionale - Gestore Soci', 'friends-gestionale'),
+            __('Friends Gestionale - Gestore Donatori', 'friends-gestionale'),
             array(
                 'read' => true,
                 
@@ -432,9 +432,16 @@ class Friends_Gestionale {
             if ($socio_id) {
                 $socio = get_post($socio_id);
                 if ($socio) {
+                    $tipo_donatore = get_post_meta($socio_id, '_fg_tipo_donatore', true);
+                    if (empty($tipo_donatore)) {
+                        $tipo_donatore = 'anche_socio'; // Default
+                    }
+                    $tipo_label = ($tipo_donatore === 'anche_socio') ? 'Socio' : 'Donatore';
+                    
                     $donors_data[] = array(
                         'id' => $socio_id,
                         'name' => $socio->post_title,
+                        'tipo' => $tipo_label,
                         'amount' => number_format(floatval($importo), 2, ',', '.'),
                         'date' => $data_pagamento ? date_i18n(get_option('date_format'), strtotime($data_pagamento)) : '-',
                         'edit_link' => get_edit_post_link($socio_id)
@@ -561,7 +568,8 @@ class Friends_Gestionale {
         $html .= '<div style="max-height: 400px; overflow-y: auto;">';
         $html .= '<table class="widefat" style="border: 1px solid #ddd;">';
         $html .= '<thead><tr>';
-        $html .= '<th style="padding: 10px; background: #f9f9f9;">' . __('Socio', 'friends-gestionale') . '</th>';
+        $html .= '<th style="padding: 10px; background: #f9f9f9;">' . __('Donatore', 'friends-gestionale') . '</th>';
+        $html .= '<th style="padding: 10px; background: #f9f9f9;">' . __('Tipo', 'friends-gestionale') . '</th>';
         $html .= '<th style="padding: 10px; background: #f9f9f9;">' . __('Data', 'friends-gestionale') . '</th>';
         $html .= '<th style="padding: 10px; background: #f9f9f9; text-align: right;">' . __('Importo', 'friends-gestionale') . '</th>';
         $html .= '</tr></thead><tbody>';
@@ -572,15 +580,27 @@ class Friends_Gestionale {
             $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
             
             $socio_nome = __('Anonimo', 'friends-gestionale');
+            $tipo_badge = '';
             if ($socio_id) {
                 $socio = get_post($socio_id);
                 if ($socio) {
                     $socio_nome = '<a href="' . get_edit_post_link($socio_id) . '" target="_blank">' . esc_html($socio->post_title) . '</a>';
+                    
+                    $tipo_donatore = get_post_meta($socio_id, '_fg_tipo_donatore', true);
+                    if (empty($tipo_donatore)) {
+                        $tipo_donatore = 'anche_socio'; // Default
+                    }
+                    if ($tipo_donatore === 'anche_socio') {
+                        $tipo_badge = '<span style="display: inline-block; padding: 3px 8px; background: #0073aa; color: white; border-radius: 3px; font-size: 11px; font-weight: bold;">Socio</span>';
+                    } else {
+                        $tipo_badge = '<span style="display: inline-block; padding: 3px 8px; background: #7e8993; color: white; border-radius: 3px; font-size: 11px; font-weight: bold;">Donatore</span>';
+                    }
                 }
             }
             
             $html .= '<tr>';
             $html .= '<td style="padding: 10px;">' . $socio_nome . '</td>';
+            $html .= '<td style="padding: 10px;">' . $tipo_badge . '</td>';
             $html .= '<td style="padding: 10px;">' . ($data_pagamento ? date_i18n(get_option('date_format'), strtotime($data_pagamento)) : '-') . '</td>';
             $html .= '<td style="padding: 10px; text-align: right; font-weight: bold; color: #0073aa;">€' . number_format(floatval($importo), 2, ',', '.') . '</td>';
             $html .= '</tr>';
@@ -639,10 +659,26 @@ class Friends_Gestionale {
             FRIENDS_GESTIONALE_VERSION
         );
         
+        // Enqueue Select2 for searchable dropdowns
+        wp_enqueue_style(
+            'select2',
+            'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css',
+            array(),
+            '4.1.0'
+        );
+        
+        wp_enqueue_script(
+            'select2',
+            'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js',
+            array('jquery'),
+            '4.1.0',
+            true
+        );
+        
         wp_enqueue_script(
             'friends-gestionale-admin',
             FRIENDS_GESTIONALE_PLUGIN_URL . 'assets/js/admin-script.js',
-            array('jquery', 'jquery-ui-datepicker'),
+            array('jquery', 'jquery-ui-datepicker', 'select2'),
             FRIENDS_GESTIONALE_VERSION,
             true
         );
