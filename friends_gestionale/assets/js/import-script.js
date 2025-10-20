@@ -170,10 +170,18 @@
             // Build mapping UI
             var html = '';
             var fields = fg_import_vars.fields;
+            var tooltips = fg_import_vars.tooltips || {};
             
             $.each(fields, function(key, label) {
                 html += '<div class="fg-mapping-row">';
-                html += '<div class="fg-mapping-label">' + label + '</div>';
+                html += '<div class="fg-mapping-label">' + label;
+                
+                // Add tooltip if exists
+                if (tooltips[key]) {
+                    html += ' <span class="fg-tooltip" title="' + tooltips[key] + '" style="cursor: help; color: #0073aa;">ⓘ</span>';
+                }
+                
+                html += '</div>';
                 html += '<select class="fg-mapping-select" data-field="' + key + '">';
                 html += '<option value="">-- Non importare --</option>';
                 

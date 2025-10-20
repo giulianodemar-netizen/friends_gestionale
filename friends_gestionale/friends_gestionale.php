@@ -718,7 +718,8 @@ class Friends_Gestionale {
             
             wp_localize_script('friends-gestionale-import', 'fg_import_vars', array(
                 'nonce' => wp_create_nonce('fg-import-nonce'),
-                'fields' => Friends_Gestionale_Import::get_mappable_fields()
+                'fields' => Friends_Gestionale_Import::get_mappable_fields(),
+                'tooltips' => Friends_Gestionale_Import::get_field_tooltips()
             ));
         }
         

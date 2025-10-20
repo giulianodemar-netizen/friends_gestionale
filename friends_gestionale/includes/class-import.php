@@ -231,6 +231,30 @@ class Friends_Gestionale_Import {
                 flex: 0 0 200px;
                 font-weight: 600;
             }
+            .fg-tooltip {
+                display: inline-block;
+                cursor: help;
+                color: #0073aa;
+                font-weight: bold;
+                font-size: 14px;
+                margin-left: 5px;
+            }
+            .fg-tooltip:hover::after {
+                content: attr(title);
+                position: absolute;
+                background: #333;
+                color: #fff;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: normal;
+                white-space: normal;
+                max-width: 300px;
+                z-index: 1000;
+                margin-left: 10px;
+                margin-top: -30px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            }
             .fg-mapping-select {
                 flex: 1;
                 max-width: 300px;
@@ -617,15 +641,26 @@ class Friends_Gestionale_Import {
         $nome = isset($mapped_data['nome']) ? trim($mapped_data['nome']) : '';
         $cognome = isset($mapped_data['cognome']) ? trim($mapped_data['cognome']) : '';
         $email = isset($mapped_data['email']) ? trim($mapped_data['email']) : '';
-        $tipo_donatore = isset($mapped_data['ruolo']) ? trim($mapped_data['ruolo']) : 'anche_socio';
+        $ruolo_value = isset($mapped_data['ruolo']) ? trim($mapped_data['ruolo']) : '';
         
         // Normalize ruolo value
-        if (in_array(strtolower($tipo_donatore), array('socio', 'membro', 'member', 'anche_socio'))) {
-            $tipo_donatore = 'anche_socio';
-        } elseif (in_array(strtolower($tipo_donatore), array('donatore', 'donor', 'solo_donatore'))) {
-            $tipo_donatore = 'solo_donatore';
+        // If contains "donatore" -> it's a donor (solo_donatore)
+        // Otherwise, treat as socio category name (anche_socio)
+        $tipo_donatore = 'anche_socio';
+        $categoria_socio_name = '';
+        
+        if (!empty($ruolo_value)) {
+            if (stripos($ruolo_value, 'donatore') !== false || stripos($ruolo_value, 'donor') !== false) {
+                $tipo_donatore = 'solo_donatore';
+            } else {
+                // It's a socio with a category
+                $tipo_donatore = 'anche_socio';
+                $categoria_socio_name = $ruolo_value;
+            }
         }
+        
         $mapped_data['tipo_donatore'] = $tipo_donatore;
+        $mapped_data['categoria_socio_name'] = $categoria_socio_name;
         
         // Rule: Either ragione_sociale OR (nome AND cognome) required
         if (empty($ragione_sociale)) {
@@ -856,6 +891,31 @@ class Friends_Gestionale_Import {
             update_post_meta($post_id, '_fg_tipo_persona', 'privato');
         }
         
+        // Set categoria_socio if it's a socio with a category
+        if (!empty($data['categoria_socio_name']) && $data['tipo_donatore'] === 'anche_socio') {
+            // Find or create the category term
+            $term = get_term_by('name', $data['categoria_socio_name'], 'fg_categoria_socio');
+            if (!$term) {
+                // Try case-insensitive search
+                $terms = get_terms(array(
+                    'taxonomy' => 'fg_categoria_socio',
+                    'hide_empty' => false,
+                ));
+                foreach ($terms as $t) {
+                    if (strcasecmp($t->name, $data['categoria_socio_name']) === 0) {
+                        $term = $t;
+                        break;
+                    }
+                }
+            }
+            
+            if ($term) {
+                // Assign the existing category
+                wp_set_post_terms($post_id, array($term->term_id), 'fg_categoria_socio', false);
+            }
+            // Note: If category doesn't exist, we don't create it - user needs to create categories first
+        }
+        
         // Set default stato to attivo
         update_post_meta($post_id, '_fg_stato', 'attivo');
         
@@ -966,11 +1026,20 @@ class Friends_Gestionale_Import {
             'cap' => __('CAP', 'friends-gestionale'),
             'provincia' => __('Provincia', 'friends-gestionale'),
             'nazione' => __('Nazione', 'friends-gestionale'),
-            'ruolo' => __('Ruolo (socio/donatore)', 'friends-gestionale'),
+            'ruolo' => __('Ruolo (socio/donatore) ⓘ', 'friends-gestionale'),
             'data_iscrizione' => __('Data Iscrizione', 'friends-gestionale'),
             'partita_iva' => __('Partita IVA', 'friends-gestionale'),
             'codice_fiscale' => __('Codice Fiscale', 'friends-gestionale'),
             'note' => __('Note', 'friends-gestionale')
+        );
+    }
+    
+    /**
+     * Get field tooltips
+     */
+    public static function get_field_tooltips() {
+        return array(
+            'ruolo' => __('Se contiene "donatore" → Donatore. Altrimenti → Socio con categoria (usa il nome della categoria socio presente nella cella)', 'friends-gestionale')
         );
     }
 }

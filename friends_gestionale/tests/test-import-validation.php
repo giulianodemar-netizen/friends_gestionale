@@ -37,14 +37,23 @@ function validate_donor_row($row_data) {
     $nome = isset($row_data['nome']) ? trim($row_data['nome']) : '';
     $cognome = isset($row_data['cognome']) ? trim($row_data['cognome']) : '';
     $email = isset($row_data['email']) ? trim($row_data['email']) : '';
-    $tipo_donatore = isset($row_data['ruolo']) ? trim($row_data['ruolo']) : 'anche_socio';
+    $ruolo_value = isset($row_data['ruolo']) ? trim($row_data['ruolo']) : '';
     $data_iscrizione = isset($row_data['data_iscrizione']) ? trim($row_data['data_iscrizione']) : '';
     
     // Normalize ruolo value
-    if (in_array(strtolower($tipo_donatore), array('socio', 'membro', 'member', 'anche_socio'))) {
-        $tipo_donatore = 'anche_socio';
-    } elseif (in_array(strtolower($tipo_donatore), array('donatore', 'donor', 'solo_donatore'))) {
-        $tipo_donatore = 'solo_donatore';
+    // If contains "donatore" -> it's a donor (solo_donatore)
+    // Otherwise, treat as socio category name (anche_socio)
+    $tipo_donatore = 'anche_socio';
+    $categoria_socio_name = '';
+    
+    if (!empty($ruolo_value)) {
+        if (stripos($ruolo_value, 'donatore') !== false || stripos($ruolo_value, 'donor') !== false) {
+            $tipo_donatore = 'solo_donatore';
+        } else {
+            // It's a socio with a category
+            $tipo_donatore = 'anche_socio';
+            $categoria_socio_name = $ruolo_value;
+        }
     }
     
     // Rule: Either ragione_sociale OR (nome AND cognome) required
@@ -76,6 +85,7 @@ function validate_donor_row($row_data) {
         'errors' => $errors,
         'warnings' => $warnings,
         'tipo_donatore' => $tipo_donatore,
+        'categoria_socio_name' => $categoria_socio_name,
         'data_iscrizione' => $data_iscrizione
     );
 }
@@ -190,17 +200,20 @@ test_assert(empty($result['data_iscrizione']), "No default date for donatori");
 
 test_group("Test 5: Ruolo Normalization");
 $test_cases = array(
-    'socio' => 'anche_socio',
-    'Socio' => 'anche_socio',
-    'SOCIO' => 'anche_socio',
-    'membro' => 'anche_socio',
-    'member' => 'anche_socio',
-    'anche_socio' => 'anche_socio',
-    'donatore' => 'solo_donatore',
-    'Donatore' => 'solo_donatore',
-    'DONATORE' => 'solo_donatore',
-    'donor' => 'solo_donatore',
-    'solo_donatore' => 'solo_donatore',
+    // Donatore cases - contains "donatore" keyword
+    'donatore' => array('tipo' => 'solo_donatore', 'categoria' => ''),
+    'Donatore' => array('tipo' => 'solo_donatore', 'categoria' => ''),
+    'DONATORE' => array('tipo' => 'solo_donatore', 'categoria' => ''),
+    'donor' => array('tipo' => 'solo_donatore', 'categoria' => ''),
+    'solo_donatore' => array('tipo' => 'solo_donatore', 'categoria' => ''),
+    'donatore occasionale' => array('tipo' => 'solo_donatore', 'categoria' => ''),
+    
+    // Socio with category cases - any other value
+    'Socio Ordinario' => array('tipo' => 'anche_socio', 'categoria' => 'Socio Ordinario'),
+    'Socio Sostenitore' => array('tipo' => 'anche_socio', 'categoria' => 'Socio Sostenitore'),
+    'Gold Member' => array('tipo' => 'anche_socio', 'categoria' => 'Gold Member'),
+    'socio' => array('tipo' => 'anche_socio', 'categoria' => 'socio'),
+    'Membro' => array('tipo' => 'anche_socio', 'categoria' => 'Membro'),
 );
 
 foreach ($test_cases as $input => $expected) {
@@ -209,7 +222,8 @@ foreach ($test_cases as $input => $expected) {
         'cognome' => 'User',
         'ruolo' => $input
     ));
-    test_assert($result['tipo_donatore'] === $expected, "Ruolo '$input' normalized to '$expected'");
+    test_assert($result['tipo_donatore'] === $expected['tipo'], "Ruolo '$input' tipo = '{$expected['tipo']}'");
+    test_assert($result['categoria_socio_name'] === $expected['categoria'], "Ruolo '$input' categoria = '{$expected['categoria']}'");
 }
 
 test_group("Test 6: Combined Validation Scenarios");

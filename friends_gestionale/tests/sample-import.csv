@@ -1,5 +1,6 @@
 Nome,Cognome,Ragione Sociale,Email,Telefono,Indirizzo,Città,CAP,Provincia,Nazione,Ruolo,Data Iscrizione,Codice Fiscale,Partita IVA,Note
-Mario,Rossi,,mario.rossi@example.com,3331234567,Via Roma 1,Napoli,80100,NA,Italia,socio,2024-01-15,RSSMRA80A01F839X,,Socio fondatore
-Luigi,Verdi,,luigi.verdi@example.com,3337654321,Via Milano 2,Roma,00100,RM,Italia,donatore,,,VRDLGU75B02H501Y,,Donatore occasionale
-,,,Tech Solutions SRL,info@techsolutions.com,0612345678,Via Torino 3,Milano,20100,MI,Italia,socio,2024-02-01,,12345678901,Cliente aziendale
-Anna,Bianchi,,anna.bianchi@example.com,3339876543,Via Venezia 4,Firenze,50100,FI,Italia,socio,,BNCNNA85C03D612Z,,Rinnovo in corso
+Mario,Rossi,,mario.rossi@example.com,3331234567,Via Roma 1,Napoli,80100,NA,Italia,Socio Ordinario,2024-01-15,RSSMRA80A01F839X,,Socio fondatore con categoria Ordinario
+Luigi,Verdi,,luigi.verdi@example.com,3337654321,Via Milano 2,Roma,00100,RM,Italia,donatore,,,VRDLGU75B02H501Y,,Donatore occasionale (ruolo contiene "donatore")
+,,,Tech Solutions SRL,info@techsolutions.com,0612345678,Via Torino 3,Milano,20100,MI,Italia,Socio Sostenitore,2024-02-01,,12345678901,Cliente aziendale con categoria Sostenitore
+Anna,Bianchi,,anna.bianchi@example.com,3339876543,Via Venezia 4,Firenze,50100,FI,Italia,Gold Member,,BNCNNA85C03D612Z,,Socio con categoria personalizzata
+Paolo,Neri,,paolo.neri@example.com,3331112222,Via Garibaldi 5,Bologna,40100,BO,Italia,Donatore Premium,,,NREPLA90D04A944B,,Contiene "Donatore" quindi è solo_donatore
