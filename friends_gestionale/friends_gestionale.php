@@ -73,6 +73,9 @@ class Friends_Gestionale {
         // Export functionality
         require_once FRIENDS_GESTIONALE_PLUGIN_DIR . 'includes/class-export.php';
         
+        // Import functionality
+        require_once FRIENDS_GESTIONALE_PLUGIN_DIR . 'includes/class-import.php';
+        
         // Email notifications
         require_once FRIENDS_GESTIONALE_PLUGIN_DIR . 'includes/class-email.php';
     }
@@ -98,6 +101,9 @@ class Friends_Gestionale {
         // Initialize Export class
         add_action('init', array($this, 'init_export_class'));
         
+        // Initialize Import class
+        add_action('init', array($this, 'init_import_class'));
+        
         // Restrict menu access for payment manager role
         add_action('admin_menu', array($this, 'restrict_payment_manager_menu'), 999);
         
@@ -121,6 +127,13 @@ class Friends_Gestionale {
      */
     public function init_export_class() {
         new Friends_Gestionale_Export();
+    }
+    
+    /**
+     * Initialize Import class
+     */
+    public function init_import_class() {
+        new Friends_Gestionale_Import();
     }
     
     /**
@@ -691,6 +704,23 @@ class Friends_Gestionale {
             '3.9.1',
             true
         );
+        
+        // Import script for import page
+        if (isset($_GET['page']) && $_GET['page'] === 'fg-import') {
+            wp_enqueue_media(); // For file upload
+            wp_enqueue_script(
+                'friends-gestionale-import',
+                FRIENDS_GESTIONALE_PLUGIN_URL . 'assets/js/import-script.js',
+                array('jquery'),
+                FRIENDS_GESTIONALE_VERSION,
+                true
+            );
+            
+            wp_localize_script('friends-gestionale-import', 'fg_import_vars', array(
+                'nonce' => wp_create_nonce('fg-import-nonce'),
+                'fields' => Friends_Gestionale_Import::get_mappable_fields()
+            ));
+        }
         
         // Localize script
         wp_localize_script('friends-gestionale-admin', 'friendsGestionale', array(
