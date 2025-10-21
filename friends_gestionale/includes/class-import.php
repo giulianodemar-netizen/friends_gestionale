@@ -840,10 +840,21 @@ class Friends_Gestionale_Import {
             }
         }
         
+        // Determine post title (nome completo or ragione sociale)
+        $post_title = '';
+        if (!empty($data['ragione_sociale'])) {
+            $post_title = $data['ragione_sociale'];
+        } elseif (!empty($data['nome']) || !empty($data['cognome'])) {
+            $nome = isset($data['nome']) ? $data['nome'] : '';
+            $cognome = isset($data['cognome']) ? $data['cognome'] : '';
+            $post_title = trim($nome . ' ' . $cognome);
+        }
+        
         // Create or update post
         $post_data = array(
             'post_type' => 'fg_socio',
-            'post_status' => 'publish'
+            'post_status' => 'publish',
+            'post_title' => $post_title
         );
         
         if ($post_id > 0) {
@@ -912,8 +923,43 @@ class Friends_Gestionale_Import {
             if ($term) {
                 // Assign the existing category
                 wp_set_post_terms($post_id, array($term->term_id), 'fg_categoria_socio', false);
+                
+                // Get quota_annuale from category term meta
+                $quota_annuale = get_term_meta($term->term_id, 'fg_quota_associativa', true);
+                if ($quota_annuale) {
+                    update_post_meta($post_id, '_fg_quota_annuale', floatval($quota_annuale));
+                }
             }
             // Note: If category doesn't exist, we don't create it - user needs to create categories first
+        }
+        
+        // Set default data_scadenza if not provided and it's a socio
+        if (empty($data['data_scadenza']) && $data['tipo_donatore'] === 'anche_socio' && !empty($data['data_iscrizione'])) {
+            // Calculate default expiration: current year + month/day from registration
+            // If already past, use next year
+            $data_iscrizione = $data['data_iscrizione'];
+            $iscrizione_date = DateTime::createFromFormat('Y-m-d', $data_iscrizione);
+            
+            if ($iscrizione_date) {
+                $current_year = date('Y');
+                $month = $iscrizione_date->format('m');
+                $day = $iscrizione_date->format('d');
+                
+                // Create expiration date for current year
+                $data_scadenza = $current_year . '-' . $month . '-' . $day;
+                $scadenza_date = DateTime::createFromFormat('Y-m-d', $data_scadenza);
+                $today = new DateTime();
+                
+                // If expiration date is in the past, use next year
+                if ($scadenza_date < $today) {
+                    $data_scadenza = ($current_year + 1) . '-' . $month . '-' . $day;
+                }
+                
+                update_post_meta($post_id, '_fg_data_scadenza', $data_scadenza);
+            }
+        } elseif (!empty($data['data_scadenza'])) {
+            // Use provided data_scadenza
+            update_post_meta($post_id, '_fg_data_scadenza', sanitize_text_field($data['data_scadenza']));
         }
         
         // Set default stato to attivo
@@ -1028,6 +1074,7 @@ class Friends_Gestionale_Import {
             'nazione' => __('Nazione', 'friends-gestionale'),
             'ruolo' => __('Ruolo (socio/donatore) ⓘ', 'friends-gestionale'),
             'data_iscrizione' => __('Data Iscrizione', 'friends-gestionale'),
+            'data_scadenza' => __('Data Scadenza', 'friends-gestionale'),
             'partita_iva' => __('Partita IVA', 'friends-gestionale'),
             'codice_fiscale' => __('Codice Fiscale', 'friends-gestionale'),
             'note' => __('Note', 'friends-gestionale')

@@ -232,6 +232,7 @@
                 'nazione': ['nazione', 'country', 'paese', 'stato'],
                 'ruolo': ['ruolo', 'tipo', 'role', 'type', 'socio', 'donatore'],
                 'data_iscrizione': ['data iscrizione', 'data_iscrizione', 'registration date', 'date', 'data'],
+                'data_scadenza': ['data scadenza', 'data_scadenza', 'expiration date', 'expiry date', 'scadenza'],
                 'partita_iva': ['partita iva', 'partita_iva', 'vat', 'p.iva', 'piva'],
                 'codice_fiscale': ['codice fiscale', 'codice_fiscale', 'cf', 'tax code', 'fiscal code'],
                 'note': ['note', 'notes', 'commenti', 'comments', 'descrizione']
