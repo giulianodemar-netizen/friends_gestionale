@@ -314,16 +314,21 @@ class Friends_Gestionale_Import {
             #fg-preview-table-container {
                 overflow-x: auto;
                 margin: 20px 0;
+                -webkit-overflow-scrolling: touch;
             }
             .fg-preview-table {
                 width: 100%;
                 border-collapse: collapse;
+                min-width: 800px;
+                table-layout: auto;
             }
             .fg-preview-table th,
             .fg-preview-table td {
                 padding: 10px;
                 border: 1px solid #ddd;
                 text-align: left;
+                white-space: nowrap;
+                min-width: 100px;
             }
             .fg-preview-table th {
                 background: #f0f0f0;
