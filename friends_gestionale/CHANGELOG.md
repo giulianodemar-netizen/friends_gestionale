@@ -16,6 +16,21 @@ All notable changes to Friends of Naples Gestionale will be documented in this f
   - Now shows: "Se contiene 'socio' o 'donatore' (case-insensitive), il record verrà classificato rispettivamente come Socio o Donatore. Esempio: 'socio sostenitore' => Socio; 'donatore occasionale' => Donatore."
   - Better guidance for users during import process
   
+- **Statistics: Date Range Filter**
+  - New date filter section at top of statistics page
+  - Start date and end date input fields (optional, can use either or both)
+  - "Applica Filtro" button to refresh statistics
+  - All charts and tables update based on selected date range
+  - Date validation (start_date <= end_date, ISO format YYYY-MM-DD)
+  - Visual indicator showing active filters
+  - "Rimuovi Filtro" button to clear and return to default view
+  - Filters apply to:
+    - Payment trends chart
+    - Donations by type
+    - Payment methods distribution
+    - Top donors ranking
+    - Monthly new members chart
+  
 - **New User Role: Donatori Visualizzatore**
   - Read-only access role for viewing donors/members
   - Can view all data (soci, pagamenti, raccolte, eventi)
@@ -26,12 +41,16 @@ All notable changes to Friends of Naples Gestionale will be documented in this f
 ### Changed
 - Import validation logic improved to support skip_existing flag
 - Role initialization now includes viewer role alongside payment manager role
+- Statistics queries now support optional date filtering
 
 ### Technical
 - Added test suite for skip existing functionality (`test-skip-existing-import.php`)
 - Added test suite for viewer role permissions (`test-viewer-role.php`)
+- Added test suite for statistics date filtering (`test-statistics-date-filter.php`)
 - Updated AJAX handlers to support `skip_existing` parameter
 - Modified `validate_and_preview_row()` method signature
+- Updated `render_statistics()` method to accept and process date filters
+- All statistics queries updated with conditional date filtering
 
 ## [1.0.0] - 2024
 

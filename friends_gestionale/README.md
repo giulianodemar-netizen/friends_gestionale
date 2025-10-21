@@ -226,11 +226,26 @@ Mostra:
 - Azioni rapide
 
 ### Pagina Statistiche
-Grafici interattivi:
-- **Andamento Pagamenti**: Ultimi 12 mesi (line chart)
-- **Distribuzione Soci**: Per stato (pie chart)
 
-Utilizza Chart.js per visualizzazioni avanzate.
+**Filtro per Date (NEW in v1.1.0):**
+La pagina statistiche ora include un filtro per intervallo date che permette di visualizzare i dati per un periodo specifico:
+- **Data Inizio**: Data di inizio del periodo da analizzare (opzionale)
+- **Data Fine**: Data di fine del periodo da analizzare (opzionale)
+- Puoi usare entrambe le date per un intervallo specifico, oppure solo una per filtrare da/fino a una data
+- Le date devono essere in formato ISO (YYYY-MM-DD)
+- Il sistema valida che la data inizio sia <= data fine
+- Tutti i grafici e statistiche si aggiornano automaticamente in base al filtro
+
+**Grafici Interattivi:**
+- **Andamento Pagamenti**: Mostra i pagamenti per mese nel periodo selezionato (default: ultimi 12 mesi)
+- **Distribuzione Donatori per Stato**: Pie chart con distribuzione attiva/sospeso/scaduto/inattivo
+- **Donazioni per Tipo**: Distribuzione dei pagamenti per tipo (quota/donazione/raccolta/evento/altro) - filtrato per date
+- **Nuovi Donatori**: Trend di nuovi iscritti per mese nel periodo selezionato
+- **Distribuzione Metodi di Pagamento**: Contanti, bonifico, carta, PayPal, altro - filtrato per date
+- **Top Donatori**: Classifica dei maggiori contributori nel periodo filtrato
+- **Eventi Prossimi**: Lista degli eventi in programma
+
+Utilizza Chart.js per visualizzazioni avanzate e interattive.
 
 ## 💾 Esportazione e Importazione Dati
 
