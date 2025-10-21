@@ -18,10 +18,11 @@ All notable changes to Friends of Naples Gestionale will be documented in this f
   - Statistics section shows: "Le statistiche seguenti si basano su tutte le X righe del file"
   - Preview table still shows first 50 rows as sample for performance
   
-- **Data Iscrizione Display for All Donor Types**
-  - Fixed issue where "Data Iscrizione" (registration date) was not visible for "Solo Donatore" types
-  - Field now displayed in donor detail page for all donor types (Solo Donatore and Donatore e Socio)
-  - Field appears in appropriate section based on donor type
+- **Data Iscrizione Display Fixed**
+  - Fixed issue where "Data Iscrizione" field was not properly populated in donor detail page
+  - Removed duplicate data_iscrizione fields that were causing form submission conflicts
+  - Field now displayed in a dedicated section visible for all donor types
+  - Data correctly saved and displayed for both "Solo Donatore" and "Donatore e Socio"
   
 - **Viewer Role: Menu Access**
   - Fixed "Donatori Visualizzatore" role not showing any menu items
@@ -31,12 +32,21 @@ All notable changes to Friends of Naples Gestionale will be documented in this f
   - Viewers blocked from: creating posts, editing posts, import, export, settings
   - Error messages guide users when attempting unauthorized actions
 
+### Added
+- **Import: Skip Records with Empty Email**
+  - New checkbox option "Ignora record senza email"
+  - When enabled, records without email addresses are skipped during import
+  - Useful for filtering incomplete data and maintaining data quality
+  - Shows in preview statistics how many records will be skipped
+  - Complements existing "Ignora record esistenti" option
+
 ### Changed
 - `ajax_execute_import()` now uses `parse_file_all_rows()` instead of limited `preview_rows`
 - `ajax_preview_import()` now calculates accurate statistics on ALL rows before showing preview
+- `validate_and_preview_row()` method updated to accept `skip_empty_email` parameter
 - Viewer role menu restrictions added to `restrict_payment_manager_menu()`
 - Viewer role edit protections added to `redirect_payment_manager()`
-- Meta box for donors now shows data_iscrizione field for all donor types
+- Meta box restructured: data_iscrizione now in dedicated section, always visible
 
 ## [1.1.0] - 2024
 

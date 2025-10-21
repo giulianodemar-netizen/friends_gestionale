@@ -239,13 +239,16 @@ class Friends_Gestionale_Meta_Boxes {
                         <p class="description"><?php _e('Seleziona la categoria del donatore.', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
-                
-                <!-- Data iscrizione for donors (always show for all types) -->
+            </div>
+            
+            <!-- Data Iscrizione - always visible for all types -->
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Data Iscrizione', 'friends-gestionale'); ?></h3>
                 <div class="fg-form-row">
                     <div class="fg-form-field">
-                        <label for="fg_data_iscrizione_donor"><strong><?php _e('Data Iscrizione:', 'friends-gestionale'); ?></strong></label>
-                        <input type="date" id="fg_data_iscrizione_donor" name="fg_data_iscrizione" value="<?php echo esc_attr($data_iscrizione ? $data_iscrizione : date('Y-m-d')); ?>" class="widefat" />
-                        <p class="description"><?php _e('Data di registrazione del donatore.', 'friends-gestionale'); ?></p>
+                        <label for="fg_data_iscrizione"><strong><?php _e('Data Iscrizione:', 'friends-gestionale'); ?></strong></label>
+                        <input type="date" id="fg_data_iscrizione" name="fg_data_iscrizione" value="<?php echo esc_attr($data_iscrizione ? $data_iscrizione : date('Y-m-d')); ?>" class="widefat" />
+                        <p class="description"><?php _e('Data di registrazione.', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
             </div>
@@ -291,15 +294,11 @@ class Friends_Gestionale_Meta_Boxes {
                 </div>
                 
                 <div class="fg-form-row">
-                    <div class="fg-form-field fg-field-third">
-                        <label for="fg_data_iscrizione"><strong><?php _e('Data Iscrizione:', 'friends-gestionale'); ?></strong></label>
-                        <input type="date" id="fg_data_iscrizione" name="fg_data_iscrizione" value="<?php echo esc_attr($data_iscrizione ? $data_iscrizione : date('Y-m-d')); ?>" class="widefat" />
-                    </div>
-                    <div class="fg-form-field fg-field-third">
+                    <div class="fg-form-field fg-field-half">
                         <label for="fg_data_scadenza"><strong><?php _e('Data Scadenza:', 'friends-gestionale'); ?></strong></label>
                         <input type="date" id="fg_data_scadenza" name="fg_data_scadenza" value="<?php echo esc_attr($data_scadenza); ?>" class="widefat" />
                     </div>
-                    <div class="fg-form-field fg-field-third">
+                    <div class="fg-form-field fg-field-half">
                         <label for="fg_quota_annuale"><strong><?php _e('Quota Annuale (€):', 'friends-gestionale'); ?></strong></label>
                         <input type="number" id="fg_quota_annuale" name="fg_quota_annuale" value="<?php echo esc_attr($quota_annuale); ?>" step="0.01" min="0" class="widefat" readonly style="background-color: #f0f0f0;" />
                         <p class="description"><?php _e('La quota viene calcolata automaticamente dalla categoria del socio.', 'friends-gestionale'); ?></p>

@@ -131,6 +131,15 @@ class Friends_Gestionale_Import {
                         <p class="description">
                             <?php _e('Se selezionato, i record con email già presenti non verranno aggiornati né sovrascritti; verranno saltati.', 'friends-gestionale'); ?>
                         </p>
+                        
+                        <label style="margin-top: 15px; display: block;">
+                            <input type="checkbox" id="fg-skip-empty-email" value="1" />
+                            <?php _e('Ignora record senza email', 'friends-gestionale'); ?>
+                            <span class="fg-tooltip" title="<?php echo esc_attr(__('Se selezionato, i record che non hanno un indirizzo email verranno saltati e non importati.', 'friends-gestionale')); ?>">ⓘ</span>
+                        </label>
+                        <p class="description">
+                            <?php _e('Se selezionato, i record senza indirizzo email verranno saltati e non importati.', 'friends-gestionale'); ?>
+                        </p>
                     </div>
                     
                     <div class="fg-step-actions">
@@ -725,6 +734,7 @@ class Friends_Gestionale_Import {
         $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
         $update_existing = isset($_POST['update_existing']) && $_POST['update_existing'] === 'true';
         $skip_existing = isset($_POST['skip_existing']) && $_POST['skip_existing'] === 'true';
+        $skip_empty_email = isset($_POST['skip_empty_email']) && $_POST['skip_empty_email'] === 'true';
         
         $import_data = get_transient('fg_import_' . $import_id);
         if (!$import_data) {
@@ -747,7 +757,7 @@ class Friends_Gestionale_Import {
         );
         
         foreach ($all_rows as $row_data) {
-            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing);
+            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing, $skip_empty_email);
             
             if ($row_preview['status'] === 'create') {
                 $stats['will_create']++;
@@ -778,7 +788,7 @@ class Friends_Gestionale_Import {
         
         // Only show first 100 rows in preview table (for performance)
         foreach ($parse_result['preview_rows'] as $row_data) {
-            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing);
+            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing, $skip_empty_email);
             $preview['rows'][] = $row_preview;
         }
         
@@ -802,7 +812,7 @@ class Friends_Gestionale_Import {
     /**
      * Validate and preview a single row
      */
-    private function validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing = false) {
+    private function validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing = false, $skip_empty_email = false) {
         $errors = array();
         $warnings = array();
         $mapped_data = array();
@@ -824,6 +834,17 @@ class Friends_Gestionale_Import {
         $cognome = isset($mapped_data['cognome']) ? $mapped_data['cognome'] : '';
         $email = isset($mapped_data['email']) ? $mapped_data['email'] : '';
         $ruolo_value = isset($mapped_data['ruolo']) ? $mapped_data['ruolo'] : '';
+        
+        // Check if skip_empty_email is enabled and email is empty
+        if ($skip_empty_email && empty($email)) {
+            return array(
+                'status' => 'skip',
+                'action_label' => __('Salta', 'friends-gestionale'),
+                'data' => $mapped_data,
+                'errors' => array(),
+                'warnings' => array(__('Email vuota - il record verrà saltato', 'friends-gestionale'))
+            );
+        }
         
         // Normalize ruolo value
         // If contains "donatore" -> it's a donor (solo_donatore)
@@ -944,6 +965,7 @@ class Friends_Gestionale_Import {
         $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
         $update_existing = isset($_POST['update_existing']) && $_POST['update_existing'] === 'true';
         $skip_existing = isset($_POST['skip_existing']) && $_POST['skip_existing'] === 'true';
+        $skip_empty_email = isset($_POST['skip_empty_email']) && $_POST['skip_empty_email'] === 'true';
         
         $import_data = get_transient('fg_import_' . $import_id);
         if (!$import_data) {
@@ -965,7 +987,7 @@ class Friends_Gestionale_Import {
         );
         
         foreach ($all_rows as $index => $row_data) {
-            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing);
+            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing, $skip_empty_email);
             
             if ($row_preview['status'] === 'error') {
                 $results['errors'][] = array(

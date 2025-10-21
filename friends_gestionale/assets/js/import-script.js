@@ -268,7 +268,8 @@
                     import_id: self.importId,
                     mapping: self.mapping,
                     update_existing: $('#fg-update-existing').is(':checked'),
-                    skip_existing: $('#fg-skip-existing').is(':checked')
+                    skip_existing: $('#fg-skip-existing').is(':checked'),
+                    skip_empty_email: $('#fg-skip-empty-email').is(':checked')
                 },
                 success: function(response) {
                     $('#fg-preview-import-btn').prop('disabled', false).text('Anteprima Import');
@@ -391,7 +392,8 @@
                     import_id: self.importId,
                     mapping: self.mapping,
                     update_existing: $('#fg-update-existing').is(':checked'),
-                    skip_existing: $('#fg-skip-existing').is(':checked')
+                    skip_existing: $('#fg-skip-existing').is(':checked'),
+                    skip_empty_email: $('#fg-skip-empty-email').is(':checked')
                 },
                 success: function(response) {
                     if (response.success) {
