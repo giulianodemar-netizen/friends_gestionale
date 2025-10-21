@@ -98,6 +98,9 @@ class Friends_Gestionale {
         // Ensure payment manager role exists
         add_action('init', array($this, 'ensure_payment_manager_role'));
         
+        // Ensure viewer role exists
+        add_action('init', array($this, 'ensure_viewer_role'));
+        
         // Initialize Export class
         add_action('init', array($this, 'init_export_class'));
         
@@ -237,6 +240,14 @@ class Friends_Gestionale {
     }
     
     /**
+     * Ensure viewer role exists (called on init)
+     */
+    public function ensure_viewer_role() {
+        // Always recreate the role to ensure it has the latest capabilities
+        $this->create_viewer_role();
+    }
+    
+    /**
      * Plugin activation
      */
     public function activate() {
@@ -251,6 +262,9 @@ class Friends_Gestionale {
         
         // Create custom user role for plugin management
         $this->create_payment_manager_role();
+        
+        // Create viewer role
+        $this->create_viewer_role();
     }
     
     /**
@@ -317,6 +331,49 @@ class Friends_Gestionale {
             }
             if ($admin_role) {
                 $admin_role->add_cap($cap);
+            }
+        }
+    }
+    
+    /**
+     * Create viewer role for read-only access
+     */
+    private function create_viewer_role() {
+        // Remove role if it exists to ensure clean setup
+        remove_role('fg_donatori_viewer');
+        
+        // Add the role with read-only capabilities
+        add_role(
+            'fg_donatori_viewer',
+            __('Donatori Visualizzatore', 'friends-gestionale'),
+            array(
+                'read' => true,
+                // No edit, delete, or publish capabilities - read only!
+            )
+        );
+        
+        // Get the roles
+        $viewer_role = get_role('fg_donatori_viewer');
+        $admin_role = get_role('administrator');
+        
+        // Add read capabilities for all plugin post types
+        $read_capabilities = array(
+            // Donatori/Soci (fg_socio)
+            'read_fg_socio',
+            
+            // Pagamenti (fg_pagamento)
+            'read_fg_pagamento',
+            
+            // Raccolte Fondi (fg_raccolta)
+            'read_fg_raccolta',
+            
+            // Eventi (fg_evento)
+            'read_fg_evento',
+        );
+        
+        foreach ($read_capabilities as $cap) {
+            if ($viewer_role) {
+                $viewer_role->add_cap($cap);
             }
         }
     }

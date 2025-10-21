@@ -267,7 +267,8 @@
                     nonce: fg_import_vars.nonce,
                     import_id: self.importId,
                     mapping: self.mapping,
-                    update_existing: $('#fg-update-existing').is(':checked')
+                    update_existing: $('#fg-update-existing').is(':checked'),
+                    skip_existing: $('#fg-skip-existing').is(':checked')
                 },
                 success: function(response) {
                     $('#fg-preview-import-btn').prop('disabled', false).text('Anteprima Import');
@@ -379,7 +380,8 @@
                     nonce: fg_import_vars.nonce,
                     import_id: self.importId,
                     mapping: self.mapping,
-                    update_existing: $('#fg-update-existing').is(':checked')
+                    update_existing: $('#fg-update-existing').is(':checked'),
+                    skip_existing: $('#fg-skip-existing').is(':checked')
                 },
                 success: function(response) {
                     if (response.success) {

@@ -2,6 +2,37 @@
 
 All notable changes to Friends of Naples Gestionale will be documented in this file.
 
+## [1.1.0] - 2024
+
+### Added
+- **Import: Skip Existing Records Option**
+  - New checkbox "Ignora record esistenti (per email)" in import UI
+  - When enabled, records with existing email addresses are skipped (not updated)
+  - Preserves existing data when re-importing files
+  - Added tests for skip functionality
+  
+- **Import: Improved Tooltip for "Tipo Socio/Donatore"**
+  - Enhanced tooltip with complete description
+  - Now shows: "Se contiene 'socio' o 'donatore' (case-insensitive), il record verrà classificato rispettivamente come Socio o Donatore. Esempio: 'socio sostenitore' => Socio; 'donatore occasionale' => Donatore."
+  - Better guidance for users during import process
+  
+- **New User Role: Donatori Visualizzatore**
+  - Read-only access role for viewing donors/members
+  - Can view all data (soci, pagamenti, raccolte, eventi)
+  - Cannot create, edit, delete, or import data
+  - Perfect for auditors, board members, or read-only staff
+  - Automatically created on plugin activation
+  
+### Changed
+- Import validation logic improved to support skip_existing flag
+- Role initialization now includes viewer role alongside payment manager role
+
+### Technical
+- Added test suite for skip existing functionality (`test-skip-existing-import.php`)
+- Added test suite for viewer role permissions (`test-viewer-role.php`)
+- Updated AJAX handlers to support `skip_existing` parameter
+- Modified `validate_and_preview_row()` method signature
+
 ## [1.0.0] - 2024
 
 ### Added - Initial Release

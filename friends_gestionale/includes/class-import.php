@@ -122,6 +122,15 @@ class Friends_Gestionale_Import {
                         <p class="description">
                             <?php _e("L'email è usata come campo univoco. Se deselezionato, verrà creato un duplicato invece di aggiornare il record esistente.", 'friends-gestionale'); ?>
                         </p>
+                        
+                        <label style="margin-top: 15px; display: block;">
+                            <input type="checkbox" id="fg-skip-existing" value="1" />
+                            <?php _e('Ignora record esistenti (per email)', 'friends-gestionale'); ?>
+                            <span class="fg-tooltip" title="<?php echo esc_attr(__('Se selezionato, i record con email già presenti non verranno aggiornati né sovrascritti; verranno saltati.', 'friends-gestionale')); ?>">ⓘ</span>
+                        </label>
+                        <p class="description">
+                            <?php _e('Se selezionato, i record con email già presenti non verranno aggiornati né sovrascritti; verranno saltati.', 'friends-gestionale'); ?>
+                        </p>
                     </div>
                     
                     <div class="fg-step-actions">
@@ -584,6 +593,7 @@ class Friends_Gestionale_Import {
         $import_id = sanitize_text_field($_POST['import_id']);
         $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
         $update_existing = isset($_POST['update_existing']) && $_POST['update_existing'] === 'true';
+        $skip_existing = isset($_POST['skip_existing']) && $_POST['skip_existing'] === 'true';
         
         $import_data = get_transient('fg_import_' . $import_id);
         if (!$import_data) {
@@ -607,7 +617,7 @@ class Friends_Gestionale_Import {
         );
         
         foreach ($parse_result['preview_rows'] as $row_data) {
-            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing);
+            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing);
             $preview['rows'][] = $row_preview;
             
             if ($row_preview['status'] === 'create') {
@@ -641,7 +651,7 @@ class Friends_Gestionale_Import {
     /**
      * Validate and preview a single row
      */
-    private function validate_and_preview_row($row_data, $mapping, $update_existing) {
+    private function validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing = false) {
         $errors = array();
         $warnings = array();
         $mapped_data = array();
@@ -710,7 +720,12 @@ class Friends_Gestionale_Import {
         $action_label = __('Nuovo', 'friends-gestionale');
         
         if ($existing_post) {
-            if ($update_existing) {
+            // If skip_existing is enabled, skip the record
+            if ($skip_existing) {
+                $status = 'skip';
+                $action_label = __('Salta', 'friends-gestionale');
+                $warnings[] = __('Email già esistente - il record verrà saltato (non modificato)', 'friends-gestionale');
+            } elseif ($update_existing) {
                 $status = 'update';
                 $action_label = __('Aggiorna', 'friends-gestionale');
                 $warnings[] = __('Email già esistente - il record verrà aggiornato', 'friends-gestionale');
@@ -777,6 +792,7 @@ class Friends_Gestionale_Import {
         $import_id = sanitize_text_field($_POST['import_id']);
         $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
         $update_existing = isset($_POST['update_existing']) && $_POST['update_existing'] === 'true';
+        $skip_existing = isset($_POST['skip_existing']) && $_POST['skip_existing'] === 'true';
         
         $import_data = get_transient('fg_import_' . $import_id);
         if (!$import_data) {
@@ -798,7 +814,7 @@ class Friends_Gestionale_Import {
         );
         
         foreach ($parse_result['preview_rows'] as $index => $row_data) {
-            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing);
+            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing);
             
             if ($row_preview['status'] === 'error') {
                 $results['errors'][] = array(
@@ -1108,7 +1124,7 @@ class Friends_Gestionale_Import {
      */
     public static function get_field_tooltips() {
         return array(
-            'ruolo' => __('Se contiene "donatore" → Donatore. Altrimenti → Socio con categoria (usa il nome della categoria socio presente nella cella)', 'friends-gestionale')
+            'ruolo' => __("Se contiene 'socio' o 'donatore' (case-insensitive), il record verrà classificato rispettivamente come Socio o Donatore. Esempio: 'socio sostenitore' => Socio; 'donatore occasionale' => Donatore.", 'friends-gestionale')
         );
     }
 }

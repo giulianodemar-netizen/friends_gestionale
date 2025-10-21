@@ -66,6 +66,29 @@ Dopo l'attivazione, troverai nel menu laterale:
 - **Esporta Dati**: Export CSV
 - **Impostazioni**: Configurazione plugin
 
+### Ruoli Utente
+
+Il plugin crea automaticamente due ruoli personalizzati:
+
+#### Friends Gestionale - Gestore Donatori
+Ruolo con accesso completo a tutte le funzionalità del plugin:
+- Creazione, modifica e cancellazione di soci, pagamenti, raccolte ed eventi
+- Accesso all'import/export dati
+- Visualizzazione statistiche e dashboard
+- Gestione completa del sistema
+
+#### Donatori Visualizzatore
+Ruolo con accesso in sola lettura (NEW in v1.1.0):
+- **Può visualizzare**: Tutti i dati (soci, pagamenti, raccolte fondi, eventi, statistiche)
+- **Non può**: Creare, modificare, cancellare o importare dati
+- **Ideale per**: Auditori, membri del consiglio, personale di controllo, consulenti
+
+**Come assegnare il ruolo:**
+1. Vai su **Utenti** → **Tutti gli utenti**
+2. Modifica l'utente desiderato
+3. Seleziona "Donatori Visualizzatore" dal menu a tendina "Ruolo"
+4. Salva le modifiche
+
 ## 📚 Utilizzo
 
 ### Gestione Soci
@@ -209,7 +232,27 @@ Grafici interattivi:
 
 Utilizza Chart.js per visualizzazioni avanzate.
 
-## 💾 Esportazione Dati
+## 💾 Esportazione e Importazione Dati
+
+### Importazione da File CSV/XLSX (NEW in v1.1.0)
+
+Il plugin supporta l'importazione di donatori da file CSV o Excel (XLSX):
+
+1. Vai su **Friends Gestionale** → **Importa da file**
+2. Carica il file CSV o XLSX
+3. Associa le colonne del file ai campi del donatore (mapping)
+4. Configura le opzioni di import:
+   - **Aggiorna i record esistenti**: Se selezionato, i record con email già presenti vengono aggiornati
+   - **Ignora record esistenti**: ⭐ NUOVA OPZIONE - Se selezionato, i record con email già presenti vengono saltati (non modificati)
+5. Rivedi l'anteprima e conferma l'import
+
+**Opzioni di Import:**
+- **Ignora record esistenti (per email)**: Utile quando si vuole importare solo nuovi record senza modificare quelli esistenti. I record con email già presente nel database vengono saltati completamente, preservando i dati esistenti.
+- **Aggiorna i record esistenti**: Permette di aggiornare i record esistenti con nuovi dati dal file.
+- Entrambe le opzioni possono essere deselezionate per creare sempre nuovi record (duplicati).
+
+**Tooltip migliorato per "Tipo Socio/Donatore":**
+Il campo "Ruolo" ora ha un tooltip completo che spiega: "Se contiene 'socio' o 'donatore' (case-insensitive), il record verrà classificato rispettivamente come Socio o Donatore. Esempio: 'socio sostenitore' => Socio; 'donatore occasionale' => Donatore."
 
 ### Tipi di Export Disponibili
 
