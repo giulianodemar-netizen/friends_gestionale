@@ -445,6 +445,25 @@
     content: '\f338';
 }
 
+/* Responsive Tables */
+.wp-list-table {
+    overflow-x: auto;
+    display: block;
+}
+
+@media (max-width: 1200px) {
+    /* Make tables scrollable on smaller screens */
+    .wrap .wp-list-table {
+        min-width: 800px;
+    }
+    
+    /* Ensure table container is scrollable */
+    .wrap > form {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 /* Responsive */
 @media (max-width: 782px) {
     .fg-dashboard-stats,
@@ -460,6 +479,24 @@
     .fg-field-half,
     .fg-field-third {
         flex: 1;
+    }
+    
+    /* Table improvements for mobile */
+    .wrap .wp-list-table {
+        min-width: 600px;
+    }
+    
+    .wp-list-table th,
+    .wp-list-table td {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px;
+    }
+    
+    .wp-list-table .column-title,
+    .wp-list-table .column-fg_nome_completo {
+        max-width: 250px;
     }
 }
 
