@@ -23,6 +23,9 @@ All notable changes to Friends of Naples Gestionale will be documented in this f
   - Removed duplicate data_iscrizione fields that were causing form submission conflicts
   - Field now displayed in a dedicated section visible for all donor types
   - Data correctly saved and displayed for both "Solo Donatore" and "Donatore e Socio"
+  - **NEW FIX:** Removed default date fallback that was masking the actual saved value
+  - **NEW FIX:** Import now sets data_iscrizione for ALL donor types, not just members
+  - Field now shows actual saved value from database instead of today's date as fallback
   
 - **Viewer Role: Menu Access**
   - Fixed "Donatori Visualizzatore" role not showing any menu items
@@ -44,9 +47,11 @@ All notable changes to Friends of Naples Gestionale will be documented in this f
 - `ajax_execute_import()` now uses `parse_file_all_rows()` instead of limited `preview_rows`
 - `ajax_preview_import()` now calculates accurate statistics on ALL rows before showing preview
 - `validate_and_preview_row()` method updated to accept `skip_empty_email` parameter
+- `validate_and_preview_row()` now sets default data_iscrizione for ALL donor types (not just members)
 - Viewer role menu restrictions added to `restrict_payment_manager_menu()`
 - Viewer role edit protections added to `redirect_payment_manager()`
 - Meta box restructured: data_iscrizione now in dedicated section, always visible
+- Data iscrizione field no longer shows fallback date, displays actual saved value or empty
 
 ## [1.1.0] - 2024
 

@@ -908,10 +908,10 @@ class Friends_Gestionale_Import {
             }
         }
         
-        // Default data_iscrizione for soci
-        if ($tipo_donatore === 'anche_socio') {
-            if (empty($mapped_data['data_iscrizione'])) {
-                $mapped_data['data_iscrizione'] = current_time('Y-m-d');
+        // Default data_iscrizione if not provided
+        if (empty($mapped_data['data_iscrizione'])) {
+            $mapped_data['data_iscrizione'] = current_time('Y-m-d');
+            if ($tipo_donatore === 'anche_socio') {
                 $warnings[] = __('Data iscrizione impostata a oggi', 'friends-gestionale');
             }
         }
