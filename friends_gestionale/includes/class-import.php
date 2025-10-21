@@ -291,6 +291,24 @@ class Friends_Gestionale_Import {
                 border-radius: 4px;
             }
             .fg-preview-summary {
+                margin: 20px 0;
+            }
+            .fg-preview-header {
+                background: #e7f3ff;
+                padding: 15px 20px;
+                border-left: 4px solid #0073aa;
+                margin-bottom: 20px;
+                border-radius: 4px;
+            }
+            .fg-preview-header h3 {
+                margin: 0 0 5px 0;
+                color: #0073aa;
+            }
+            .fg-preview-header .description {
+                margin: 0;
+                color: #666;
+            }
+            .fg-preview-stats {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                 gap: 15px;
@@ -319,6 +337,15 @@ class Friends_Gestionale_Import {
             .fg-preview-stat-label {
                 color: #666;
                 font-size: 14px;
+            }
+            .fg-preview-table-header {
+                margin: 20px 0 10px 0;
+                padding: 10px;
+                background: #f9f9f9;
+                border-left: 3px solid #0073aa;
+            }
+            .fg-preview-table-header p {
+                margin: 0;
             }
             #fg-preview-table-container {
                 overflow-x: auto;
@@ -704,35 +731,55 @@ class Friends_Gestionale_Import {
             wp_send_json_error(array('message' => __('Sessione di import scaduta', 'friends-gestionale')));
         }
         
-        // Re-parse file to get all rows for preview
+        // Parse ALL rows to get accurate statistics
+        $all_rows = $this->parse_file_all_rows($import_data['file_path'], $import_data['file_type']);
+        if (is_wp_error($all_rows)) {
+            wp_send_json_error(array('message' => $all_rows->get_error_message()));
+        }
+        
+        // Calculate accurate statistics based on ALL rows
+        $total_rows = count($all_rows);
+        $stats = array(
+            'will_create' => 0,
+            'will_update' => 0,
+            'will_skip' => 0,
+            'has_errors' => 0
+        );
+        
+        foreach ($all_rows as $row_data) {
+            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing);
+            
+            if ($row_preview['status'] === 'create') {
+                $stats['will_create']++;
+            } elseif ($row_preview['status'] === 'update') {
+                $stats['will_update']++;
+            } elseif ($row_preview['status'] === 'skip') {
+                $stats['will_skip']++;
+            } elseif ($row_preview['status'] === 'error') {
+                $stats['has_errors']++;
+            }
+        }
+        
+        // Get preview rows (limited to 100 for display)
         $parse_result = $this->parse_file($import_data['file_path'], $import_data['file_type']);
         if (is_wp_error($parse_result)) {
             wp_send_json_error(array('message' => $parse_result->get_error_message()));
         }
         
-        // Validate and preview each row
+        // Validate and preview each row (for display table)
         $preview = array(
-            'total' => count($parse_result['preview_rows']),
-            'will_create' => 0,
-            'will_update' => 0,
-            'will_skip' => 0,
-            'has_errors' => 0,
+            'total' => $total_rows, // Total from ALL rows
+            'will_create' => $stats['will_create'], // Stats from ALL rows
+            'will_update' => $stats['will_update'],
+            'will_skip' => $stats['will_skip'],
+            'has_errors' => $stats['has_errors'],
             'rows' => array()
         );
         
+        // Only show first 100 rows in preview table (for performance)
         foreach ($parse_result['preview_rows'] as $row_data) {
             $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing);
             $preview['rows'][] = $row_preview;
-            
-            if ($row_preview['status'] === 'create') {
-                $preview['will_create']++;
-            } elseif ($row_preview['status'] === 'update') {
-                $preview['will_update']++;
-            } elseif ($row_preview['status'] === 'skip') {
-                $preview['will_skip']++;
-            } elseif ($row_preview['status'] === 'error') {
-                $preview['has_errors']++;
-            }
         }
         
         wp_send_json_success($preview);
