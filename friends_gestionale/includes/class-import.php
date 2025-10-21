@@ -489,7 +489,8 @@ class Friends_Gestionale_Import {
             if (count($row) === count($headers)) {
                 $row_data = array();
                 foreach ($headers as $i => $header) {
-                    $row_data[$header] = isset($row[$i]) ? trim($row[$i]) : '';
+                    // Use deep_trim to remove all whitespace including non-breaking spaces
+                    $row_data[$header] = isset($row[$i]) ? $this->deep_trim($row[$i]) : '';
                 }
                 $preview_rows[] = $row_data;
                 $row_count++;
@@ -550,7 +551,8 @@ class Friends_Gestionale_Import {
             if (count($preview_rows) < 100) {
                 $row_data = array();
                 foreach ($headers as $i => $header) {
-                    $row_data[$header] = isset($row[$i]) ? trim($row[$i]) : '';
+                    // Use deep_trim to remove all whitespace including non-breaking spaces
+                    $row_data[$header] = isset($row[$i]) ? $this->deep_trim($row[$i]) : '';
                 }
                 $preview_rows[] = $row_data;
             }
@@ -618,6 +620,20 @@ class Friends_Gestionale_Import {
     }
     
     /**
+     * Deep trim: removes all types of whitespace including non-breaking spaces
+     */
+    private function deep_trim($value) {
+        if (!is_string($value)) {
+            return $value;
+        }
+        // Remove regular spaces, tabs, newlines, and non-breaking spaces (char 160, &nbsp;)
+        // Also remove other Unicode whitespace characters
+        $value = trim($value);
+        $value = preg_replace('/^[\s\x{00A0}\x{200B}\x{FEFF}]+|[\s\x{00A0}\x{200B}\x{FEFF}]+$/u', '', $value);
+        return $value;
+    }
+    
+    /**
      * Validate and preview a single row
      */
     private function validate_and_preview_row($row_data, $mapping, $update_existing) {
@@ -629,26 +645,19 @@ class Friends_Gestionale_Import {
         foreach ($mapping as $field => $source) {
             if (strpos($source, 'static:') === 0) {
                 // Static value
-                $mapped_data[$field] = substr($source, 7);
+                $mapped_data[$field] = $this->deep_trim(substr($source, 7));
             } elseif ($source !== '' && $source !== 'skip') {
-                // Column value
-                $mapped_data[$field] = isset($row_data[$source]) ? $row_data[$source] : '';
+                // Column value - apply deep trim to remove all whitespace types
+                $mapped_data[$field] = isset($row_data[$source]) ? $this->deep_trim($row_data[$source]) : '';
             }
         }
         
         // Validation rules
-        $ragione_sociale = isset($mapped_data['ragione_sociale']) ? trim($mapped_data['ragione_sociale']) : '';
-        $nome = isset($mapped_data['nome']) ? trim($mapped_data['nome']) : '';
-        $cognome = isset($mapped_data['cognome']) ? trim($mapped_data['cognome']) : '';
-        $email = isset($mapped_data['email']) ? trim($mapped_data['email']) : '';
-        $ruolo_value = isset($mapped_data['ruolo']) ? trim($mapped_data['ruolo']) : '';
-        
-        // Update mapped_data with trimmed values
-        if (isset($mapped_data['ragione_sociale'])) $mapped_data['ragione_sociale'] = $ragione_sociale;
-        if (isset($mapped_data['nome'])) $mapped_data['nome'] = $nome;
-        if (isset($mapped_data['cognome'])) $mapped_data['cognome'] = $cognome;
-        if (isset($mapped_data['email'])) $mapped_data['email'] = $email;
-        if (isset($mapped_data['ruolo'])) $mapped_data['ruolo'] = $ruolo_value;
+        $ragione_sociale = isset($mapped_data['ragione_sociale']) ? $mapped_data['ragione_sociale'] : '';
+        $nome = isset($mapped_data['nome']) ? $mapped_data['nome'] : '';
+        $cognome = isset($mapped_data['cognome']) ? $mapped_data['cognome'] : '';
+        $email = isset($mapped_data['email']) ? $mapped_data['email'] : '';
+        $ruolo_value = isset($mapped_data['ruolo']) ? $mapped_data['ruolo'] : '';
         
         // Normalize ruolo value
         // If contains "donatore" -> it's a donor (solo_donatore)
