@@ -30,7 +30,7 @@ class Friends_Gestionale_Import {
      */
     public function add_import_page() {
         add_submenu_page(
-            'edit.php?post_type=fg_socio',
+            'friends-gestionale',
             __('Importa da file', 'friends-gestionale'),
             __('Importa da file', 'friends-gestionale'),
             'edit_posts',
@@ -116,11 +116,11 @@ class Friends_Gestionale_Import {
                     <div class="fg-import-options">
                         <h3><?php _e('Opzioni Import', 'friends-gestionale'); ?></h3>
                         <label>
-                            <input type="checkbox" id="fg-update-existing" value="1" />
+                            <input type="checkbox" id="fg-update-existing" value="1" checked />
                             <?php _e('Aggiorna i record esistenti con la stessa email', 'friends-gestionale'); ?>
                         </label>
                         <p class="description">
-                            <?php _e('Se selezionato, i donatori con email già presente verranno aggiornati invece di crearne uno nuovo.', 'friends-gestionale'); ?>
+                            <?php _e("L'email è usata come campo univoco. Se deselezionato, verrà creato un duplicato invece di aggiornare il record esistente.", 'friends-gestionale'); ?>
                         </p>
                     </div>
                     
@@ -643,6 +643,13 @@ class Friends_Gestionale_Import {
         $email = isset($mapped_data['email']) ? trim($mapped_data['email']) : '';
         $ruolo_value = isset($mapped_data['ruolo']) ? trim($mapped_data['ruolo']) : '';
         
+        // Update mapped_data with trimmed values
+        if (isset($mapped_data['ragione_sociale'])) $mapped_data['ragione_sociale'] = $ragione_sociale;
+        if (isset($mapped_data['nome'])) $mapped_data['nome'] = $nome;
+        if (isset($mapped_data['cognome'])) $mapped_data['cognome'] = $cognome;
+        if (isset($mapped_data['email'])) $mapped_data['email'] = $email;
+        if (isset($mapped_data['ruolo'])) $mapped_data['ruolo'] = $ruolo_value;
+        
         // Normalize ruolo value
         // If contains "donatore" -> it's a donor (solo_donatore)
         // Otherwise, treat as socio category name (anche_socio)
@@ -692,10 +699,11 @@ class Friends_Gestionale_Import {
             if ($update_existing) {
                 $status = 'update';
                 $action_label = __('Aggiorna', 'friends-gestionale');
+                $warnings[] = __('Email già esistente - il record verrà aggiornato', 'friends-gestionale');
             } else {
-                $status = 'skip';
-                $action_label = __('Duplicato', 'friends-gestionale');
-                $warnings[] = __('Email già esistente - verrà creato un nuovo record', 'friends-gestionale');
+                $status = 'create';
+                $action_label = __('Crea nuovo', 'friends-gestionale');
+                $warnings[] = __('Email già esistente - verrà creato un nuovo record (duplicato)', 'friends-gestionale');
             }
         }
         
