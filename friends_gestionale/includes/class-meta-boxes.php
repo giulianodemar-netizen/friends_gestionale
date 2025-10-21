@@ -112,6 +112,14 @@ class Friends_Gestionale_Meta_Boxes {
         $telefono = get_post_meta($post->ID, '_fg_telefono', true);
         $indirizzo = get_post_meta($post->ID, '_fg_indirizzo', true);
         $data_iscrizione = get_post_meta($post->ID, '_fg_data_iscrizione', true);
+        // Convert datetime to date if needed (for backward compatibility with old data that has timestamps)
+        if (!empty($data_iscrizione) && strlen($data_iscrizione) > 10) {
+            $data_iscrizione = substr($data_iscrizione, 0, 10);
+        }
+        // Default to today's date for new records
+        if (empty($data_iscrizione)) {
+            $data_iscrizione = date('Y-m-d');
+        }
         $data_scadenza = get_post_meta($post->ID, '_fg_data_scadenza', true);
         $quota_annuale = get_post_meta($post->ID, '_fg_quota_annuale', true);
         $stato = get_post_meta($post->ID, '_fg_stato', true);
@@ -241,6 +249,18 @@ class Friends_Gestionale_Meta_Boxes {
                 </div>
             </div>
             
+            <!-- Data Iscrizione - always visible for all types -->
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Data Iscrizione', 'friends-gestionale'); ?></h3>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_data_iscrizione"><strong><?php _e('Data Iscrizione:', 'friends-gestionale'); ?></strong></label>
+                        <input type="date" id="fg_data_iscrizione" name="fg_data_iscrizione" value="<?php echo esc_attr($data_iscrizione); ?>" class="widefat" />
+                        <p class="description"><?php _e('Data di registrazione.', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Iscrizione section - shown only for anche_socio -->
             <div class="fg-form-section fg-iscrizione-section" style="display: <?php echo $tipo_donatore === 'anche_socio' ? 'block' : 'none'; ?>;">
                 <h3 class="fg-section-title"><?php _e('Iscrizione', 'friends-gestionale'); ?></h3>
@@ -282,15 +302,11 @@ class Friends_Gestionale_Meta_Boxes {
                 </div>
                 
                 <div class="fg-form-row">
-                    <div class="fg-form-field fg-field-third">
-                        <label for="fg_data_iscrizione"><strong><?php _e('Data Iscrizione:', 'friends-gestionale'); ?></strong></label>
-                        <input type="date" id="fg_data_iscrizione" name="fg_data_iscrizione" value="<?php echo esc_attr($data_iscrizione ? $data_iscrizione : date('Y-m-d')); ?>" class="widefat" />
-                    </div>
-                    <div class="fg-form-field fg-field-third">
+                    <div class="fg-form-field fg-field-half">
                         <label for="fg_data_scadenza"><strong><?php _e('Data Scadenza:', 'friends-gestionale'); ?></strong></label>
                         <input type="date" id="fg_data_scadenza" name="fg_data_scadenza" value="<?php echo esc_attr($data_scadenza); ?>" class="widefat" />
                     </div>
-                    <div class="fg-form-field fg-field-third">
+                    <div class="fg-form-field fg-field-half">
                         <label for="fg_quota_annuale"><strong><?php _e('Quota Annuale (€):', 'friends-gestionale'); ?></strong></label>
                         <input type="number" id="fg_quota_annuale" name="fg_quota_annuale" value="<?php echo esc_attr($quota_annuale); ?>" step="0.01" min="0" class="widefat" readonly style="background-color: #f0f0f0;" />
                         <p class="description"><?php _e('La quota viene calcolata automaticamente dalla categoria del socio.', 'friends-gestionale'); ?></p>
@@ -1221,7 +1237,12 @@ class Friends_Gestionale_Meta_Boxes {
             }
             
             if (isset($_POST['fg_data_iscrizione'])) {
-                update_post_meta($post_id, '_fg_data_iscrizione', sanitize_text_field($_POST['fg_data_iscrizione']));
+                $data_iscrizione = sanitize_text_field($_POST['fg_data_iscrizione']);
+                // Ensure we only store date part (YYYY-MM-DD), strip any time portion
+                if (!empty($data_iscrizione) && strlen($data_iscrizione) > 10) {
+                    $data_iscrizione = substr($data_iscrizione, 0, 10);
+                }
+                update_post_meta($post_id, '_fg_data_iscrizione', $data_iscrizione);
             }
             if (isset($_POST['fg_data_scadenza'])) {
                 update_post_meta($post_id, '_fg_data_scadenza', sanitize_text_field($_POST['fg_data_scadenza']));

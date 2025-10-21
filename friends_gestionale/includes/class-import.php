@@ -122,6 +122,24 @@ class Friends_Gestionale_Import {
                         <p class="description">
                             <?php _e("L'email è usata come campo univoco. Se deselezionato, verrà creato un duplicato invece di aggiornare il record esistente.", 'friends-gestionale'); ?>
                         </p>
+                        
+                        <label style="margin-top: 15px; display: block;">
+                            <input type="checkbox" id="fg-skip-existing" value="1" />
+                            <?php _e('Ignora record esistenti (per email)', 'friends-gestionale'); ?>
+                            <span class="fg-tooltip" title="<?php echo esc_attr(__('Se selezionato, i record con email già presenti non verranno aggiornati né sovrascritti; verranno saltati.', 'friends-gestionale')); ?>">ⓘ</span>
+                        </label>
+                        <p class="description">
+                            <?php _e('Se selezionato, i record con email già presenti non verranno aggiornati né sovrascritti; verranno saltati.', 'friends-gestionale'); ?>
+                        </p>
+                        
+                        <label style="margin-top: 15px; display: block;">
+                            <input type="checkbox" id="fg-skip-empty-email" value="1" />
+                            <?php _e('Ignora record senza email', 'friends-gestionale'); ?>
+                            <span class="fg-tooltip" title="<?php echo esc_attr(__('Se selezionato, i record che non hanno un indirizzo email verranno saltati e non importati.', 'friends-gestionale')); ?>">ⓘ</span>
+                        </label>
+                        <p class="description">
+                            <?php _e('Se selezionato, i record senza indirizzo email verranno saltati e non importati.', 'friends-gestionale'); ?>
+                        </p>
                     </div>
                     
                     <div class="fg-step-actions">
@@ -282,6 +300,24 @@ class Friends_Gestionale_Import {
                 border-radius: 4px;
             }
             .fg-preview-summary {
+                margin: 20px 0;
+            }
+            .fg-preview-header {
+                background: #e7f3ff;
+                padding: 15px 20px;
+                border-left: 4px solid #0073aa;
+                margin-bottom: 20px;
+                border-radius: 4px;
+            }
+            .fg-preview-header h3 {
+                margin: 0 0 5px 0;
+                color: #0073aa;
+            }
+            .fg-preview-header .description {
+                margin: 0;
+                color: #666;
+            }
+            .fg-preview-stats {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                 gap: 15px;
@@ -310,6 +346,15 @@ class Friends_Gestionale_Import {
             .fg-preview-stat-label {
                 color: #666;
                 font-size: 14px;
+            }
+            .fg-preview-table-header {
+                margin: 20px 0 10px 0;
+                padding: 10px;
+                background: #f9f9f9;
+                border-left: 3px solid #0073aa;
+            }
+            .fg-preview-table-header p {
+                margin: 0;
             }
             #fg-preview-table-container {
                 overflow-x: auto;
@@ -517,6 +562,110 @@ class Friends_Gestionale_Import {
     }
     
     /**
+     * Parse file and return ALL rows (not limited to preview)
+     */
+    private function parse_file_all_rows($file_path, $file_type) {
+        if ($file_type === 'csv') {
+            return $this->parse_csv_all_rows($file_path);
+        } elseif (in_array($file_type, array('xlsx', 'xls'))) {
+            return $this->parse_xlsx_all_rows($file_path);
+        }
+        
+        return new WP_Error('invalid_type', __('Tipo file non supportato', 'friends-gestionale'));
+    }
+    
+    /**
+     * Parse CSV and return ALL rows
+     */
+    private function parse_csv_all_rows($file_path) {
+        $handle = fopen($file_path, 'r');
+        if (!$handle) {
+            return new WP_Error('file_error', __('Impossibile aprire il file', 'friends-gestionale'));
+        }
+        
+        // Detect delimiter
+        $first_line = fgets($handle);
+        rewind($handle);
+        
+        $delimiter = ',';
+        if (strpos($first_line, ';') !== false) {
+            $delimiter = ';';
+        } elseif (strpos($first_line, "\t") !== false) {
+            $delimiter = "\t";
+        }
+        
+        // Read headers
+        $headers = fgetcsv($handle, 0, $delimiter);
+        if (!$headers) {
+            fclose($handle);
+            return new WP_Error('invalid_file', __('File non valido', 'friends-gestionale'));
+        }
+        
+        // Clean headers
+        $headers = array_map('trim', $headers);
+        
+        // Read ALL rows
+        $all_rows = array();
+        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+            if (count($row) === count($headers)) {
+                $row_data = array();
+                foreach ($headers as $i => $header) {
+                    $row_data[$header] = isset($row[$i]) ? $this->deep_trim($row[$i]) : '';
+                }
+                $all_rows[] = $row_data;
+            }
+        }
+        
+        fclose($handle);
+        
+        return $all_rows;
+    }
+    
+    /**
+     * Parse XLSX and return ALL rows
+     */
+    private function parse_xlsx_all_rows($file_path) {
+        // Check if SimpleXLSX class is available
+        if (!class_exists('Shuchkin\SimpleXLSX')) {
+            $lib_path = FRIENDS_GESTIONALE_PLUGIN_DIR . 'includes/lib/simplexlsx.php';
+            if (file_exists($lib_path)) {
+                require_once $lib_path;
+            } else {
+                return new WP_Error('library_missing', __('Libreria XLSX non disponibile. Usa file CSV.', 'friends-gestionale'));
+            }
+        }
+        
+        if (!class_exists('Shuchkin\SimpleXLSX')) {
+            return new WP_Error('library_missing', __('Libreria XLSX non disponibile. Usa file CSV.', 'friends-gestionale'));
+        }
+        
+        $xlsx = \Shuchkin\SimpleXLSX::parse($file_path);
+        if (!$xlsx) {
+            return new WP_Error('parse_error', __('Errore nella lettura del file XLSX', 'friends-gestionale'));
+        }
+        
+        $rows = $xlsx->rows();
+        if (empty($rows)) {
+            return new WP_Error('empty_file', __('File vuoto', 'friends-gestionale'));
+        }
+        
+        $headers = array_shift($rows);
+        $headers = array_map('trim', $headers);
+        
+        // Process ALL rows
+        $all_rows = array();
+        foreach ($rows as $row) {
+            $row_data = array();
+            foreach ($headers as $i => $header) {
+                $row_data[$header] = isset($row[$i]) ? $this->deep_trim($row[$i]) : '';
+            }
+            $all_rows[] = $row_data;
+        }
+        
+        return $all_rows;
+    }
+    
+    /**
      * Parse XLSX file (simplified - requires SimpleXLSX library or manual implementation)
      */
     private function parse_xlsx($file_path) {
@@ -584,41 +733,63 @@ class Friends_Gestionale_Import {
         $import_id = sanitize_text_field($_POST['import_id']);
         $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
         $update_existing = isset($_POST['update_existing']) && $_POST['update_existing'] === 'true';
+        $skip_existing = isset($_POST['skip_existing']) && $_POST['skip_existing'] === 'true';
+        $skip_empty_email = isset($_POST['skip_empty_email']) && $_POST['skip_empty_email'] === 'true';
         
         $import_data = get_transient('fg_import_' . $import_id);
         if (!$import_data) {
             wp_send_json_error(array('message' => __('Sessione di import scaduta', 'friends-gestionale')));
         }
         
-        // Re-parse file to get all rows for preview
+        // Parse ALL rows to get accurate statistics
+        $all_rows = $this->parse_file_all_rows($import_data['file_path'], $import_data['file_type']);
+        if (is_wp_error($all_rows)) {
+            wp_send_json_error(array('message' => $all_rows->get_error_message()));
+        }
+        
+        // Calculate accurate statistics based on ALL rows
+        $total_rows = count($all_rows);
+        $stats = array(
+            'will_create' => 0,
+            'will_update' => 0,
+            'will_skip' => 0,
+            'has_errors' => 0
+        );
+        
+        foreach ($all_rows as $row_data) {
+            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing, $skip_empty_email);
+            
+            if ($row_preview['status'] === 'create') {
+                $stats['will_create']++;
+            } elseif ($row_preview['status'] === 'update') {
+                $stats['will_update']++;
+            } elseif ($row_preview['status'] === 'skip') {
+                $stats['will_skip']++;
+            } elseif ($row_preview['status'] === 'error') {
+                $stats['has_errors']++;
+            }
+        }
+        
+        // Get preview rows (limited to 100 for display)
         $parse_result = $this->parse_file($import_data['file_path'], $import_data['file_type']);
         if (is_wp_error($parse_result)) {
             wp_send_json_error(array('message' => $parse_result->get_error_message()));
         }
         
-        // Validate and preview each row
+        // Validate and preview each row (for display table)
         $preview = array(
-            'total' => count($parse_result['preview_rows']),
-            'will_create' => 0,
-            'will_update' => 0,
-            'will_skip' => 0,
-            'has_errors' => 0,
+            'total' => $total_rows, // Total from ALL rows
+            'will_create' => $stats['will_create'], // Stats from ALL rows
+            'will_update' => $stats['will_update'],
+            'will_skip' => $stats['will_skip'],
+            'has_errors' => $stats['has_errors'],
             'rows' => array()
         );
         
+        // Only show first 100 rows in preview table (for performance)
         foreach ($parse_result['preview_rows'] as $row_data) {
-            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing);
+            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing, $skip_empty_email);
             $preview['rows'][] = $row_preview;
-            
-            if ($row_preview['status'] === 'create') {
-                $preview['will_create']++;
-            } elseif ($row_preview['status'] === 'update') {
-                $preview['will_update']++;
-            } elseif ($row_preview['status'] === 'skip') {
-                $preview['will_skip']++;
-            } elseif ($row_preview['status'] === 'error') {
-                $preview['has_errors']++;
-            }
         }
         
         wp_send_json_success($preview);
@@ -641,7 +812,7 @@ class Friends_Gestionale_Import {
     /**
      * Validate and preview a single row
      */
-    private function validate_and_preview_row($row_data, $mapping, $update_existing) {
+    private function validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing = false, $skip_empty_email = false) {
         $errors = array();
         $warnings = array();
         $mapped_data = array();
@@ -663,6 +834,17 @@ class Friends_Gestionale_Import {
         $cognome = isset($mapped_data['cognome']) ? $mapped_data['cognome'] : '';
         $email = isset($mapped_data['email']) ? $mapped_data['email'] : '';
         $ruolo_value = isset($mapped_data['ruolo']) ? $mapped_data['ruolo'] : '';
+        
+        // Check if skip_empty_email is enabled and email is empty
+        if ($skip_empty_email && empty($email)) {
+            return array(
+                'status' => 'skip',
+                'action_label' => __('Salta', 'friends-gestionale'),
+                'data' => $mapped_data,
+                'errors' => array(),
+                'warnings' => array(__('Email vuota - il record verrà saltato', 'friends-gestionale'))
+            );
+        }
         
         // Normalize ruolo value
         // If contains "donatore" -> it's a donor (solo_donatore)
@@ -710,7 +892,12 @@ class Friends_Gestionale_Import {
         $action_label = __('Nuovo', 'friends-gestionale');
         
         if ($existing_post) {
-            if ($update_existing) {
+            // If skip_existing is enabled, skip the record
+            if ($skip_existing) {
+                $status = 'skip';
+                $action_label = __('Salta', 'friends-gestionale');
+                $warnings[] = __('Email già esistente - il record verrà saltato (non modificato)', 'friends-gestionale');
+            } elseif ($update_existing) {
                 $status = 'update';
                 $action_label = __('Aggiorna', 'friends-gestionale');
                 $warnings[] = __('Email già esistente - il record verrà aggiornato', 'friends-gestionale');
@@ -721,10 +908,10 @@ class Friends_Gestionale_Import {
             }
         }
         
-        // Default data_iscrizione for soci
-        if ($tipo_donatore === 'anche_socio') {
-            if (empty($mapped_data['data_iscrizione'])) {
-                $mapped_data['data_iscrizione'] = current_time('Y-m-d');
+        // Default data_iscrizione if not provided
+        if (empty($mapped_data['data_iscrizione'])) {
+            $mapped_data['data_iscrizione'] = current_time('Y-m-d');
+            if ($tipo_donatore === 'anche_socio') {
                 $warnings[] = __('Data iscrizione impostata a oggi', 'friends-gestionale');
             }
         }
@@ -777,16 +964,18 @@ class Friends_Gestionale_Import {
         $import_id = sanitize_text_field($_POST['import_id']);
         $mapping = isset($_POST['mapping']) ? $_POST['mapping'] : array();
         $update_existing = isset($_POST['update_existing']) && $_POST['update_existing'] === 'true';
+        $skip_existing = isset($_POST['skip_existing']) && $_POST['skip_existing'] === 'true';
+        $skip_empty_email = isset($_POST['skip_empty_email']) && $_POST['skip_empty_email'] === 'true';
         
         $import_data = get_transient('fg_import_' . $import_id);
         if (!$import_data) {
             wp_send_json_error(array('message' => __('Sessione di import scaduta', 'friends-gestionale')));
         }
         
-        // Re-parse file to get all rows
-        $parse_result = $this->parse_file($import_data['file_path'], $import_data['file_type']);
-        if (is_wp_error($parse_result)) {
-            wp_send_json_error(array('message' => $parse_result->get_error_message()));
+        // Parse file to get all rows (not just preview)
+        $all_rows = $this->parse_file_all_rows($import_data['file_path'], $import_data['file_type']);
+        if (is_wp_error($all_rows)) {
+            wp_send_json_error(array('message' => $all_rows->get_error_message()));
         }
         
         // Process all rows
@@ -797,8 +986,8 @@ class Friends_Gestionale_Import {
             'errors' => array()
         );
         
-        foreach ($parse_result['preview_rows'] as $index => $row_data) {
-            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing);
+        foreach ($all_rows as $index => $row_data) {
+            $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing, $skip_empty_email);
             
             if ($row_preview['status'] === 'error') {
                 $results['errors'][] = array(
@@ -913,7 +1102,12 @@ class Friends_Gestionale_Import {
         
         foreach ($meta_mapping as $key => $meta_key) {
             if (isset($data[$key]) && $data[$key] !== '') {
-                update_post_meta($post_id, $meta_key, sanitize_text_field($data[$key]));
+                $value = sanitize_text_field($data[$key]);
+                // For date fields, ensure we only store YYYY-MM-DD format
+                if ($key === 'data_iscrizione' && strlen($value) > 10) {
+                    $value = substr($value, 0, 10);
+                }
+                update_post_meta($post_id, $meta_key, $value);
             }
         }
         
@@ -1108,7 +1302,7 @@ class Friends_Gestionale_Import {
      */
     public static function get_field_tooltips() {
         return array(
-            'ruolo' => __('Se contiene "donatore" → Donatore. Altrimenti → Socio con categoria (usa il nome della categoria socio presente nella cella)', 'friends-gestionale')
+            'ruolo' => __("Se contiene 'socio' o 'donatore' (case-insensitive), il record verrà classificato rispettivamente come Socio o Donatore. Esempio: 'socio sostenitore' => Socio; 'donatore occasionale' => Donatore.", 'friends-gestionale')
         );
     }
 }

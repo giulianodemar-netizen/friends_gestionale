@@ -756,35 +756,108 @@ class Friends_Gestionale_Admin_Dashboard {
      * Render statistics page
      */
     public function render_statistics() {
-        // Get payment data for last 12 months
+        // Get and validate date filters from request
+        $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
+        $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
+        
+        // Validate date format and range
+        $date_filter_error = '';
+        if (!empty($start_date) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_date)) {
+            $date_filter_error = __('Formato data inizio non valido. Usa YYYY-MM-DD.', 'friends-gestionale');
+            $start_date = '';
+        }
+        if (!empty($end_date) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_date)) {
+            $date_filter_error = __('Formato data fine non valido. Usa YYYY-MM-DD.', 'friends-gestionale');
+            $end_date = '';
+        }
+        if (!empty($start_date) && !empty($end_date) && $start_date > $end_date) {
+            $date_filter_error = __('La data inizio deve essere precedente o uguale alla data fine.', 'friends-gestionale');
+            $start_date = '';
+            $end_date = '';
+        }
+        
+        // Get payment data for last 12 months (or filtered period)
         $months = array();
         $payments_data = array();
         
-        for ($i = 11; $i >= 0; $i--) {
-            $month = date('Y-m', strtotime("-$i months"));
-            $months[] = date_i18n('M Y', strtotime($month . '-01'));
+        // Determine the time range for monthly charts
+        if (!empty($start_date) || !empty($end_date)) {
+            // When filtering, show data by month within the filtered range
+            $filter_start = !empty($start_date) ? strtotime($start_date) : strtotime('-12 months');
+            $filter_end = !empty($end_date) ? strtotime($end_date) : time();
             
-            $start_date = $month . '-01';
-            $end_date = date('Y-m-t', strtotime($start_date));
+            // Calculate number of months to display
+            $start_month = date('Y-m', $filter_start);
+            $end_month = date('Y-m', $filter_end);
+            $current_month = $start_month;
             
-            $pagamenti = get_posts(array(
-                'post_type' => 'fg_pagamento',
-                'posts_per_page' => -1,
-                'meta_query' => array(
+            while ($current_month <= $end_month) {
+                $months[] = date_i18n('M Y', strtotime($current_month . '-01'));
+                
+                $month_start = $current_month . '-01';
+                $month_end = date('Y-m-t', strtotime($month_start));
+                
+                // Apply date filter constraints
+                if (!empty($start_date) && $month_end < $start_date) {
+                    $current_month = date('Y-m', strtotime($current_month . '-01 +1 month'));
+                    continue;
+                }
+                if (!empty($end_date) && $month_start > $end_date) {
+                    break;
+                }
+                
+                $meta_query = array(
                     array(
                         'key' => '_fg_data_pagamento',
-                        'value' => array($start_date, $end_date),
+                        'value' => array($month_start, $month_end),
                         'compare' => 'BETWEEN',
                         'type' => 'DATE'
                     )
-                )
-            ));
-            
-            $total = 0;
-            foreach ($pagamenti as $pagamento) {
-                $total += floatval(get_post_meta($pagamento->ID, '_fg_importo', true));
+                );
+                
+                $pagamenti = get_posts(array(
+                    'post_type' => 'fg_pagamento',
+                    'posts_per_page' => -1,
+                    'meta_query' => $meta_query
+                ));
+                
+                $total = 0;
+                foreach ($pagamenti as $pagamento) {
+                    $total += floatval(get_post_meta($pagamento->ID, '_fg_importo', true));
+                }
+                $payments_data[] = $total;
+                
+                // Move to next month
+                $current_month = date('Y-m', strtotime($current_month . '-01 +1 month'));
             }
-            $payments_data[] = $total;
+        } else {
+            // Default: last 12 months
+            for ($i = 11; $i >= 0; $i--) {
+                $month = date('Y-m', strtotime("-$i months"));
+                $months[] = date_i18n('M Y', strtotime($month . '-01'));
+                
+                $start_date_month = $month . '-01';
+                $end_date_month = date('Y-m-t', strtotime($start_date_month));
+                
+                $pagamenti = get_posts(array(
+                    'post_type' => 'fg_pagamento',
+                    'posts_per_page' => -1,
+                    'meta_query' => array(
+                        array(
+                            'key' => '_fg_data_pagamento',
+                            'value' => array($start_date_month, $end_date_month),
+                            'compare' => 'BETWEEN',
+                            'type' => 'DATE'
+                        )
+                    )
+                ));
+                
+                $total = 0;
+                foreach ($pagamenti as $pagamento) {
+                    $total += floatval(get_post_meta($pagamento->ID, '_fg_importo', true));
+                }
+                $payments_data[] = $total;
+            }
         }
         
         // Get member status distribution
@@ -811,15 +884,43 @@ class Friends_Gestionale_Admin_Dashboard {
         $payments_by_type_totals = array();
         
         foreach ($tipi_pagamento as $tipo) {
+            $meta_query = array(
+                array(
+                    'key' => '_fg_tipo_pagamento',
+                    'value' => $tipo
+                )
+            );
+            
+            // Add date filter if specified
+            if (!empty($start_date) || !empty($end_date)) {
+                if (!empty($start_date) && !empty($end_date)) {
+                    $meta_query[] = array(
+                        'key' => '_fg_data_pagamento',
+                        'value' => array($start_date, $end_date),
+                        'compare' => 'BETWEEN',
+                        'type' => 'DATE'
+                    );
+                } elseif (!empty($start_date)) {
+                    $meta_query[] = array(
+                        'key' => '_fg_data_pagamento',
+                        'value' => $start_date,
+                        'compare' => '>=',
+                        'type' => 'DATE'
+                    );
+                } elseif (!empty($end_date)) {
+                    $meta_query[] = array(
+                        'key' => '_fg_data_pagamento',
+                        'value' => $end_date,
+                        'compare' => '<=',
+                        'type' => 'DATE'
+                    );
+                }
+            }
+            
             $pagamenti_tipo = get_posts(array(
                 'post_type' => 'fg_pagamento',
                 'posts_per_page' => -1,
-                'meta_query' => array(
-                    array(
-                        'key' => '_fg_tipo_pagamento',
-                        'value' => $tipo
-                    )
-                )
+                'meta_query' => $meta_query
             ));
             $payments_by_type[$tipo] = count($pagamenti_tipo);
             
@@ -832,23 +933,55 @@ class Friends_Gestionale_Admin_Dashboard {
         
         // Get monthly new members data
         $new_members_data = array();
-        for ($i = 11; $i >= 0; $i--) {
-            $month = date('Y-m', strtotime("-$i months"));
-            $start_date = $month . '-01';
-            $end_date = date('Y-m-t', strtotime($start_date));
+        
+        if (!empty($start_date) || !empty($end_date)) {
+            // When filtering, show data by month within the filtered range
+            $filter_start = !empty($start_date) ? strtotime($start_date) : strtotime('-12 months');
+            $filter_end = !empty($end_date) ? strtotime($end_date) : time();
             
-            $new_members = new WP_Query(array(
-                'post_type' => 'fg_socio',
-                'posts_per_page' => -1,
-                'date_query' => array(
-                    array(
-                        'after' => $start_date,
-                        'before' => $end_date,
-                        'inclusive' => true,
+            $current_month = date('Y-m', $filter_start);
+            $end_month = date('Y-m', $filter_end);
+            
+            while ($current_month <= $end_month) {
+                $month_start = $current_month . '-01';
+                $month_end = date('Y-m-t', strtotime($month_start));
+                
+                $new_members = new WP_Query(array(
+                    'post_type' => 'fg_socio',
+                    'posts_per_page' => -1,
+                    'date_query' => array(
+                        array(
+                            'after' => $month_start,
+                            'before' => $month_end,
+                            'inclusive' => true,
+                        )
                     )
-                )
-            ));
-            $new_members_data[] = $new_members->found_posts;
+                ));
+                $new_members_data[] = $new_members->found_posts;
+                
+                // Move to next month
+                $current_month = date('Y-m', strtotime($current_month . '-01 +1 month'));
+            }
+        } else {
+            // Default: last 12 months
+            for ($i = 11; $i >= 0; $i--) {
+                $month = date('Y-m', strtotime("-$i months"));
+                $month_start = $month . '-01';
+                $month_end = date('Y-m-t', strtotime($month_start));
+                
+                $new_members = new WP_Query(array(
+                    'post_type' => 'fg_socio',
+                    'posts_per_page' => -1,
+                    'date_query' => array(
+                        array(
+                            'after' => $month_start,
+                            'before' => $month_end,
+                            'inclusive' => true,
+                        )
+                    )
+                ));
+                $new_members_data[] = $new_members->found_posts;
+            }
         }
         
         // Get payment methods distribution
@@ -856,15 +989,43 @@ class Friends_Gestionale_Admin_Dashboard {
         $payments_by_method = array();
         
         foreach ($metodi_pagamento as $metodo) {
+            $meta_query = array(
+                array(
+                    'key' => '_fg_metodo_pagamento',
+                    'value' => $metodo
+                )
+            );
+            
+            // Add date filter if specified
+            if (!empty($start_date) || !empty($end_date)) {
+                if (!empty($start_date) && !empty($end_date)) {
+                    $meta_query[] = array(
+                        'key' => '_fg_data_pagamento',
+                        'value' => array($start_date, $end_date),
+                        'compare' => 'BETWEEN',
+                        'type' => 'DATE'
+                    );
+                } elseif (!empty($start_date)) {
+                    $meta_query[] = array(
+                        'key' => '_fg_data_pagamento',
+                        'value' => $start_date,
+                        'compare' => '>=',
+                        'type' => 'DATE'
+                    );
+                } elseif (!empty($end_date)) {
+                    $meta_query[] = array(
+                        'key' => '_fg_data_pagamento',
+                        'value' => $end_date,
+                        'compare' => '<=',
+                        'type' => 'DATE'
+                    );
+                }
+            }
+            
             $pagamenti_metodo = get_posts(array(
                 'post_type' => 'fg_pagamento',
                 'posts_per_page' => -1,
-                'meta_query' => array(
-                    array(
-                        'key' => '_fg_metodo_pagamento',
-                        'value' => $metodo
-                    )
-                )
+                'meta_query' => $meta_query
             ));
             $payments_by_method[$metodo] = count($pagamenti_metodo);
         }
@@ -895,15 +1056,43 @@ class Friends_Gestionale_Admin_Dashboard {
         
         $soci_donations = array();
         foreach ($all_soci as $socio) {
+            $meta_query = array(
+                array(
+                    'key' => '_fg_socio_id',
+                    'value' => $socio->ID
+                )
+            );
+            
+            // Add date filter if specified
+            if (!empty($start_date) || !empty($end_date)) {
+                if (!empty($start_date) && !empty($end_date)) {
+                    $meta_query[] = array(
+                        'key' => '_fg_data_pagamento',
+                        'value' => array($start_date, $end_date),
+                        'compare' => 'BETWEEN',
+                        'type' => 'DATE'
+                    );
+                } elseif (!empty($start_date)) {
+                    $meta_query[] = array(
+                        'key' => '_fg_data_pagamento',
+                        'value' => $start_date,
+                        'compare' => '>=',
+                        'type' => 'DATE'
+                    );
+                } elseif (!empty($end_date)) {
+                    $meta_query[] = array(
+                        'key' => '_fg_data_pagamento',
+                        'value' => $end_date,
+                        'compare' => '<=',
+                        'type' => 'DATE'
+                    );
+                }
+            }
+            
             $payments = get_posts(array(
                 'post_type' => 'fg_pagamento',
                 'posts_per_page' => -1,
-                'meta_query' => array(
-                    array(
-                        'key' => '_fg_socio_id',
-                        'value' => $socio->ID
-                    )
-                )
+                'meta_query' => $meta_query
             ));
             
             $total = 0;
@@ -932,6 +1121,67 @@ class Friends_Gestionale_Admin_Dashboard {
         ?>
         <div class="wrap fg-statistics-wrap">
             <h1><?php _e('Statistiche', 'friends-gestionale'); ?></h1>
+            
+            <!-- Date Range Filter -->
+            <div class="fg-date-filter" style="background: #fff; padding: 20px; margin: 20px 0; border: 1px solid #ddd; border-radius: 4px;">
+                <h2 style="margin-top: 0;"><?php _e('Filtro Periodo', 'friends-gestionale'); ?></h2>
+                <form method="get" action="" id="fg-statistics-filter-form">
+                    <input type="hidden" name="page" value="fg-statistics" />
+                    <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                        <div>
+                            <label for="fg_start_date" style="display: block; margin-bottom: 5px;">
+                                <?php _e('Data Inizio:', 'friends-gestionale'); ?>
+                            </label>
+                            <input type="date" 
+                                   id="fg_start_date" 
+                                   name="start_date" 
+                                   value="<?php echo esc_attr(isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : ''); ?>"
+                                   style="padding: 5px; border: 1px solid #ddd; border-radius: 4px;" />
+                        </div>
+                        <div>
+                            <label for="fg_end_date" style="display: block; margin-bottom: 5px;">
+                                <?php _e('Data Fine:', 'friends-gestionale'); ?>
+                            </label>
+                            <input type="date" 
+                                   id="fg_end_date" 
+                                   name="end_date" 
+                                   value="<?php echo esc_attr(isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : ''); ?>"
+                                   style="padding: 5px; border: 1px solid #ddd; border-radius: 4px;" />
+                        </div>
+                        <div>
+                            <button type="submit" class="button button-primary">
+                                <?php _e('Applica Filtro', 'friends-gestionale'); ?>
+                            </button>
+                            <?php if (!empty($_GET['start_date']) || !empty($_GET['end_date'])): ?>
+                                <a href="<?php echo admin_url('admin.php?page=fg-statistics'); ?>" class="button">
+                                    <?php _e('Rimuovi Filtro', 'friends-gestionale'); ?>
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php if (!empty($_GET['start_date']) || !empty($_GET['end_date'])): ?>
+                        <p class="description" style="margin-top: 10px;">
+                            <strong><?php _e('Filtro attivo:', 'friends-gestionale'); ?></strong>
+                            <?php 
+                            if (!empty($_GET['start_date']) && !empty($_GET['end_date'])) {
+                                printf(__('Dal %s al %s', 'friends-gestionale'), 
+                                       esc_html($_GET['start_date']), 
+                                       esc_html($_GET['end_date']));
+                            } elseif (!empty($_GET['start_date'])) {
+                                printf(__('Dal %s', 'friends-gestionale'), esc_html($_GET['start_date']));
+                            } else {
+                                printf(__('Fino al %s', 'friends-gestionale'), esc_html($_GET['end_date']));
+                            }
+                            ?>
+                        </p>
+                    <?php endif; ?>
+                    <?php if (!empty($date_filter_error)): ?>
+                        <div class="notice notice-error" style="margin-top: 10px;">
+                            <p><?php echo esc_html($date_filter_error); ?></p>
+                        </div>
+                    <?php endif; ?>
+                </form>
+            </div>
             
             <style>
                 .fg-charts-grid {

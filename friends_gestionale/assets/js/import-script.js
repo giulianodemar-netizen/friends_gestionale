@@ -267,7 +267,9 @@
                     nonce: fg_import_vars.nonce,
                     import_id: self.importId,
                     mapping: self.mapping,
-                    update_existing: $('#fg-update-existing').is(':checked')
+                    update_existing: $('#fg-update-existing').is(':checked'),
+                    skip_existing: $('#fg-skip-existing').is(':checked'),
+                    skip_empty_email: $('#fg-skip-empty-email').is(':checked')
                 },
                 success: function(response) {
                     $('#fg-preview-import-btn').prop('disabled', false).text('Anteprima Import');
@@ -288,8 +290,14 @@
         showPreviewStep: function(preview) {
             var self = this;
             
-            // Build summary
+            // Build summary with total count
             var summaryHtml = '';
+            summaryHtml += '<div class="fg-preview-header">';
+            summaryHtml += '<h3>Totale righe nel file: <strong>' + preview.total + '</strong></h3>';
+            summaryHtml += '<p class="description">Le statistiche seguenti si basano su tutte le ' + preview.total + ' righe del file.</p>';
+            summaryHtml += '</div>';
+            
+            summaryHtml += '<div class="fg-preview-stats">';
             summaryHtml += '<div class="fg-preview-stat success">';
             summaryHtml += '<div class="fg-preview-stat-value">' + preview.will_create + '</div>';
             summaryHtml += '<div class="fg-preview-stat-label">Da creare</div>';
@@ -309,11 +317,15 @@
             summaryHtml += '<div class="fg-preview-stat-value">' + preview.has_errors + '</div>';
             summaryHtml += '<div class="fg-preview-stat-label">Con errori</div>';
             summaryHtml += '</div>';
+            summaryHtml += '</div>';
             
             $('#fg-preview-summary').html(summaryHtml);
             
-            // Build preview table
-            var tableHtml = '<table class="fg-preview-table">';
+            // Build preview table (showing first 50 rows as sample)
+            var tableHtml = '<div class="fg-preview-table-header">';
+            tableHtml += '<p><strong>Anteprima (prime 50 righe):</strong></p>';
+            tableHtml += '</div>';
+            tableHtml += '<table class="fg-preview-table">';
             tableHtml += '<thead><tr>';
             tableHtml += '<th>Azione</th>';
             tableHtml += '<th>Nome</th>';
@@ -379,7 +391,9 @@
                     nonce: fg_import_vars.nonce,
                     import_id: self.importId,
                     mapping: self.mapping,
-                    update_existing: $('#fg-update-existing').is(':checked')
+                    update_existing: $('#fg-update-existing').is(':checked'),
+                    skip_existing: $('#fg-skip-existing').is(':checked'),
+                    skip_empty_email: $('#fg-skip-empty-email').is(':checked')
                 },
                 success: function(response) {
                     if (response.success) {

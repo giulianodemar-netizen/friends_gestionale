@@ -2,6 +2,110 @@
 
 All notable changes to Friends of Naples Gestionale will be documented in this file.
 
+## [1.1.1] - 2024
+
+### Fixed
+- **Import: Process All Rows**
+  - Fixed issue where import only processed first 100 rows of files with >100 records
+  - Added `parse_file_all_rows()`, `parse_csv_all_rows()`, and `parse_xlsx_all_rows()` methods
+  - Import now correctly processes files with 400+ rows
+  - Added test suite to verify all rows are processed (`test-import-all-rows.php`)
+  
+- **Import: Preview Statistics Now Accurate**
+  - Fixed preview statistics showing only 100 rows instead of all rows
+  - Preview now calculates statistics (create/update/skip/errors) based on ALL rows in file
+  - Added clear message: "Totale righe nel file: X"
+  - Statistics section shows: "Le statistiche seguenti si basano su tutte le X righe del file"
+  - Preview table still shows first 50 rows as sample for performance
+  
+- **Data Iscrizione Display Fixed**
+  - Fixed issue where "Data Iscrizione" field was not properly populated in donor detail page
+  - Removed duplicate data_iscrizione fields that were causing form submission conflicts
+  - Field now displayed in a dedicated section visible for all donor types
+  - Data correctly saved and displayed for both "Solo Donatore" and "Donatore e Socio"
+  - **LATEST FIX:** Properly handles legacy data with timestamp format (e.g., "2024-12-11 00:00:00")
+  - **LATEST FIX:** Strips time portion to show only date (YYYY-MM-DD) in HTML5 date field
+  - **LATEST FIX:** Restored default value of today's date for NEW donor records
+  - **LATEST FIX:** Existing records now display their actual saved date instead of placeholder
+  - Import now sets data_iscrizione for ALL donor types, not just members
+  - All saves ensure only date portion (YYYY-MM-DD) is stored for compatibility
+  
+- **Viewer Role: Menu Access**
+  - Fixed "Donatori Visualizzatore" role not showing any menu items
+  - Added proper capabilities: `edit_posts`, `edit_fg_socios`, `edit_fg_pagamentos`, etc.
+  - Viewer role now sees all plugin menus (Dashboard, Statistics, Donatori, Pagamenti, etc.)
+  - Added strict protections to prevent actual editing/creation/deletion
+  - Viewers blocked from: creating posts, editing posts, import, export, settings
+  - Error messages guide users when attempting unauthorized actions
+
+### Added
+- **Import: Skip Records with Empty Email**
+  - New checkbox option "Ignora record senza email"
+  - When enabled, records without email addresses are skipped during import
+  - Useful for filtering incomplete data and maintaining data quality
+  - Shows in preview statistics how many records will be skipped
+  - Complements existing "Ignora record esistenti" option
+
+### Changed
+- `ajax_execute_import()` now uses `parse_file_all_rows()` instead of limited `preview_rows`
+- `ajax_preview_import()` now calculates accurate statistics on ALL rows before showing preview
+- `validate_and_preview_row()` method updated to accept `skip_empty_email` parameter
+- `validate_and_preview_row()` now sets default data_iscrizione for ALL donor types (not just members)
+- Viewer role menu restrictions added to `restrict_payment_manager_menu()`
+- Viewer role edit protections added to `redirect_payment_manager()`
+- Meta box restructured: data_iscrizione now in dedicated section, always visible
+- Data iscrizione field no longer shows fallback date, displays actual saved value or empty
+
+## [1.1.0] - 2024
+
+### Added
+- **Import: Skip Existing Records Option**
+  - New checkbox "Ignora record esistenti (per email)" in import UI
+  - When enabled, records with existing email addresses are skipped (not updated)
+  - Preserves existing data when re-importing files
+  - Added tests for skip functionality
+  
+- **Import: Improved Tooltip for "Tipo Socio/Donatore"**
+  - Enhanced tooltip with complete description
+  - Now shows: "Se contiene 'socio' o 'donatore' (case-insensitive), il record verrà classificato rispettivamente come Socio o Donatore. Esempio: 'socio sostenitore' => Socio; 'donatore occasionale' => Donatore."
+  - Better guidance for users during import process
+  
+- **Statistics: Date Range Filter**
+  - New date filter section at top of statistics page
+  - Start date and end date input fields (optional, can use either or both)
+  - "Applica Filtro" button to refresh statistics
+  - All charts and tables update based on selected date range
+  - Date validation (start_date <= end_date, ISO format YYYY-MM-DD)
+  - Visual indicator showing active filters
+  - "Rimuovi Filtro" button to clear and return to default view
+  - Filters apply to:
+    - Payment trends chart
+    - Donations by type
+    - Payment methods distribution
+    - Top donors ranking
+    - Monthly new members chart
+  
+- **New User Role: Donatori Visualizzatore**
+  - Read-only access role for viewing donors/members
+  - Can view all data (soci, pagamenti, raccolte, eventi)
+  - Cannot create, edit, delete, or import data
+  - Perfect for auditors, board members, or read-only staff
+  - Automatically created on plugin activation
+  
+### Changed
+- Import validation logic improved to support skip_existing flag
+- Role initialization now includes viewer role alongside payment manager role
+- Statistics queries now support optional date filtering
+
+### Technical
+- Added test suite for skip existing functionality (`test-skip-existing-import.php`)
+- Added test suite for viewer role permissions (`test-viewer-role.php`)
+- Added test suite for statistics date filtering (`test-statistics-date-filter.php`)
+- Updated AJAX handlers to support `skip_existing` parameter
+- Modified `validate_and_preview_row()` method signature
+- Updated `render_statistics()` method to accept and process date filters
+- All statistics queries updated with conditional date filtering
+
 ## [1.0.0] - 2024
 
 ### Added - Initial Release

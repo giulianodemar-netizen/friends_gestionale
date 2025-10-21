@@ -98,6 +98,9 @@ class Friends_Gestionale {
         // Ensure payment manager role exists
         add_action('init', array($this, 'ensure_payment_manager_role'));
         
+        // Ensure viewer role exists
+        add_action('init', array($this, 'ensure_viewer_role'));
+        
         // Initialize Export class
         add_action('init', array($this, 'init_export_class'));
         
@@ -152,7 +155,7 @@ class Friends_Gestionale {
     }
     
     /**
-     * Restrict admin menu for plugin manager role
+     * Restrict admin menu for plugin manager and viewer roles
      */
     public function restrict_payment_manager_menu() {
         $user = wp_get_current_user();
@@ -193,10 +196,46 @@ class Friends_Gestionale {
             // - Raccolte Fondi (fg_raccolta)
             // - Eventi (fg_evento)
         }
+        
+        // Viewer role restrictions - similar to payment manager but also remove import
+        if (in_array('fg_donatori_viewer', $user->roles)) {
+            // Remove all default WordPress menus
+            remove_menu_page('index.php');                  // Dashboard
+            remove_menu_page('edit.php');                   // Posts
+            remove_menu_page('upload.php');                 // Media
+            remove_menu_page('edit.php?post_type=page');    // Pages
+            remove_menu_page('edit-comments.php');          // Comments
+            remove_menu_page('themes.php');                 // Appearance
+            remove_menu_page('plugins.php');                // Plugins
+            remove_menu_page('users.php');                  // Users
+            remove_menu_page('tools.php');                  // Tools
+            remove_menu_page('options-general.php');        // Settings - viewers don't need this
+            
+            // Remove Visual Composer menus
+            remove_menu_page('vc-general');
+            remove_menu_page('vc-welcome');
+            remove_menu_page('vcv-settings');
+            remove_menu_page('vcv-about');
+            remove_menu_page('vcv-headers-footers');
+            remove_menu_page('vcv-headers-footers-layouts');
+            
+            // Remove import and export submenus - viewers can't import/export
+            remove_submenu_page('friends-gestionale', 'fg-import');
+            remove_submenu_page('friends-gestionale', 'fg-export');
+            remove_submenu_page('friends-gestionale', 'fg-settings'); // No settings access
+            
+            // Keep visible (read-only):
+            // - Friends Gestionale Dashboard
+            // - Statistiche
+            // - Donatori (fg_socio)
+            // - Pagamenti (fg_pagamento)
+            // - Raccolte Fondi (fg_raccolta)
+            // - Eventi (fg_evento)
+        }
     }
     
     /**
-     * Redirect plugin manager appropriately
+     * Redirect plugin manager and viewer appropriately
      */
     public function redirect_payment_manager() {
         $user = wp_get_current_user();
@@ -226,6 +265,53 @@ class Friends_Gestionale {
                 }
             }
         }
+        
+        // Viewer role - block all edit/create/delete actions
+        if (in_array('fg_donatori_viewer', $user->roles)) {
+            global $pagenow;
+            
+            // Block post.php unless it's just viewing
+            if ($pagenow == 'post.php' && isset($_GET['post'])) {
+                // Allow viewing, but block editing
+                if (!isset($_GET['action']) || $_GET['action'] !== 'view') {
+                    // Redirect to view mode instead of edit
+                    $post_id = intval($_GET['post']);
+                    $post_type = get_post_type($post_id);
+                    $allowed_types = array('fg_socio', 'fg_pagamento', 'fg_raccolta', 'fg_evento');
+                    
+                    if (in_array($post_type, $allowed_types)) {
+                        wp_die(__('Non hai i permessi per modificare questo contenuto. Puoi solo visualizzarlo.', 'friends-gestionale'));
+                    } else {
+                        wp_die(__('Non hai i permessi per accedere a questa pagina.', 'friends-gestionale'));
+                    }
+                }
+            }
+            
+            // Block post-new.php entirely - no creation allowed
+            if ($pagenow == 'post-new.php') {
+                wp_die(__('Non hai i permessi per creare nuovi contenuti.', 'friends-gestionale'));
+            }
+            
+            // Block edit.php with action parameter (bulk actions)
+            if ($pagenow == 'edit.php' && isset($_GET['action']) && $_GET['action'] !== '-1') {
+                wp_die(__('Non hai i permessi per modificare contenuti.', 'friends-gestionale'));
+            }
+            
+            // Block import page
+            if (isset($_GET['page']) && $_GET['page'] === 'fg-import') {
+                wp_die(__('Non hai i permessi per importare dati.', 'friends-gestionale'));
+            }
+            
+            // Block export page
+            if (isset($_GET['page']) && $_GET['page'] === 'fg-export') {
+                wp_die(__('Non hai i permessi per esportare dati.', 'friends-gestionale'));
+            }
+            
+            // Block settings page
+            if (isset($_GET['page']) && $_GET['page'] === 'fg-settings') {
+                wp_die(__('Non hai i permessi per accedere alle impostazioni.', 'friends-gestionale'));
+            }
+        }
     }
     
     /**
@@ -234,6 +320,14 @@ class Friends_Gestionale {
     public function ensure_payment_manager_role() {
         // Always recreate the role to ensure it has the latest name and capabilities
         $this->create_payment_manager_role();
+    }
+    
+    /**
+     * Ensure viewer role exists (called on init)
+     */
+    public function ensure_viewer_role() {
+        // Always recreate the role to ensure it has the latest capabilities
+        $this->create_viewer_role();
     }
     
     /**
@@ -251,6 +345,9 @@ class Friends_Gestionale {
         
         // Create custom user role for plugin management
         $this->create_payment_manager_role();
+        
+        // Create viewer role
+        $this->create_viewer_role();
     }
     
     /**
@@ -317,6 +414,56 @@ class Friends_Gestionale {
             }
             if ($admin_role) {
                 $admin_role->add_cap($cap);
+            }
+        }
+    }
+    
+    /**
+     * Create viewer role for read-only access
+     */
+    private function create_viewer_role() {
+        // Remove role if it exists to ensure clean setup
+        remove_role('fg_donatori_viewer');
+        
+        // Add the role with read-only capabilities
+        // Need 'edit_posts' to see menus, but no actual edit/delete/publish caps
+        add_role(
+            'fg_donatori_viewer',
+            __('Donatori Visualizzatore', 'friends-gestionale'),
+            array(
+                'read' => true,
+                'edit_posts' => true, // Needed to see the admin menus
+                'read_private_posts' => true, // To view private posts
+            )
+        );
+        
+        // Get the roles
+        $viewer_role = get_role('fg_donatori_viewer');
+        $admin_role = get_role('administrator');
+        
+        // Add read and list capabilities for all plugin post types
+        $read_capabilities = array(
+            // Donatori/Soci (fg_socio)
+            'read_fg_socio',
+            'edit_fg_socios', // List capability (plural form needed to see the menu)
+            'edit_others_fg_socios', // To view posts by others
+            
+            // Pagamenti (fg_pagamento)
+            'read_fg_pagamento',
+            'edit_fg_pagamentos', // List capability
+            'edit_others_fg_pagamentos',
+            
+            // Raccolte Fondi (fg_raccolta) - uses standard 'post' capability_type
+            'read_private_posts',
+            'edit_others_posts',
+            
+            // Eventi (fg_evento) - uses standard 'post' capability_type
+            // Already covered by edit_posts and edit_others_posts
+        );
+        
+        foreach ($read_capabilities as $cap) {
+            if ($viewer_role) {
+                $viewer_role->add_cap($cap);
             }
         }
     }
