@@ -526,6 +526,110 @@ class Friends_Gestionale_Import {
     }
     
     /**
+     * Parse file and return ALL rows (not limited to preview)
+     */
+    private function parse_file_all_rows($file_path, $file_type) {
+        if ($file_type === 'csv') {
+            return $this->parse_csv_all_rows($file_path);
+        } elseif (in_array($file_type, array('xlsx', 'xls'))) {
+            return $this->parse_xlsx_all_rows($file_path);
+        }
+        
+        return new WP_Error('invalid_type', __('Tipo file non supportato', 'friends-gestionale'));
+    }
+    
+    /**
+     * Parse CSV and return ALL rows
+     */
+    private function parse_csv_all_rows($file_path) {
+        $handle = fopen($file_path, 'r');
+        if (!$handle) {
+            return new WP_Error('file_error', __('Impossibile aprire il file', 'friends-gestionale'));
+        }
+        
+        // Detect delimiter
+        $first_line = fgets($handle);
+        rewind($handle);
+        
+        $delimiter = ',';
+        if (strpos($first_line, ';') !== false) {
+            $delimiter = ';';
+        } elseif (strpos($first_line, "\t") !== false) {
+            $delimiter = "\t";
+        }
+        
+        // Read headers
+        $headers = fgetcsv($handle, 0, $delimiter);
+        if (!$headers) {
+            fclose($handle);
+            return new WP_Error('invalid_file', __('File non valido', 'friends-gestionale'));
+        }
+        
+        // Clean headers
+        $headers = array_map('trim', $headers);
+        
+        // Read ALL rows
+        $all_rows = array();
+        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+            if (count($row) === count($headers)) {
+                $row_data = array();
+                foreach ($headers as $i => $header) {
+                    $row_data[$header] = isset($row[$i]) ? $this->deep_trim($row[$i]) : '';
+                }
+                $all_rows[] = $row_data;
+            }
+        }
+        
+        fclose($handle);
+        
+        return $all_rows;
+    }
+    
+    /**
+     * Parse XLSX and return ALL rows
+     */
+    private function parse_xlsx_all_rows($file_path) {
+        // Check if SimpleXLSX class is available
+        if (!class_exists('Shuchkin\SimpleXLSX')) {
+            $lib_path = FRIENDS_GESTIONALE_PLUGIN_DIR . 'includes/lib/simplexlsx.php';
+            if (file_exists($lib_path)) {
+                require_once $lib_path;
+            } else {
+                return new WP_Error('library_missing', __('Libreria XLSX non disponibile. Usa file CSV.', 'friends-gestionale'));
+            }
+        }
+        
+        if (!class_exists('Shuchkin\SimpleXLSX')) {
+            return new WP_Error('library_missing', __('Libreria XLSX non disponibile. Usa file CSV.', 'friends-gestionale'));
+        }
+        
+        $xlsx = \Shuchkin\SimpleXLSX::parse($file_path);
+        if (!$xlsx) {
+            return new WP_Error('parse_error', __('Errore nella lettura del file XLSX', 'friends-gestionale'));
+        }
+        
+        $rows = $xlsx->rows();
+        if (empty($rows)) {
+            return new WP_Error('empty_file', __('File vuoto', 'friends-gestionale'));
+        }
+        
+        $headers = array_shift($rows);
+        $headers = array_map('trim', $headers);
+        
+        // Process ALL rows
+        $all_rows = array();
+        foreach ($rows as $row) {
+            $row_data = array();
+            foreach ($headers as $i => $header) {
+                $row_data[$header] = isset($row[$i]) ? $this->deep_trim($row[$i]) : '';
+            }
+            $all_rows[] = $row_data;
+        }
+        
+        return $all_rows;
+    }
+    
+    /**
      * Parse XLSX file (simplified - requires SimpleXLSX library or manual implementation)
      */
     private function parse_xlsx($file_path) {
@@ -799,10 +903,10 @@ class Friends_Gestionale_Import {
             wp_send_json_error(array('message' => __('Sessione di import scaduta', 'friends-gestionale')));
         }
         
-        // Re-parse file to get all rows
-        $parse_result = $this->parse_file($import_data['file_path'], $import_data['file_type']);
-        if (is_wp_error($parse_result)) {
-            wp_send_json_error(array('message' => $parse_result->get_error_message()));
+        // Parse file to get all rows (not just preview)
+        $all_rows = $this->parse_file_all_rows($import_data['file_path'], $import_data['file_type']);
+        if (is_wp_error($all_rows)) {
+            wp_send_json_error(array('message' => $all_rows->get_error_message()));
         }
         
         // Process all rows
@@ -813,7 +917,7 @@ class Friends_Gestionale_Import {
             'errors' => array()
         );
         
-        foreach ($parse_result['preview_rows'] as $index => $row_data) {
+        foreach ($all_rows as $index => $row_data) {
             $row_preview = $this->validate_and_preview_row($row_data, $mapping, $update_existing, $skip_existing);
             
             if ($row_preview['status'] === 'error') {

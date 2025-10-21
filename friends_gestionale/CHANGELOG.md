@@ -2,6 +2,28 @@
 
 All notable changes to Friends of Naples Gestionale will be documented in this file.
 
+## [1.1.1] - 2024
+
+### Fixed
+- **Import: Process All Rows**
+  - Fixed issue where import only processed first 100 rows of files with >100 records
+  - Added `parse_file_all_rows()`, `parse_csv_all_rows()`, and `parse_xlsx_all_rows()` methods
+  - Import now correctly processes files with 400+ rows
+  - Added test suite to verify all rows are processed (`test-import-all-rows.php`)
+  
+- **Viewer Role: Menu Access**
+  - Fixed "Donatori Visualizzatore" role not showing any menu items
+  - Added proper capabilities: `edit_posts`, `edit_fg_socios`, `edit_fg_pagamentos`, etc.
+  - Viewer role now sees all plugin menus (Dashboard, Statistics, Donatori, Pagamenti, etc.)
+  - Added strict protections to prevent actual editing/creation/deletion
+  - Viewers blocked from: creating posts, editing posts, import, export, settings
+  - Error messages guide users when attempting unauthorized actions
+
+### Changed
+- `ajax_execute_import()` now uses `parse_file_all_rows()` instead of limited `preview_rows`
+- Viewer role menu restrictions added to `restrict_payment_manager_menu()`
+- Viewer role edit protections added to `redirect_payment_manager()`
+
 ## [1.1.0] - 2024
 
 ### Added
