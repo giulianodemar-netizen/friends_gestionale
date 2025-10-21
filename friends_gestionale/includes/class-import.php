@@ -1102,7 +1102,12 @@ class Friends_Gestionale_Import {
         
         foreach ($meta_mapping as $key => $meta_key) {
             if (isset($data[$key]) && $data[$key] !== '') {
-                update_post_meta($post_id, $meta_key, sanitize_text_field($data[$key]));
+                $value = sanitize_text_field($data[$key]);
+                // For date fields, ensure we only store YYYY-MM-DD format
+                if ($key === 'data_iscrizione' && strlen($value) > 10) {
+                    $value = substr($value, 0, 10);
+                }
+                update_post_meta($post_id, $meta_key, $value);
             }
         }
         

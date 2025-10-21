@@ -23,9 +23,12 @@ All notable changes to Friends of Naples Gestionale will be documented in this f
   - Removed duplicate data_iscrizione fields that were causing form submission conflicts
   - Field now displayed in a dedicated section visible for all donor types
   - Data correctly saved and displayed for both "Solo Donatore" and "Donatore e Socio"
-  - **NEW FIX:** Removed default date fallback that was masking the actual saved value
-  - **NEW FIX:** Import now sets data_iscrizione for ALL donor types, not just members
-  - Field now shows actual saved value from database instead of today's date as fallback
+  - **LATEST FIX:** Properly handles legacy data with timestamp format (e.g., "2024-12-11 00:00:00")
+  - **LATEST FIX:** Strips time portion to show only date (YYYY-MM-DD) in HTML5 date field
+  - **LATEST FIX:** Restored default value of today's date for NEW donor records
+  - **LATEST FIX:** Existing records now display their actual saved date instead of placeholder
+  - Import now sets data_iscrizione for ALL donor types, not just members
+  - All saves ensure only date portion (YYYY-MM-DD) is stored for compatibility
   
 - **Viewer Role: Menu Access**
   - Fixed "Donatori Visualizzatore" role not showing any menu items
