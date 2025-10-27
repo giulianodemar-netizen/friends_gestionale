@@ -22,6 +22,8 @@ class Friends_Gestionale_Post_Types {
         // Custom admin columns
         add_filter('manage_fg_socio_posts_columns', array($this, 'set_socio_columns'));
         add_action('manage_fg_socio_posts_custom_column', array($this, 'render_socio_columns'), 10, 2);
+        add_filter('manage_edit-fg_socio_sortable_columns', array($this, 'set_socio_sortable_columns'));
+        add_filter('request', array($this, 'socio_column_orderby'));
         add_filter('manage_fg_pagamento_posts_columns', array($this, 'set_pagamento_columns'));
         add_action('manage_fg_pagamento_posts_custom_column', array($this, 'render_pagamento_columns'), 10, 2);
         add_filter('manage_fg_raccolta_posts_columns', array($this, 'set_raccolta_columns'));
@@ -394,6 +396,64 @@ class Friends_Gestionale_Post_Types {
                 echo $quota ? '€' . number_format($quota, 2, ',', '.') : '-';
                 break;
         }
+    }
+    
+    /**
+     * Set sortable columns for Soci
+     */
+    public function set_socio_sortable_columns($columns) {
+        $columns['fg_nome_foto'] = 'title';
+        $columns['fg_tipo_persona'] = 'fg_tipo_persona';
+        $columns['fg_email'] = 'fg_email';
+        $columns['fg_telefono'] = 'fg_telefono';
+        $columns['fg_codice_fiscale'] = 'fg_codice_fiscale';
+        $columns['fg_tipo_donatore'] = 'fg_tipo_donatore';
+        $columns['fg_stato'] = 'fg_stato';
+        $columns['fg_data_iscrizione'] = 'fg_data_iscrizione';
+        $columns['fg_data_scadenza'] = 'fg_data_scadenza';
+        $columns['fg_quota_annuale'] = 'fg_quota_annuale';
+        $columns['fg_totale_donato'] = 'fg_totale_donato';
+        
+        return $columns;
+    }
+    
+    /**
+     * Handle orderby for custom columns
+     */
+    public function socio_column_orderby($vars) {
+        if (!is_admin() || !isset($vars['post_type']) || $vars['post_type'] !== 'fg_socio') {
+            return $vars;
+        }
+        
+        if (isset($vars['orderby'])) {
+            // Map custom column orderby values to meta keys
+            $meta_key_map = array(
+                'fg_tipo_persona' => '_fg_tipo_persona',
+                'fg_email' => '_fg_email',
+                'fg_telefono' => '_fg_telefono',
+                'fg_codice_fiscale' => '_fg_codice_fiscale',
+                'fg_tipo_donatore' => '_fg_tipo_donatore',
+                'fg_stato' => '_fg_stato',
+                'fg_data_iscrizione' => '_fg_data_iscrizione',
+                'fg_data_scadenza' => '_fg_data_scadenza',
+                'fg_quota_annuale' => '_fg_quota_annuale',
+                'fg_totale_donato' => '_fg_totale_donato'
+            );
+            
+            if (isset($meta_key_map[$vars['orderby']])) {
+                $orderby_key = $vars['orderby'];
+                $vars['meta_key'] = $meta_key_map[$orderby_key];
+                
+                // For numeric fields, use meta_value_num
+                if (in_array($orderby_key, array('fg_quota_annuale', 'fg_totale_donato'))) {
+                    $vars['orderby'] = 'meta_value_num';
+                } else {
+                    $vars['orderby'] = 'meta_value';
+                }
+            }
+        }
+        
+        return $vars;
     }
     
     /**

@@ -141,8 +141,8 @@ class Friends_Gestionale_Meta_Boxes {
                     <div class="fg-form-field">
                         <label for="fg_tipo_donatore"><strong><?php _e('Questa persona è:', 'friends-gestionale'); ?></strong> <span class="required">*</span></label>
                         <select id="fg_tipo_donatore" name="fg_tipo_donatore" class="widefat" required>
-                            <option value="solo_donatore" <?php selected($tipo_donatore, 'solo_donatore'); ?>><?php _e('Solo Donatore', 'friends-gestionale'); ?></option>
-                            <option value="anche_socio" <?php selected($tipo_donatore, 'anche_socio'); ?>><?php _e('Donatore e Socio', 'friends-gestionale'); ?></option>
+                            <option value="solo_donatore" <?php selected($tipo_donatore, 'solo_donatore'); ?>><?php _e('Donatore', 'friends-gestionale'); ?></option>
+                            <option value="anche_socio" <?php selected($tipo_donatore, 'anche_socio'); ?>><?php _e('Socio', 'friends-gestionale'); ?></option>
                         </select>
                         <p class="description"><?php _e('Seleziona se questa persona è solo un donatore o anche un socio dell\'associazione.', 'friends-gestionale'); ?></p>
                     </div>
@@ -411,7 +411,7 @@ class Friends_Gestionale_Meta_Boxes {
                                     $importo = get_post_meta($payment->ID, '_fg_importo', true);
                                     $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
                                     $tipo_pagamento = get_post_meta($payment->ID, '_fg_tipo_pagamento', true);
-                                    $nota = get_post_meta($payment->ID, '_fg_nota', true);
+                                    $nota = get_post_meta($payment->ID, '_fg_note', true);
                                     
                                     // Determine label, display text, and badge color based on payment type
                                     $badge_label = '';
@@ -472,7 +472,7 @@ class Friends_Gestionale_Meta_Boxes {
                                     }
                                 ?>
                                     <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
+                                        <div style="flex: 1;">
                                             <div style="margin-bottom: 5px;">
                                                 <span style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; color: #fff; background-color: <?php echo $badge_color; ?>; margin-right: 5px;">
                                                     <?php echo esc_html($badge_label); ?>
@@ -484,10 +484,22 @@ class Friends_Gestionale_Meta_Boxes {
                                                     <?php echo esc_html(date_i18n(get_option('date_format'), strtotime($data_pagamento))); ?>
                                                 </small>
                                             <?php endif; ?>
+                                            <?php if (!empty($nota)): ?>
+                                                <div style="margin-top: 5px; padding: 5px; background: #f0f0f0; border-radius: 3px;">
+                                                    <small style="color: #555;">
+                                                        <strong><?php _e('Nota:', 'friends-gestionale'); ?></strong> <?php echo esc_html($nota); ?>
+                                                    </small>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
-                                        <strong style="color: #0073aa; font-size: 14px;">
-                                            €<?php echo number_format(floatval($importo), 2, ',', '.'); ?>
-                                        </strong>
+                                        <div style="text-align: right; margin-left: 15px;">
+                                            <strong style="color: #0073aa; font-size: 14px; display: block; margin-bottom: 5px;">
+                                                €<?php echo number_format(floatval($importo), 2, ',', '.'); ?>
+                                            </strong>
+                                            <a href="<?php echo get_edit_post_link($payment->ID); ?>" target="_blank" rel="noopener noreferrer" class="button button-small" style="font-size: 11px;">
+                                                <?php _e('Dettaglio', 'friends-gestionale'); ?>
+                                            </a>
+                                        </div>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
