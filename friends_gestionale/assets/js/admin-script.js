@@ -626,38 +626,30 @@
         // Make taxonomy metaboxes read-only for fg_categoria_socio and fg_categoria_donatore
         // on the donor edit page, with a notice
         if ($('body').hasClass('post-type-fg_socio')) {
+            // Helper function to add read-only notice
+            function makeReadOnly($element) {
+                // Disable all checkboxes
+                $element.find('input[type="checkbox"]').prop('disabled', true);
+                $element.find('input[type="checkbox"]').css('opacity', '0.5');
+                
+                // Add notice if not already present
+                if (!$element.find('.fg-readonly-notice').length) {
+                    $element.append(
+                        '<p class="fg-readonly-notice">Solo visualizzazione, modificare il dato nel form.</p>'
+                    );
+                }
+            }
+            
             // Make Tipologia Socio (fg_categoria_socio) read-only
             var $categoriaSocioBox = $('#fg_categoria_socio');
             if ($categoriaSocioBox.length) {
-                // Disable all checkboxes
-                $categoriaSocioBox.find('input[type="checkbox"]').prop('disabled', true);
-                $categoriaSocioBox.find('input[type="checkbox"]').css('opacity', '0.5');
-                
-                // Add notice
-                if (!$categoriaSocioBox.find('.fg-readonly-notice').length) {
-                    $categoriaSocioBox.append(
-                        '<p class="fg-readonly-notice" style="margin-top: 10px; padding: 8px; background: #f0f0f1; border-left: 3px solid #72aee6; font-style: italic; color: #666;">' +
-                        'Solo visualizzazione, modificare il dato nel form.' +
-                        '</p>'
-                    );
-                }
+                makeReadOnly($categoriaSocioBox);
             }
             
             // Make Categoria Donatore (fg_categoria_donatore) read-only
             var $categoriaDonatore = $('#fg_categoria_donatore');
             if ($categoriaDonatore.length) {
-                // Disable all checkboxes
-                $categoriaDonatore.find('input[type="checkbox"]').prop('disabled', true);
-                $categoriaDonatore.find('input[type="checkbox"]').css('opacity', '0.5');
-                
-                // Add notice
-                if (!$categoriaDonatore.find('.fg-readonly-notice').length) {
-                    $categoriaDonatore.append(
-                        '<p class="fg-readonly-notice" style="margin-top: 10px; padding: 8px; background: #f0f0f1; border-left: 3px solid #72aee6; font-style: italic; color: #666;">' +
-                        'Solo visualizzazione, modificare il dato nel form.' +
-                        '</p>'
-                    );
-                }
+                makeReadOnly($categoriaDonatore);
             }
         }
         

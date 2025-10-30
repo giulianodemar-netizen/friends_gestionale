@@ -367,6 +367,7 @@ class Friends_Gestionale_Meta_Boxes {
                     'posts_per_page' => -1,
                     'orderby' => 'meta_value',
                     'meta_key' => '_fg_data_pagamento',
+                    'meta_type' => 'DATE',
                     'order' => 'DESC',
                     'meta_query' => array(
                         array(

@@ -119,6 +119,16 @@
     border: 1px solid #90caf9;
 }
 
+/* Read-only notice for taxonomy fields */
+.fg-readonly-notice {
+    margin-top: 10px;
+    padding: 8px;
+    background: #f0f0f1;
+    border-left: 3px solid #72aee6;
+    font-style: italic;
+    color: #666;
+}
+
 /* Partecipanti Box */
 .fg-partecipanti-box {
     padding: 15px;
