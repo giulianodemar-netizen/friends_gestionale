@@ -371,6 +371,30 @@
             updatePaymentAmountFromCategory();
         });
         
+        // Unlock/Lock Categoria Socio button handler
+        $('#fg_unlock_categoria_socio').on('click', function(e) {
+            e.preventDefault();
+            var $button = $(this);
+            var $select = $('#fg_categoria_socio_id');
+            var $icon = $button.find('.dashicons');
+            
+            if ($select.prop('disabled')) {
+                // Unlock the field
+                $select.prop('disabled', false);
+                $select.css('background-color', '');
+                $icon.removeClass('dashicons-lock').addClass('dashicons-unlock');
+                $button.html('<span class="dashicons dashicons-unlock" style="margin-top: 3px;"></span> Blocca');
+                $('#fg_categoria_socio_description').html('Il campo è sbloccato. La modifica aggiornerà la tipologia socio del donatore.');
+            } else {
+                // Lock the field
+                $select.prop('disabled', true);
+                $select.css('background-color', '#f0f0f0');
+                $icon.removeClass('dashicons-unlock').addClass('dashicons-lock');
+                $button.html('<span class="dashicons dashicons-lock" style="margin-top: 3px;"></span> Sblocca');
+                $('#fg_categoria_socio_description').html('Clicca su "Sblocca" per modificare la categoria. La modifica aggiornerà anche la tipologia socio del donatore.');
+            }
+        });
+        
         // Show/hide custom event field when event selection changes
         $('#fg_evento_id').on('change', function() {
             var eventoId = $(this).val();
@@ -388,6 +412,26 @@
                 return false;
             }
         });
+        
+        // Add payment button from donor page
+        $('#fg_add_payment_btn').on('click', function(e) {
+            e.preventDefault();
+            var donorId = $(this).data('donor-id');
+            var donorName = $(this).data('donor-name');
+            
+            // Redirect to new payment page with pre-filled donor parameter
+            var newPaymentUrl = 'post-new.php?post_type=fg_pagamento&donor_id=' + donorId;
+            window.location.href = newPaymentUrl;
+        });
+        
+        // Pre-fill donor when coming from donor page
+        if ($('body').hasClass('post-type-fg_pagamento') && $('#fg_socio_id').length) {
+            var urlParams = new URLSearchParams(window.location.search);
+            var donorId = urlParams.get('donor_id');
+            if (donorId) {
+                $('#fg_socio_id').val(donorId).trigger('change');
+            }
+        }
         
         // Dashboard statistics refresh
         $('.fg-refresh-stats').on('click', function(e) {
@@ -578,6 +622,44 @@
                 }
             });
         });
+        
+        // Make taxonomy metaboxes read-only for fg_categoria_socio and fg_categoria_donatore
+        // on the donor edit page, with a notice
+        if ($('body').hasClass('post-type-fg_socio')) {
+            // Make Tipologia Socio (fg_categoria_socio) read-only
+            var $categoriaSocioBox = $('#fg_categoria_socio');
+            if ($categoriaSocioBox.length) {
+                // Disable all checkboxes
+                $categoriaSocioBox.find('input[type="checkbox"]').prop('disabled', true);
+                $categoriaSocioBox.find('input[type="checkbox"]').css('opacity', '0.5');
+                
+                // Add notice
+                if (!$categoriaSocioBox.find('.fg-readonly-notice').length) {
+                    $categoriaSocioBox.append(
+                        '<p class="fg-readonly-notice" style="margin-top: 10px; padding: 8px; background: #f0f0f1; border-left: 3px solid #72aee6; font-style: italic; color: #666;">' +
+                        'Solo visualizzazione, modificare il dato nel form.' +
+                        '</p>'
+                    );
+                }
+            }
+            
+            // Make Categoria Donatore (fg_categoria_donatore) read-only
+            var $categoriaDonatore = $('#fg_categoria_donatore');
+            if ($categoriaDonatore.length) {
+                // Disable all checkboxes
+                $categoriaDonatore.find('input[type="checkbox"]').prop('disabled', true);
+                $categoriaDonatore.find('input[type="checkbox"]').css('opacity', '0.5');
+                
+                // Add notice
+                if (!$categoriaDonatore.find('.fg-readonly-notice').length) {
+                    $categoriaDonatore.append(
+                        '<p class="fg-readonly-notice" style="margin-top: 10px; padding: 8px; background: #f0f0f1; border-left: 3px solid #72aee6; font-style: italic; color: #666;">' +
+                        'Solo visualizzazione, modificare il dato nel form.' +
+                        '</p>'
+                    );
+                }
+            }
+        }
         
     });
     

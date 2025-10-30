@@ -361,11 +361,12 @@ class Friends_Gestionale_Meta_Boxes {
             <?php
             // Display donations section if this is an existing member
             if ($post->ID > 0):
-                // Get all payments for this member
+                // Get all payments for this member, ordered by payment date
                 $payments = get_posts(array(
                     'post_type' => 'fg_pagamento',
                     'posts_per_page' => -1,
-                    'orderby' => 'date',
+                    'orderby' => 'meta_value',
+                    'meta_key' => '_fg_data_pagamento',
                     'order' => 'DESC',
                     'meta_query' => array(
                         array(
@@ -512,6 +513,16 @@ class Friends_Gestionale_Meta_Boxes {
                         </div>
                     </div>
                 <?php endif; ?>
+                
+                <!-- Add Payment Button -->
+                <div class="fg-form-row" style="margin-top: 15px;">
+                    <div class="fg-form-field">
+                        <button type="button" id="fg_add_payment_btn" class="button button-primary" data-donor-id="<?php echo $post->ID; ?>" data-donor-name="<?php echo esc_attr($post->post_title); ?>">
+                            <span class="dashicons dashicons-plus-alt" style="margin-top: 3px;"></span>
+                            <?php _e('Aggiungi Nuovo Pagamento', 'friends-gestionale'); ?>
+                        </button>
+                    </div>
+                </div>
             </div>
             <?php endif; ?>
         </div>
@@ -690,7 +701,13 @@ class Friends_Gestionale_Meta_Boxes {
                 
                 <div class="fg-form-row" id="fg_categoria_socio_field" style="display: none;">
                     <div class="fg-form-field">
-                        <label for="fg_categoria_socio_id"><strong><?php _e('Categoria Socio:', 'friends-gestionale'); ?></strong></label>
+                        <label for="fg_categoria_socio_id">
+                            <strong><?php _e('Categoria Socio:', 'friends-gestionale'); ?></strong>
+                            <button type="button" id="fg_unlock_categoria_socio" class="button button-small" style="margin-left: 10px;">
+                                <span class="dashicons dashicons-lock" style="margin-top: 3px;"></span>
+                                <?php _e('Sblocca', 'friends-gestionale'); ?>
+                            </button>
+                        </label>
                         <select id="fg_categoria_socio_id" name="fg_categoria_socio_id" class="widefat" disabled>
                             <option value=""><?php _e('Seleziona Categoria', 'friends-gestionale'); ?></option>
                             <?php if (!empty($categorie) && !is_wp_error($categorie)): ?>
@@ -701,7 +718,7 @@ class Friends_Gestionale_Meta_Boxes {
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </select>
-                        <p class="description" style="color: #666;"><?php _e('La categoria socio può essere modificata solo dalla scheda del donatore.', 'friends-gestionale'); ?></p>
+                        <p class="description" id="fg_categoria_socio_description" style="color: #666;"><?php _e('Clicca su "Sblocca" per modificare la categoria. La modifica aggiornerà anche la tipologia socio del donatore.', 'friends-gestionale'); ?></p>
                     </div>
                 </div>
                 
@@ -1315,7 +1332,17 @@ class Friends_Gestionale_Meta_Boxes {
                 update_post_meta($post_id, '_fg_evento_custom', sanitize_text_field($_POST['fg_evento_custom']));
             }
             if (isset($_POST['fg_categoria_socio_id'])) {
-                update_post_meta($post_id, '_fg_categoria_socio_id', absint($_POST['fg_categoria_socio_id']));
+                $new_categoria_id = absint($_POST['fg_categoria_socio_id']);
+                update_post_meta($post_id, '_fg_categoria_socio_id', $new_categoria_id);
+                
+                // If categoria socio was modified and we have a valid member, update member's category
+                $tipo_pagamento = isset($_POST['fg_tipo_pagamento']) ? sanitize_text_field($_POST['fg_tipo_pagamento']) : get_post_meta($post_id, '_fg_tipo_pagamento', true);
+                $socio_id = isset($_POST['fg_socio_id']) ? absint($_POST['fg_socio_id']) : get_post_meta($post_id, '_fg_socio_id', true);
+                
+                if ($tipo_pagamento === 'quota' && $socio_id && $new_categoria_id) {
+                    // Update member's category
+                    wp_set_post_terms($socio_id, array($new_categoria_id), 'fg_categoria_socio', false);
+                }
             }
             if (isset($_POST['fg_raccolta_id'])) {
                 update_post_meta($post_id, '_fg_raccolta_id', absint($_POST['fg_raccolta_id']));
@@ -1329,29 +1356,42 @@ class Friends_Gestionale_Meta_Boxes {
             $socio_id = isset($_POST['fg_socio_id']) ? absint($_POST['fg_socio_id']) : get_post_meta($post_id, '_fg_socio_id', true);
             
             if ($tipo_pagamento === 'quota' && $socio_id) {
-                // Get current expiry date
-                $current_expiry = get_post_meta($socio_id, '_fg_data_scadenza', true);
+                // Get payment date to check if it's from current year
+                $data_pagamento = isset($_POST['fg_data_pagamento']) ? sanitize_text_field($_POST['fg_data_pagamento']) : get_post_meta($post_id, '_fg_data_pagamento', true);
+                $current_year = date('Y');
+                $payment_year = date('Y', strtotime($data_pagamento));
                 
-                if ($current_expiry) {
-                    // Add one year to current expiry date
-                    $expiry_date = new DateTime($current_expiry);
-                    $expiry_date->modify('+1 year');
-                    $new_expiry = $expiry_date->format('Y-m-d');
-                } else {
-                    // If no expiry date exists, set to one year from today
-                    $expiry_date = new DateTime();
-                    $expiry_date->modify('+1 year');
-                    $new_expiry = $expiry_date->format('Y-m-d');
+                // Only update expiry date if payment is from current year
+                if ($payment_year == $current_year) {
+                    // Get current expiry date
+                    $current_expiry = get_post_meta($socio_id, '_fg_data_scadenza', true);
+                    
+                    if ($current_expiry) {
+                        // Add one year to current expiry date
+                        $expiry_date = new DateTime($current_expiry);
+                        $expiry_date->modify('+1 year');
+                        $new_expiry = $expiry_date->format('Y-m-d');
+                    } else {
+                        // If no expiry date exists, set to one year from today
+                        $expiry_date = new DateTime();
+                        $expiry_date->modify('+1 year');
+                        $new_expiry = $expiry_date->format('Y-m-d');
+                    }
+                    
+                    // Update the member's expiry date
+                    update_post_meta($socio_id, '_fg_data_scadenza', $new_expiry);
+                    
+                    // Also update stato to 'attivo' if it's currently scaduto
+                    $current_stato = get_post_meta($socio_id, '_fg_stato', true);
+                    if ($current_stato === 'scaduto' || empty($current_stato)) {
+                        update_post_meta($socio_id, '_fg_stato', 'attivo');
+                    }
                 }
-                
-                // Update the member's expiry date
-                update_post_meta($socio_id, '_fg_data_scadenza', $new_expiry);
-                
-                // Also update stato to 'attivo' if it's currently scaduto
-                $current_stato = get_post_meta($socio_id, '_fg_stato', true);
-                if ($current_stato === 'scaduto' || empty($current_stato)) {
-                    update_post_meta($socio_id, '_fg_stato', 'attivo');
-                }
+            }
+            
+            // Update donor's total donations after saving payment
+            if ($socio_id) {
+                $this->update_donor_total($socio_id);
             }
             
             // Generate automatic reference title
@@ -1552,12 +1592,20 @@ class Friends_Gestionale_Meta_Boxes {
         if ($post && $post->post_type === 'fg_pagamento') {
             $tipo_pagamento = get_post_meta($post_id, '_fg_tipo_pagamento', true);
             $raccolta_id = get_post_meta($post_id, '_fg_raccolta_id', true);
+            $socio_id = get_post_meta($post_id, '_fg_socio_id', true);
             
             if ($tipo_pagamento === 'raccolta' && $raccolta_id) {
                 // Update total after this payment is deleted
                 // We need to do this on shutdown to ensure the post is actually deleted
                 add_action('shutdown', function() use ($raccolta_id) {
                     $this->update_raccolta_total($raccolta_id);
+                });
+            }
+            
+            // Update donor's total donations after payment is deleted
+            if ($socio_id) {
+                add_action('shutdown', function() use ($socio_id) {
+                    $this->update_donor_total($socio_id);
                 });
             }
         }
@@ -1585,6 +1633,30 @@ class Friends_Gestionale_Meta_Boxes {
         
         // Update the raccolta total
         update_post_meta($raccolta_id, '_fg_raccolto', $total);
+    }
+    
+    private function update_donor_total($socio_id) {
+        // Get all payments for this donor
+        $payments = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_socio_id',
+                    'value' => $socio_id,
+                    'compare' => '='
+                )
+            )
+        ));
+        
+        $total = 0;
+        foreach ($payments as $payment) {
+            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+            $total += floatval($importo);
+        }
+        
+        // Update the donor's total donations for sortable column
+        update_post_meta($socio_id, '_fg_totale_donato', $total);
     }
 }
 

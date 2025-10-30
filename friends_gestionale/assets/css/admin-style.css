@@ -112,6 +112,13 @@
     color: #0c5460;
 }
 
+/* Donor Type Badges - different from "socio" (green) */
+.fg-badge-donatore {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #90caf9;
+}
+
 /* Partecipanti Box */
 .fg-partecipanti-box {
     padding: 15px;
