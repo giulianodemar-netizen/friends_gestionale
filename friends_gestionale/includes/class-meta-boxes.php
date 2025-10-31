@@ -1799,15 +1799,22 @@ class Friends_Gestionale_Meta_Boxes {
             <div id="fg_modal_categoria_socio_field" class="fg-modal-conditional-field" style="display: none; margin-bottom: 20px;">
                 <label style="display: block; font-weight: 600; margin-bottom: 8px;">
                     <strong><?php _e('Categoria Socio:', 'friends-gestionale'); ?></strong>
+                    <button type="button" id="fg_modal_unlock_categoria_socio" class="button button-small" style="margin-left: 10px;">
+                        <span class="dashicons dashicons-lock" style="margin-top: 3px;"></span>
+                        <?php _e('Sblocca', 'friends-gestionale'); ?>
+                    </button>
                 </label>
-                <select name="categoria_socio_id" id="fg_modal_categoria_socio_id" 
-                        style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                <select name="categoria_socio_id" id="fg_modal_categoria_socio_id" disabled
+                        style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; background-color: #f0f0f0;">
                     <option value=""><?php _e('Seleziona Categoria', 'friends-gestionale'); ?></option>
                     <?php if (!empty($categorie) && !is_wp_error($categorie)): ?>
                         <?php foreach ($categorie as $categoria): ?>
                             <option value="<?php echo $categoria->term_id; ?>"><?php echo esc_html($categoria->name); ?></option>
                         <?php endforeach; ?>
                     <?php endif; ?>
+                </select>
+                <p class="description" id="fg_modal_categoria_socio_description" style="color: #666; margin-top: 8px;"><?php _e('Clicca su "Sblocca" per modificare la categoria. La modifica aggiornerà anche la tipologia socio del donatore.', 'friends-gestionale'); ?></p>
+            </div>
                 </select>
             </div>
             
@@ -1913,6 +1920,11 @@ class Friends_Gestionale_Meta_Boxes {
                     }
                 }
             }
+        }
+        
+        // If categoria socio was modified and we have a valid member, update member's category
+        if ($tipo_pagamento === 'quota' && $donor_id && $categoria_socio_id) {
+            wp_set_post_terms($donor_id, array($categoria_socio_id), 'fg_categoria_socio', false);
         }
         
         // Update donor's total donations

@@ -584,6 +584,30 @@
                 }
             }
             
+            // Lock/Unlock button handler for modal categoria socio
+            $('#fg_modal_unlock_categoria_socio').on('click', function(e) {
+                e.preventDefault();
+                var $button = $(this);
+                var $select = $('#fg_modal_categoria_socio_id');
+                var $icon = $button.find('.dashicons');
+                
+                if ($select.prop('disabled')) {
+                    // Unlock the field
+                    $select.prop('disabled', false);
+                    $select.css('background-color', '');
+                    $icon.removeClass('dashicons-lock').addClass('dashicons-unlock');
+                    $button.html('<span class="dashicons dashicons-unlock" style="margin-top: 3px;"></span> Blocca');
+                    $('#fg_modal_categoria_socio_description').html('Il campo è sbloccato. La modifica aggiornerà la tipologia socio del donatore.');
+                } else {
+                    // Lock the field
+                    $select.prop('disabled', true);
+                    $select.css('background-color', '#f0f0f0');
+                    $icon.removeClass('dashicons-unlock').addClass('dashicons-lock');
+                    $button.html('<span class="dashicons dashicons-lock" style="margin-top: 3px;"></span> Sblocca');
+                    $('#fg_modal_categoria_socio_description').html('Clicca su "Sblocca" per modificare la categoria. La modifica aggiornerà anche la tipologia socio del donatore.');
+                }
+            });
+            
             $tipoPagamento.on('change', toggleModalPaymentFields);
             toggleModalPaymentFields();
         }
