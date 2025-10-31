@@ -47,6 +47,9 @@ class Friends_Gestionale_Post_Types {
         
         // Add admin footer script for participant popup
         add_action('admin_footer', array($this, 'add_partecipanti_popup_script'));
+        
+        // Populate missing totale_donato meta fields
+        add_action('admin_init', array($this, 'maybe_populate_donor_totals'), 5);
     }
     
     /**
@@ -413,6 +416,8 @@ class Friends_Gestionale_Post_Types {
         $columns['fg_data_scadenza'] = 'fg_data_scadenza';
         $columns['fg_quota_annuale'] = 'fg_quota_annuale';
         $columns['fg_totale_donato'] = 'fg_totale_donato';
+        $columns['fg_tipologia_socio'] = 'fg_tipologia_socio';
+        $columns['fg_categoria_donatore'] = 'fg_categoria_donatore';
         
         return $columns;
     }
@@ -426,6 +431,19 @@ class Friends_Gestionale_Post_Types {
         }
         
         if (isset($vars['orderby'])) {
+            // Handle taxonomy sorting
+            if ($vars['orderby'] === 'fg_tipologia_socio') {
+                $vars['orderby'] = 'taxonomy';
+                $vars['taxonomy'] = 'fg_categoria_socio';
+                return $vars;
+            }
+            
+            if ($vars['orderby'] === 'fg_categoria_donatore') {
+                $vars['orderby'] = 'taxonomy';
+                $vars['taxonomy'] = 'fg_categoria_donatore';
+                return $vars;
+            }
+            
             // Map custom column orderby values to meta keys
             $meta_key_map = array(
                 'fg_tipo_persona' => '_fg_tipo_persona',
@@ -1465,6 +1483,63 @@ class Friends_Gestionale_Post_Types {
             </script>
             <?php
         }
+    }
+    
+    /**
+     * Populate _fg_totale_donato for all donors that don't have it
+     * This runs once on admin_init to backfill existing donors
+     */
+    public function maybe_populate_donor_totals() {
+        // Check if we've already run this migration
+        $migration_done = get_option('fg_donor_totals_populated', false);
+        if ($migration_done) {
+            return;
+        }
+        
+        // Get all donors
+        $donors = get_posts(array(
+            'post_type' => 'fg_socio',
+            'posts_per_page' => -1,
+            'fields' => 'ids'
+        ));
+        
+        if (empty($donors)) {
+            update_option('fg_donor_totals_populated', true);
+            return;
+        }
+        
+        // Update total for each donor
+        foreach ($donors as $donor_id) {
+            $this->update_single_donor_total($donor_id);
+        }
+        
+        // Mark migration as done
+        update_option('fg_donor_totals_populated', true);
+    }
+    
+    /**
+     * Calculate and update total donations for a single donor
+     */
+    private function update_single_donor_total($donor_id) {
+        $payments = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_socio_id',
+                    'value' => $donor_id,
+                    'compare' => '='
+                )
+            )
+        ));
+        
+        $total = 0;
+        foreach ($payments as $payment) {
+            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+            $total += floatval($importo);
+        }
+        
+        update_post_meta($donor_id, '_fg_totale_donato', $total);
     }
 }
 
