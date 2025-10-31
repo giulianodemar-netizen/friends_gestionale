@@ -24,6 +24,7 @@ class Friends_Gestionale_Meta_Boxes {
         // AJAX handlers for payment modal
         add_action('wp_ajax_fg_get_payment_form', array($this, 'ajax_get_payment_form'));
         add_action('wp_ajax_fg_save_payment', array($this, 'ajax_save_payment'));
+        add_action('wp_ajax_fg_get_member_quota', array($this, 'ajax_get_member_quota'));
         
         // Hide default editor for custom post types
         add_action('admin_head', array($this, 'hide_default_editor'));
@@ -648,7 +649,8 @@ class Friends_Gestionale_Meta_Boxes {
                 <div class="fg-form-row">
                     <div class="fg-form-field fg-field-half">
                         <label for="fg_metodo_pagamento"><strong><?php _e('Metodo di Pagamento:', 'friends-gestionale'); ?></strong></label>
-                        <select id="fg_metodo_pagamento" name="fg_metodo_pagamento" class="widefat">
+                        <select id="fg_metodo_pagamento" name="fg_metodo_pagamento" class="widefat" required>
+                            <option value=""><?php _e('Seleziona metodo di pagamento', 'friends-gestionale'); ?></option>
                             <option value="contanti" <?php selected($metodo_pagamento, 'contanti'); ?>><?php _e('Contanti', 'friends-gestionale'); ?></option>
                             <option value="bonifico" <?php selected($metodo_pagamento, 'bonifico'); ?>><?php _e('Bonifico Bancario', 'friends-gestionale'); ?></option>
                             <option value="carta" <?php selected($metodo_pagamento, 'carta'); ?>><?php _e('Carta di Credito', 'friends-gestionale'); ?></option>
@@ -1743,8 +1745,9 @@ class Friends_Gestionale_Meta_Boxes {
                     <label style="display: block; font-weight: 600; margin-bottom: 8px;">
                         <strong><?php _e('Metodo di Pagamento:', 'friends-gestionale'); ?></strong>
                     </label>
-                    <select name="metodo_pagamento" id="fg_modal_metodo_pagamento" 
+                    <select name="metodo_pagamento" id="fg_modal_metodo_pagamento" required
                             style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value=""><?php _e('Seleziona metodo di pagamento', 'friends-gestionale'); ?></option>
                         <option value="contanti"><?php _e('Contanti', 'friends-gestionale'); ?></option>
                         <option value="bonifico"><?php _e('Bonifico Bancario', 'friends-gestionale'); ?></option>
                         <option value="carta"><?php _e('Carta di Credito', 'friends-gestionale'); ?></option>
@@ -1956,6 +1959,31 @@ class Friends_Gestionale_Meta_Boxes {
         wp_send_json_success(array(
             'payment_id' => $payment_id,
             'message' => 'Pagamento salvato con successo'
+        ));
+    }
+    
+    /**
+     * AJAX handler to get member's quota and category
+     */
+    public function ajax_get_member_quota() {
+        $socio_id = isset($_POST['socio_id']) ? absint($_POST['socio_id']) : 0;
+        
+        if (!$socio_id) {
+            wp_send_json_error('Invalid member ID');
+        }
+        
+        // Get member's category
+        $categories = wp_get_post_terms($socio_id, 'fg_categoria_socio', array('fields' => 'ids'));
+        $categoria_id = !empty($categories) && !is_wp_error($categories) ? $categories[0] : 0;
+        
+        $quota = 0;
+        if ($categoria_id) {
+            $quota = get_term_meta($categoria_id, 'fg_quota_associativa', true);
+        }
+        
+        wp_send_json_success(array(
+            'categoria_id' => $categoria_id,
+            'quota' => $quota ? floatval($quota) : 0
         ));
     }
 }

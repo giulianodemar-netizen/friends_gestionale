@@ -450,6 +450,23 @@ class Friends_Gestionale_Post_Types {
                 } else {
                     $vars['orderby'] = 'meta_value';
                 }
+                
+                // For totale_donato, we need to show all posts even if they don't have the meta
+                // WordPress by default only shows posts that have the meta_key when ordering
+                // We use meta_query with 'NOT EXISTS' OR 'EXISTS' to include all posts
+                if ($orderby_key === 'fg_totale_donato') {
+                    $vars['meta_query'] = array(
+                        'relation' => 'OR',
+                        array(
+                            'key' => '_fg_totale_donato',
+                            'compare' => 'EXISTS'
+                        ),
+                        array(
+                            'key' => '_fg_totale_donato',
+                            'compare' => 'NOT EXISTS'
+                        )
+                    );
+                }
             }
         }
         
@@ -646,7 +663,7 @@ class Friends_Gestionale_Post_Types {
                     if ($tipo_donatore === 'anche_socio') {
                         echo '<span class="fg-badge fg-stato-attivo">Socio</span>';
                     } else {
-                        echo '<span class="fg-badge">Donatore</span>';
+                        echo '<span class="fg-badge fg-badge-donatore">Donatore</span>';
                     }
                 } else {
                     echo '-';

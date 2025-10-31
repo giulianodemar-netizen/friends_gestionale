@@ -530,6 +530,7 @@
         // Function to initialize payment form handlers in modal
         function initializePaymentFormHandlers() {
             var $tipoPagamento = $('#fg_modal_tipo_pagamento');
+            var donorId = $('#fg-modal-payment-form input[name="donor_id"]').val();
             
             function toggleModalPaymentFields() {
                 var tipo = $tipoPagamento.val();
@@ -538,10 +539,48 @@
                 
                 if (tipo === 'evento') {
                     $('#fg_modal_evento_field').show();
+                    // Unlock amount field
+                    $('#fg_modal_importo').prop('readonly', false).css('background-color', '');
                 } else if (tipo === 'quota') {
                     $('#fg_modal_categoria_socio_field').show();
+                    // Auto-load member's category and quota
+                    updateModalPaymentAmount();
                 } else if (tipo === 'raccolta') {
                     $('#fg_modal_raccolta_field').show();
+                    // Unlock amount field
+                    $('#fg_modal_importo').prop('readonly', false).css('background-color', '');
+                } else {
+                    // Unlock amount field for other types
+                    $('#fg_modal_importo').prop('readonly', false).css('background-color', '');
+                }
+            }
+            
+            function updateModalPaymentAmount() {
+                if (donorId && $tipoPagamento.val() === 'quota') {
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'fg_get_member_quota',
+                            socio_id: donorId,
+                            nonce: fg_admin_ajax.nonce || ''
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                // Auto-select the member's category
+                                if (response.data.categoria_id) {
+                                    $('#fg_modal_categoria_socio_id').val(response.data.categoria_id);
+                                }
+                                
+                                // Auto-populate amount and make it readonly
+                                if (response.data.quota) {
+                                    $('#fg_modal_importo').val(response.data.quota);
+                                    $('#fg_modal_importo').prop('readonly', true);
+                                    $('#fg_modal_importo').css('background-color', '#f0f0f0');
+                                }
+                            }
+                        }
+                    });
                 }
             }
             
@@ -756,14 +795,14 @@
                 }
             }
             
-            // Make Tipologia Socio (fg_categoria_socio) read-only
-            var $categoriaSocioBox = $('#fg_categoria_socio');
+            // Make Tipologia Socio (fg_categoria_socio) read-only - correct WordPress metabox div
+            var $categoriaSocioBox = $('#fg_categoria_sociodiv');
             if ($categoriaSocioBox.length) {
                 makeReadOnly($categoriaSocioBox);
             }
             
-            // Make Categoria Donatore (fg_categoria_donatore) read-only
-            var $categoriaDonatore = $('#fg_categoria_donatore');
+            // Make Categoria Donatore (fg_categoria_donatore) read-only - correct WordPress metabox div
+            var $categoriaDonatore = $('#fg_categoria_donatorediv');
             if ($categoriaDonatore.length) {
                 makeReadOnly($categoriaDonatore);
             }
