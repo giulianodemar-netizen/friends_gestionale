@@ -608,6 +608,30 @@
                 }
             });
             
+            // Update amount when modal categoria socio changes
+            $('#fg_modal_categoria_socio_id').on('change', function() {
+                var categoriaId = $(this).val();
+                if (donorId && $tipoPagamento.val() === 'quota' && categoriaId) {
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'fg_get_member_quota',
+                            socio_id: donorId,
+                            categoria_id: categoriaId,
+                            nonce: fg_admin_ajax.nonce || ''
+                        },
+                        success: function(response) {
+                            if (response.success && response.data.quota) {
+                                $('#fg_modal_importo').val(response.data.quota);
+                                $('#fg_modal_importo').prop('readonly', true);
+                                $('#fg_modal_importo').css('background-color', '#f0f0f0');
+                            }
+                        }
+                    });
+                }
+            });
+            
             $tipoPagamento.on('change', toggleModalPaymentFields);
             toggleModalPaymentFields();
         }

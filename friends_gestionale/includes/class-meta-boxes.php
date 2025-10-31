@@ -1981,14 +1981,20 @@ class Friends_Gestionale_Meta_Boxes {
      */
     public function ajax_get_member_quota() {
         $socio_id = isset($_POST['socio_id']) ? absint($_POST['socio_id']) : 0;
+        $categoria_id_override = isset($_POST['categoria_id']) ? absint($_POST['categoria_id']) : 0;
         
         if (!$socio_id) {
             wp_send_json_error('Invalid member ID');
         }
         
-        // Get member's category
-        $categories = wp_get_post_terms($socio_id, 'fg_categoria_socio', array('fields' => 'ids'));
-        $categoria_id = !empty($categories) && !is_wp_error($categories) ? $categories[0] : 0;
+        // If a specific category is provided (user changed it), use that
+        // Otherwise, get member's current category
+        if ($categoria_id_override) {
+            $categoria_id = $categoria_id_override;
+        } else {
+            $categories = wp_get_post_terms($socio_id, 'fg_categoria_socio', array('fields' => 'ids'));
+            $categoria_id = !empty($categories) && !is_wp_error($categories) ? $categories[0] : 0;
+        }
         
         $quota = 0;
         if ($categoria_id) {
