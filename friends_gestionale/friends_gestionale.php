@@ -3,7 +3,7 @@
  * Plugin Name: Friends of Naples Gestionale
  * Plugin URI: https://github.com/giulianodemar-netizen/friends_gestionale
  * Description: Sistema gestionale completo per associazioni con gestione soci, pagamenti, raccolte fondi, dashboard statistiche, reminder e esportazione dati.
- * Version: 1.0.0
+ * Version: 2.0.2
  * Author: Friends of Naples
  * Author URI: https://github.com/giulianodemar-netizen
  * License: GPL v2 or later
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('FRIENDS_GESTIONALE_VERSION', '1.0.0');
+define('FRIENDS_GESTIONALE_VERSION', '2.0.2');
 define('FRIENDS_GESTIONALE_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('FRIENDS_GESTIONALE_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('FRIENDS_GESTIONALE_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -874,6 +874,10 @@ class Friends_Gestionale {
         wp_localize_script('friends-gestionale-admin', 'friendsGestionale', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('friends_gestionale_nonce')
+        ));
+        
+        wp_localize_script('friends-gestionale-admin', 'fg_admin_ajax', array(
+            'nonce' => wp_create_nonce('fg_ajax_nonce')
         ));
     }
     

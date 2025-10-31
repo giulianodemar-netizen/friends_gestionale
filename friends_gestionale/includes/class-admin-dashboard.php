@@ -383,7 +383,7 @@ class Friends_Gestionale_Admin_Dashboard {
                                                 <?php if ($tipo_donatore === 'anche_socio'): ?>
                                                     <span class="fg-badge fg-stato-attivo">Socio</span>
                                                 <?php else: ?>
-                                                    <span class="fg-badge">Donatore</span>
+                                                    <span class="fg-badge fg-badge-donatore">Donatore</span>
                                                 <?php endif; ?>
                                             <?php else: ?>
                                                 -
@@ -552,7 +552,7 @@ class Friends_Gestionale_Admin_Dashboard {
                                             <?php if ($donor['tipo'] === 'anche_socio'): ?>
                                                 <span class="fg-badge fg-stato-attivo">Socio</span>
                                             <?php else: ?>
-                                                <span class="fg-badge">Donatore</span>
+                                                <span class="fg-badge fg-badge-donatore">Donatore</span>
                                             <?php endif; ?>
                                         </td>
                                         <td><strong>€<?php echo number_format($donor['totale'], 2, ',', '.'); ?></strong></td>
@@ -1290,7 +1290,7 @@ class Friends_Gestionale_Admin_Dashboard {
                                             <?php if ($donor['tipo'] === 'anche_socio'): ?>
                                                 <span class="fg-badge fg-stato-attivo">Socio</span>
                                             <?php else: ?>
-                                                <span class="fg-badge">Donatore</span>
+                                                <span class="fg-badge fg-badge-donatore">Donatore</span>
                                             <?php endif; ?>
                                         </td>
                                         <td><strong>€<?php echo number_format($donor['totale'], 2, ',', '.'); ?></strong></td>

@@ -371,6 +371,30 @@
             updatePaymentAmountFromCategory();
         });
         
+        // Unlock/Lock Categoria Socio button handler
+        $('#fg_unlock_categoria_socio').on('click', function(e) {
+            e.preventDefault();
+            var $button = $(this);
+            var $select = $('#fg_categoria_socio_id');
+            var $icon = $button.find('.dashicons');
+            
+            if ($select.prop('disabled')) {
+                // Unlock the field
+                $select.prop('disabled', false);
+                $select.css('background-color', '');
+                $icon.removeClass('dashicons-lock').addClass('dashicons-unlock');
+                $button.html('<span class="dashicons dashicons-unlock" style="margin-top: 3px;"></span> Blocca');
+                $('#fg_categoria_socio_description').html('Il campo è sbloccato. La modifica aggiornerà la tipologia socio del donatore.');
+            } else {
+                // Lock the field
+                $select.prop('disabled', true);
+                $select.css('background-color', '#f0f0f0');
+                $icon.removeClass('dashicons-unlock').addClass('dashicons-lock');
+                $button.html('<span class="dashicons dashicons-lock" style="margin-top: 3px;"></span> Sblocca');
+                $('#fg_categoria_socio_description').html('Clicca su "Sblocca" per modificare la categoria. La modifica aggiornerà anche la tipologia socio del donatore.');
+            }
+        });
+        
         // Show/hide custom event field when event selection changes
         $('#fg_evento_id').on('change', function() {
             var eventoId = $(this).val();
@@ -388,6 +412,229 @@
                 return false;
             }
         });
+        
+        // Add payment button from donor page - opens modal
+        $('#fg_add_payment_btn').on('click', function(e) {
+            e.preventDefault();
+            var donorId = $(this).data('donor-id');
+            var donorName = $(this).data('donor-name');
+            
+            // Create modal HTML
+            var modalHtml = '<div id="fg-add-payment-modal" style="display: none; position: fixed; z-index: 100000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7);">' +
+                '<div style="background-color: #fff; margin: 50px auto; padding: 0; border-radius: 8px; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">' +
+                '<div style="padding: 20px; border-bottom: 1px solid #ddd; background: #f9f9f9; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">' +
+                '<h2 style="margin: 0;">Aggiungi Nuovo Pagamento per ' + donorName + '</h2>' +
+                '<button id="fg-close-payment-modal" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #666; line-height: 1;">&times;</button>' +
+                '</div>' +
+                '<div id="fg-payment-form-container" style="padding: 25px;"></div>' +
+                '</div>' +
+                '</div>';
+            
+            $('body').append(modalHtml);
+            $('#fg-add-payment-modal').fadeIn(300);
+            
+            // Load payment form via AJAX
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'fg_get_payment_form',
+                    donor_id: donorId,
+                    nonce: fg_admin_ajax.nonce || ''
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#fg-payment-form-container').html(response.data.html);
+                        
+                        // Reinitialize form elements
+                        if (typeof $.fn.select2 !== 'undefined') {
+                            $('#fg-payment-form-container .fg-select2-donor').select2({
+                                placeholder: 'Cerca donatore per nome...',
+                                allowClear: true,
+                                width: '100%'
+                            });
+                        }
+                        
+                        // Set today's date as default
+                        var today = new Date().toISOString().split('T')[0];
+                        $('#fg_modal_data_pagamento').val(today);
+                        
+                        // Initialize payment type change handlers
+                        initializePaymentFormHandlers();
+                    } else {
+                        $('#fg-payment-form-container').html('<p style="color: #d63638;">Errore nel caricamento del form.</p>');
+                    }
+                },
+                error: function() {
+                    $('#fg-payment-form-container').html('<p style="color: #d63638;">Errore nella comunicazione con il server.</p>');
+                }
+            });
+            
+            // Close modal handlers
+            $(document).on('click', '#fg-close-payment-modal', function() {
+                $('#fg-add-payment-modal').fadeOut(300, function() {
+                    $(this).remove();
+                });
+            });
+            
+            $(document).on('click', '#fg-add-payment-modal', function(e) {
+                if (e.target.id === 'fg-add-payment-modal') {
+                    $('#fg-add-payment-modal').fadeOut(300, function() {
+                        $(this).remove();
+                    });
+                }
+            });
+            
+            // Handle form submission
+            $(document).on('submit', '#fg-modal-payment-form', function(e) {
+                e.preventDefault();
+                
+                var $form = $(this);
+                var $submitBtn = $form.find('button[type="submit"]');
+                var originalText = $submitBtn.html();
+                
+                $submitBtn.prop('disabled', true).html('Salvataggio in corso...');
+                
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: $form.serialize() + '&action=fg_save_payment&nonce=' + (fg_admin_ajax.nonce || ''),
+                    success: function(response) {
+                        if (response.success) {
+                            // Show success message
+                            $('#fg-payment-form-container').html(
+                                '<div style="text-align: center; padding: 40px;">' +
+                                '<div style="font-size: 48px; color: #00a32a; margin-bottom: 20px;">✓</div>' +
+                                '<h3 style="color: #00a32a; margin-bottom: 10px;">Pagamento salvato con successo!</h3>' +
+                                '<p style="color: #666;">Il pagamento è stato aggiunto e la lista verrà aggiornata...</p>' +
+                                '</div>'
+                            );
+                            
+                            // Reload the page after 1.5 seconds to show the new payment
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            alert('Errore nel salvataggio: ' + (response.data || 'Errore sconosciuto'));
+                            $submitBtn.prop('disabled', false).html(originalText);
+                        }
+                    },
+                    error: function() {
+                        alert('Errore nella comunicazione con il server.');
+                        $submitBtn.prop('disabled', false).html(originalText);
+                    }
+                });
+            });
+        });
+        
+        // Function to initialize payment form handlers in modal
+        function initializePaymentFormHandlers() {
+            var $tipoPagamento = $('#fg_modal_tipo_pagamento');
+            var donorId = $('#fg-modal-payment-form input[name="donor_id"]').val();
+            
+            function toggleModalPaymentFields() {
+                var tipo = $tipoPagamento.val();
+                
+                $('.fg-modal-conditional-field').hide();
+                
+                if (tipo === 'evento') {
+                    $('#fg_modal_evento_field').show();
+                    // Unlock amount field
+                    $('#fg_modal_importo').prop('readonly', false).css('background-color', '');
+                } else if (tipo === 'quota') {
+                    $('#fg_modal_categoria_socio_field').show();
+                    // Auto-load member's category and quota
+                    updateModalPaymentAmount();
+                } else if (tipo === 'raccolta') {
+                    $('#fg_modal_raccolta_field').show();
+                    // Unlock amount field
+                    $('#fg_modal_importo').prop('readonly', false).css('background-color', '');
+                } else {
+                    // Unlock amount field for other types
+                    $('#fg_modal_importo').prop('readonly', false).css('background-color', '');
+                }
+            }
+            
+            function updateModalPaymentAmount() {
+                if (donorId && $tipoPagamento.val() === 'quota') {
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'fg_get_member_quota',
+                            socio_id: donorId,
+                            nonce: fg_admin_ajax.nonce || ''
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                // Auto-select the member's category
+                                if (response.data.categoria_id) {
+                                    $('#fg_modal_categoria_socio_id').val(response.data.categoria_id);
+                                }
+                                
+                                // Auto-populate amount and make it readonly
+                                if (response.data.quota) {
+                                    $('#fg_modal_importo').val(response.data.quota);
+                                    $('#fg_modal_importo').prop('readonly', true);
+                                    $('#fg_modal_importo').css('background-color', '#f0f0f0');
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+            
+            // Lock/Unlock button handler for modal categoria socio
+            $('#fg_modal_unlock_categoria_socio').on('click', function(e) {
+                e.preventDefault();
+                var $button = $(this);
+                var $select = $('#fg_modal_categoria_socio_id');
+                var $icon = $button.find('.dashicons');
+                
+                if ($select.prop('disabled')) {
+                    // Unlock the field
+                    $select.prop('disabled', false);
+                    $select.css('background-color', '');
+                    $icon.removeClass('dashicons-lock').addClass('dashicons-unlock');
+                    $button.html('<span class="dashicons dashicons-unlock" style="margin-top: 3px;"></span> Blocca');
+                    $('#fg_modal_categoria_socio_description').html('Il campo è sbloccato. La modifica aggiornerà la tipologia socio del donatore.');
+                } else {
+                    // Lock the field
+                    $select.prop('disabled', true);
+                    $select.css('background-color', '#f0f0f0');
+                    $icon.removeClass('dashicons-unlock').addClass('dashicons-lock');
+                    $button.html('<span class="dashicons dashicons-lock" style="margin-top: 3px;"></span> Sblocca');
+                    $('#fg_modal_categoria_socio_description').html('Clicca su "Sblocca" per modificare la categoria. La modifica aggiornerà anche la tipologia socio del donatore.');
+                }
+            });
+            
+            // Update amount when modal categoria socio changes
+            $('#fg_modal_categoria_socio_id').on('change', function() {
+                var categoriaId = $(this).val();
+                if (donorId && $tipoPagamento.val() === 'quota' && categoriaId) {
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'fg_get_member_quota',
+                            socio_id: donorId,
+                            categoria_id: categoriaId,
+                            nonce: fg_admin_ajax.nonce || ''
+                        },
+                        success: function(response) {
+                            if (response.success && response.data.quota) {
+                                $('#fg_modal_importo').val(response.data.quota);
+                                $('#fg_modal_importo').prop('readonly', true);
+                                $('#fg_modal_importo').css('background-color', '#f0f0f0');
+                            }
+                        }
+                    });
+                }
+            });
+            
+            $tipoPagamento.on('change', toggleModalPaymentFields);
+            toggleModalPaymentFields();
+        }
         
         // Dashboard statistics refresh
         $('.fg-refresh-stats').on('click', function(e) {
@@ -578,6 +825,36 @@
                 }
             });
         });
+        
+        // Make taxonomy metaboxes read-only for fg_categoria_socio and fg_categoria_donatore
+        // on the donor edit page, with a notice
+        if ($('body').hasClass('post-type-fg_socio')) {
+            // Helper function to add read-only notice
+            function makeReadOnly($element) {
+                // Disable all checkboxes
+                $element.find('input[type="checkbox"]').prop('disabled', true);
+                $element.find('input[type="checkbox"]').css('opacity', '0.5');
+                
+                // Add notice if not already present
+                if (!$element.find('.fg-readonly-notice').length) {
+                    $element.append(
+                        '<p class="fg-readonly-notice">Solo visualizzazione, modificare il dato nel form.</p>'
+                    );
+                }
+            }
+            
+            // Make Tipologia Socio (fg_categoria_socio) read-only - correct WordPress metabox div
+            var $categoriaSocioBox = $('#fg_categoria_sociodiv');
+            if ($categoriaSocioBox.length) {
+                makeReadOnly($categoriaSocioBox);
+            }
+            
+            // Make Categoria Donatore (fg_categoria_donatore) read-only - correct WordPress metabox div
+            var $categoriaDonatore = $('#fg_categoria_donatorediv');
+            if ($categoriaDonatore.length) {
+                makeReadOnly($categoriaDonatore);
+            }
+        }
         
     });
     
