@@ -21,6 +21,10 @@ class Friends_Gestionale_Meta_Boxes {
         add_action('admin_init', array($this, 'setup_upload_handler'));
         add_action('before_delete_post', array($this, 'before_delete_payment'));
         
+        // AJAX handlers for payment modal
+        add_action('wp_ajax_fg_get_payment_form', array($this, 'ajax_get_payment_form'));
+        add_action('wp_ajax_fg_save_payment', array($this, 'ajax_save_payment'));
+        
         // Hide default editor for custom post types
         add_action('admin_head', array($this, 'hide_default_editor'));
     }
@@ -1662,6 +1666,297 @@ class Friends_Gestionale_Meta_Boxes {
         
         // Update the donor's total donations for sortable column
         update_post_meta($socio_id, '_fg_totale_donato', $total);
+    }
+    
+    /**
+     * AJAX handler to get payment form for modal
+     */
+    public function ajax_get_payment_form() {
+        check_ajax_referer('fg_ajax_nonce', 'nonce');
+        
+        $donor_id = isset($_POST['donor_id']) ? absint($_POST['donor_id']) : 0;
+        
+        if (!$donor_id) {
+            wp_send_json_error('Invalid donor ID');
+        }
+        
+        $donor = get_post($donor_id);
+        if (!$donor) {
+            wp_send_json_error('Donor not found');
+        }
+        
+        // Get all events for dropdown
+        $eventi = get_posts(array(
+            'post_type' => 'fg_evento',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC'
+        ));
+        
+        // Get all fundraising campaigns for dropdown
+        $raccolte = get_posts(array(
+            'post_type' => 'fg_raccolta',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC'
+        ));
+        
+        // Get all member categories
+        $categorie = get_terms(array(
+            'taxonomy' => 'fg_categoria_socio',
+            'hide_empty' => false
+        ));
+        
+        ob_start();
+        ?>
+        <form id="fg-modal-payment-form" style="max-width: 100%;">
+            <input type="hidden" name="donor_id" value="<?php echo esc_attr($donor_id); ?>">
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px;">
+                    <strong><?php _e('Donatore:', 'friends-gestionale'); ?></strong>
+                </label>
+                <p style="padding: 10px; background: #f0f0f1; border-radius: 4px; margin: 0;">
+                    <?php echo esc_html($donor->post_title); ?>
+                </p>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px;">
+                        <strong><?php _e('Importo (€):', 'friends-gestionale'); ?></strong> <span style="color: #d63638;">*</span>
+                    </label>
+                    <input type="number" name="importo" id="fg_modal_importo" step="0.01" min="0" required 
+                           style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;" />
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px;">
+                        <strong><?php _e('Data Pagamento:', 'friends-gestionale'); ?></strong> <span style="color: #d63638;">*</span>
+                    </label>
+                    <input type="date" name="data_pagamento" id="fg_modal_data_pagamento" required 
+                           style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;" />
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px;">
+                        <strong><?php _e('Metodo di Pagamento:', 'friends-gestionale'); ?></strong>
+                    </label>
+                    <select name="metodo_pagamento" id="fg_modal_metodo_pagamento" 
+                            style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="contanti"><?php _e('Contanti', 'friends-gestionale'); ?></option>
+                        <option value="bonifico"><?php _e('Bonifico Bancario', 'friends-gestionale'); ?></option>
+                        <option value="carta"><?php _e('Carta di Credito', 'friends-gestionale'); ?></option>
+                        <option value="paypal"><?php _e('PayPal', 'friends-gestionale'); ?></option>
+                        <option value="altro"><?php _e('Altro', 'friends-gestionale'); ?></option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px;">
+                        <strong><?php _e('Tipo di Pagamento:', 'friends-gestionale'); ?></strong>
+                    </label>
+                    <select name="tipo_pagamento" id="fg_modal_tipo_pagamento" 
+                            style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="quota"><?php _e('Quota Associativa', 'friends-gestionale'); ?></option>
+                        <option value="donazione" selected><?php _e('Donazione singola', 'friends-gestionale'); ?></option>
+                        <option value="raccolta"><?php _e('Raccolta Fondi', 'friends-gestionale'); ?></option>
+                        <option value="evento"><?php _e('Evento', 'friends-gestionale'); ?></option>
+                        <option value="altro"><?php _e('Altro', 'friends-gestionale'); ?></option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="fg_modal_evento_field" class="fg-modal-conditional-field" style="display: none; margin-bottom: 20px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px;">
+                    <strong><?php _e('Seleziona Evento:', 'friends-gestionale'); ?></strong>
+                </label>
+                <select name="evento_id" id="fg_modal_evento_id" 
+                        style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value=""><?php _e('Seleziona Evento', 'friends-gestionale'); ?></option>
+                    <?php foreach ($eventi as $evento): ?>
+                        <option value="<?php echo $evento->ID; ?>"><?php echo esc_html($evento->post_title); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div id="fg_modal_raccolta_field" class="fg-modal-conditional-field" style="display: none; margin-bottom: 20px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px;">
+                    <strong><?php _e('Seleziona Raccolta Fondi:', 'friends-gestionale'); ?></strong>
+                </label>
+                <select name="raccolta_id" id="fg_modal_raccolta_id" 
+                        style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value=""><?php _e('Seleziona Raccolta Fondi', 'friends-gestionale'); ?></option>
+                    <?php foreach ($raccolte as $raccolta): ?>
+                        <option value="<?php echo $raccolta->ID; ?>"><?php echo esc_html($raccolta->post_title); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div id="fg_modal_categoria_socio_field" class="fg-modal-conditional-field" style="display: none; margin-bottom: 20px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px;">
+                    <strong><?php _e('Categoria Socio:', 'friends-gestionale'); ?></strong>
+                </label>
+                <select name="categoria_socio_id" id="fg_modal_categoria_socio_id" 
+                        style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value=""><?php _e('Seleziona Categoria', 'friends-gestionale'); ?></option>
+                    <?php if (!empty($categorie) && !is_wp_error($categorie)): ?>
+                        <?php foreach ($categorie as $categoria): ?>
+                            <option value="<?php echo $categoria->term_id; ?>"><?php echo esc_html($categoria->name); ?></option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px;">
+                    <strong><?php _e('Note:', 'friends-gestionale'); ?></strong>
+                </label>
+                <textarea name="note" id="fg_modal_note" rows="3" 
+                          style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+            </div>
+            
+            <div style="text-align: right; padding-top: 15px; border-top: 1px solid #ddd;">
+                <button type="button" id="fg-close-payment-modal" class="button" style="margin-right: 10px;">
+                    <?php _e('Annulla', 'friends-gestionale'); ?>
+                </button>
+                <button type="submit" class="button button-primary">
+                    <?php _e('Salva Pagamento', 'friends-gestionale'); ?>
+                </button>
+            </div>
+        </form>
+        <?php
+        $html = ob_get_clean();
+        
+        wp_send_json_success(array('html' => $html));
+    }
+    
+    /**
+     * AJAX handler to save payment from modal
+     */
+    public function ajax_save_payment() {
+        check_ajax_referer('fg_ajax_nonce', 'nonce');
+        
+        $donor_id = isset($_POST['donor_id']) ? absint($_POST['donor_id']) : 0;
+        $importo = isset($_POST['importo']) ? floatval($_POST['importo']) : 0;
+        $data_pagamento = isset($_POST['data_pagamento']) ? sanitize_text_field($_POST['data_pagamento']) : '';
+        $metodo_pagamento = isset($_POST['metodo_pagamento']) ? sanitize_text_field($_POST['metodo_pagamento']) : 'contanti';
+        $tipo_pagamento = isset($_POST['tipo_pagamento']) ? sanitize_text_field($_POST['tipo_pagamento']) : 'donazione';
+        $evento_id = isset($_POST['evento_id']) ? absint($_POST['evento_id']) : 0;
+        $raccolta_id = isset($_POST['raccolta_id']) ? absint($_POST['raccolta_id']) : 0;
+        $categoria_socio_id = isset($_POST['categoria_socio_id']) ? absint($_POST['categoria_socio_id']) : 0;
+        $note = isset($_POST['note']) ? sanitize_textarea_field($_POST['note']) : '';
+        
+        if (!$donor_id || !$importo || !$data_pagamento) {
+            wp_send_json_error('Dati mancanti');
+        }
+        
+        // Create payment post
+        $payment_id = wp_insert_post(array(
+            'post_type' => 'fg_pagamento',
+            'post_status' => 'publish',
+            'post_title' => 'Pagamento ' . date('Y-m-d H:i:s')
+        ));
+        
+        if (is_wp_error($payment_id)) {
+            wp_send_json_error('Errore nella creazione del pagamento');
+        }
+        
+        // Save payment metadata
+        update_post_meta($payment_id, '_fg_socio_id', $donor_id);
+        update_post_meta($payment_id, '_fg_importo', $importo);
+        update_post_meta($payment_id, '_fg_data_pagamento', $data_pagamento);
+        update_post_meta($payment_id, '_fg_metodo_pagamento', $metodo_pagamento);
+        update_post_meta($payment_id, '_fg_tipo_pagamento', $tipo_pagamento);
+        
+        if ($evento_id) {
+            update_post_meta($payment_id, '_fg_evento_id', $evento_id);
+        }
+        if ($raccolta_id) {
+            update_post_meta($payment_id, '_fg_raccolta_id', $raccolta_id);
+        }
+        if ($categoria_socio_id) {
+            update_post_meta($payment_id, '_fg_categoria_socio_id', $categoria_socio_id);
+        }
+        if ($note) {
+            update_post_meta($payment_id, '_fg_note', $note);
+        }
+        
+        // Update member expiry date if this is a quota payment and current year
+        if ($tipo_pagamento === 'quota' && $donor_id) {
+            $payment_timestamp = strtotime($data_pagamento);
+            if ($payment_timestamp !== false) {
+                $current_year = date('Y');
+                $payment_year = date('Y', $payment_timestamp);
+                
+                if ($payment_year == $current_year) {
+                    $current_expiry = get_post_meta($donor_id, '_fg_data_scadenza', true);
+                    
+                    if ($current_expiry) {
+                        $expiry_date = new DateTime($current_expiry);
+                        $expiry_date->modify('+1 year');
+                        $new_expiry = $expiry_date->format('Y-m-d');
+                    } else {
+                        $expiry_date = new DateTime();
+                        $expiry_date->modify('+1 year');
+                        $new_expiry = $expiry_date->format('Y-m-d');
+                    }
+                    
+                    update_post_meta($donor_id, '_fg_data_scadenza', $new_expiry);
+                    
+                    $current_stato = get_post_meta($donor_id, '_fg_stato', true);
+                    if ($current_stato === 'scaduto' || empty($current_stato)) {
+                        update_post_meta($donor_id, '_fg_stato', 'attivo');
+                    }
+                }
+            }
+        }
+        
+        // Update donor's total donations
+        $this->update_donor_total($donor_id);
+        
+        // Generate automatic reference title
+        $metodi_labels = array(
+            'contanti' => 'Contanti',
+            'bonifico' => 'Bonifico',
+            'carta' => 'Carta',
+            'paypal' => 'PayPal',
+            'altro' => 'Altro'
+        );
+        
+        $tipi_labels = array(
+            'quota' => 'Quota',
+            'donazione' => 'Donazione',
+            'raccolta' => 'Raccolta',
+            'evento' => 'Evento',
+            'altro' => 'Altro'
+        );
+        
+        // Get or create progressive number
+        global $wpdb;
+        $max_number = $wpdb->get_var(
+            "SELECT MAX(CAST(meta_value AS UNSIGNED)) 
+            FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_fg_progressive_number'"
+        );
+        $progressive_number = $max_number ? intval($max_number) + 1 : 1;
+        update_post_meta($payment_id, '_fg_progressive_number', $progressive_number);
+        
+        $formatted_number = str_pad($progressive_number, 4, '0', STR_PAD_LEFT);
+        $metodo_label = isset($metodi_labels[$metodo_pagamento]) ? $metodi_labels[$metodo_pagamento] : $metodo_pagamento;
+        $tipo_label = isset($tipi_labels[$tipo_pagamento]) ? $tipi_labels[$tipo_pagamento] : $tipo_pagamento;
+        
+        $title = sprintf('#%s - %s - %s', $formatted_number, $metodo_label, $tipo_label);
+        
+        wp_update_post(array(
+            'ID' => $payment_id,
+            'post_title' => $title
+        ));
+        
+        wp_send_json_success(array(
+            'payment_id' => $payment_id,
+            'message' => 'Pagamento salvato con successo'
+        ));
     }
 }
 

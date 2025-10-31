@@ -875,6 +875,10 @@ class Friends_Gestionale {
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('friends_gestionale_nonce')
         ));
+        
+        wp_localize_script('friends-gestionale-admin', 'fg_admin_ajax', array(
+            'nonce' => wp_create_nonce('fg_ajax_nonce')
+        ));
     }
     
     /**

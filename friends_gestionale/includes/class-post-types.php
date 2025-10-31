@@ -296,7 +296,7 @@ class Friends_Gestionale_Post_Types {
                 if ($tipo === 'anche_socio') {
                     echo '<span class="fg-badge fg-stato-attivo">Socio</span>';
                 } else {
-                    echo '<span class="fg-badge">Donatore</span>';
+                    echo '<span class="fg-badge fg-badge-donatore">Donatore</span>';
                 }
                 break;
             case 'fg_tipo_persona':

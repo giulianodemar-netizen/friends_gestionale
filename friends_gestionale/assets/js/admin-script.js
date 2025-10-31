@@ -413,24 +413,140 @@
             }
         });
         
-        // Add payment button from donor page
+        // Add payment button from donor page - opens modal
         $('#fg_add_payment_btn').on('click', function(e) {
             e.preventDefault();
             var donorId = $(this).data('donor-id');
             var donorName = $(this).data('donor-name');
             
-            // Redirect to new payment page with pre-filled donor parameter
-            var newPaymentUrl = 'post-new.php?post_type=fg_pagamento&donor_id=' + donorId;
-            window.location.href = newPaymentUrl;
+            // Create modal HTML
+            var modalHtml = '<div id="fg-add-payment-modal" style="display: none; position: fixed; z-index: 100000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7);">' +
+                '<div style="background-color: #fff; margin: 50px auto; padding: 0; border-radius: 8px; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">' +
+                '<div style="padding: 20px; border-bottom: 1px solid #ddd; background: #f9f9f9; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">' +
+                '<h2 style="margin: 0;">Aggiungi Nuovo Pagamento per ' + donorName + '</h2>' +
+                '<button id="fg-close-payment-modal" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #666; line-height: 1;">&times;</button>' +
+                '</div>' +
+                '<div id="fg-payment-form-container" style="padding: 25px;"></div>' +
+                '</div>' +
+                '</div>';
+            
+            $('body').append(modalHtml);
+            $('#fg-add-payment-modal').fadeIn(300);
+            
+            // Load payment form via AJAX
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'fg_get_payment_form',
+                    donor_id: donorId,
+                    nonce: fg_admin_ajax.nonce || ''
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#fg-payment-form-container').html(response.data.html);
+                        
+                        // Reinitialize form elements
+                        if (typeof $.fn.select2 !== 'undefined') {
+                            $('#fg-payment-form-container .fg-select2-donor').select2({
+                                placeholder: 'Cerca donatore per nome...',
+                                allowClear: true,
+                                width: '100%'
+                            });
+                        }
+                        
+                        // Set today's date as default
+                        var today = new Date().toISOString().split('T')[0];
+                        $('#fg_modal_data_pagamento').val(today);
+                        
+                        // Initialize payment type change handlers
+                        initializePaymentFormHandlers();
+                    } else {
+                        $('#fg-payment-form-container').html('<p style="color: #d63638;">Errore nel caricamento del form.</p>');
+                    }
+                },
+                error: function() {
+                    $('#fg-payment-form-container').html('<p style="color: #d63638;">Errore nella comunicazione con il server.</p>');
+                }
+            });
+            
+            // Close modal handlers
+            $(document).on('click', '#fg-close-payment-modal', function() {
+                $('#fg-add-payment-modal').fadeOut(300, function() {
+                    $(this).remove();
+                });
+            });
+            
+            $(document).on('click', '#fg-add-payment-modal', function(e) {
+                if (e.target.id === 'fg-add-payment-modal') {
+                    $('#fg-add-payment-modal').fadeOut(300, function() {
+                        $(this).remove();
+                    });
+                }
+            });
+            
+            // Handle form submission
+            $(document).on('submit', '#fg-modal-payment-form', function(e) {
+                e.preventDefault();
+                
+                var $form = $(this);
+                var $submitBtn = $form.find('button[type="submit"]');
+                var originalText = $submitBtn.html();
+                
+                $submitBtn.prop('disabled', true).html('Salvataggio in corso...');
+                
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: $form.serialize() + '&action=fg_save_payment&nonce=' + (fg_admin_ajax.nonce || ''),
+                    success: function(response) {
+                        if (response.success) {
+                            // Show success message
+                            $('#fg-payment-form-container').html(
+                                '<div style="text-align: center; padding: 40px;">' +
+                                '<div style="font-size: 48px; color: #00a32a; margin-bottom: 20px;">✓</div>' +
+                                '<h3 style="color: #00a32a; margin-bottom: 10px;">Pagamento salvato con successo!</h3>' +
+                                '<p style="color: #666;">Il pagamento è stato aggiunto e la lista verrà aggiornata...</p>' +
+                                '</div>'
+                            );
+                            
+                            // Reload the page after 1.5 seconds to show the new payment
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            alert('Errore nel salvataggio: ' + (response.data || 'Errore sconosciuto'));
+                            $submitBtn.prop('disabled', false).html(originalText);
+                        }
+                    },
+                    error: function() {
+                        alert('Errore nella comunicazione con il server.');
+                        $submitBtn.prop('disabled', false).html(originalText);
+                    }
+                });
+            });
         });
         
-        // Pre-fill donor when coming from donor page
-        if ($('body').hasClass('post-type-fg_pagamento') && $('#fg_socio_id').length) {
-            var urlParams = new URLSearchParams(window.location.search);
-            var donorId = urlParams.get('donor_id');
-            if (donorId) {
-                $('#fg_socio_id').val(donorId).trigger('change');
+        // Function to initialize payment form handlers in modal
+        function initializePaymentFormHandlers() {
+            var $tipoPagamento = $('#fg_modal_tipo_pagamento');
+            
+            function toggleModalPaymentFields() {
+                var tipo = $tipoPagamento.val();
+                
+                $('.fg-modal-conditional-field').hide();
+                
+                if (tipo === 'evento') {
+                    $('#fg_modal_evento_field').show();
+                } else if (tipo === 'quota') {
+                    $('#fg_modal_categoria_socio_field').show();
+                } else if (tipo === 'raccolta') {
+                    $('#fg_modal_raccolta_field').show();
+                }
             }
+            
+            $tipoPagamento.on('change', toggleModalPaymentFields);
+            toggleModalPaymentFields();
         }
         
         // Dashboard statistics refresh
