@@ -660,7 +660,8 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                     <div class="fg-form-field fg-field-half">
                         <label for="fg_tipo_pagamento"><strong><?php _e('Tipo di Pagamento:', 'friends-gestionale'); ?></strong></label>
-                        <select id="fg_tipo_pagamento" name="fg_tipo_pagamento" class="widefat">
+                        <select id="fg_tipo_pagamento" name="fg_tipo_pagamento" class="widefat" required>
+                            <option value=""><?php _e('Seleziona tipo di pagamento', 'friends-gestionale'); ?></option>
                             <option value="quota" <?php selected($tipo_pagamento, 'quota'); ?>><?php _e('Quota Associativa', 'friends-gestionale'); ?></option>
                             <option value="donazione" <?php selected($tipo_pagamento, 'donazione'); ?>><?php _e('Donazione singola', 'friends-gestionale'); ?></option>
                             <option value="raccolta" <?php selected($tipo_pagamento, 'raccolta'); ?>><?php _e('Raccolta Fondi', 'friends-gestionale'); ?></option>
@@ -1759,10 +1760,11 @@ class Friends_Gestionale_Meta_Boxes {
                     <label style="display: block; font-weight: 600; margin-bottom: 8px;">
                         <strong><?php _e('Tipo di Pagamento:', 'friends-gestionale'); ?></strong>
                     </label>
-                    <select name="tipo_pagamento" id="fg_modal_tipo_pagamento" 
+                    <select name="tipo_pagamento" id="fg_modal_tipo_pagamento" required
                             style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value=""><?php _e('Seleziona tipo di pagamento', 'friends-gestionale'); ?></option>
                         <option value="quota"><?php _e('Quota Associativa', 'friends-gestionale'); ?></option>
-                        <option value="donazione" selected><?php _e('Donazione singola', 'friends-gestionale'); ?></option>
+                        <option value="donazione"><?php _e('Donazione singola', 'friends-gestionale'); ?></option>
                         <option value="raccolta"><?php _e('Raccolta Fondi', 'friends-gestionale'); ?></option>
                         <option value="evento"><?php _e('Evento', 'friends-gestionale'); ?></option>
                         <option value="altro"><?php _e('Altro', 'friends-gestionale'); ?></option>
