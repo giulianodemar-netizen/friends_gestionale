@@ -222,7 +222,7 @@ class Friends_Gestionale_Meta_Boxes {
             </div>
             
             <!-- Categoria Donatore section - shown only for solo_donatore -->
-            <div class="fg-form-section fg-categoria-donatore-section" style="display: <?php echo $tipo_donatore === 'solo_donatore' ? 'block' : 'none'; ?>;">
+            <div class="fg-form-section fg-categoria-donatore-section" style="display: <?php echo esc_attr($tipo_donatore) === 'solo_donatore' ? 'block' : 'none'; ?>;">
                 <h3 class="fg-section-title"><?php _e('Categoria Donatore', 'friends-gestionale'); ?></h3>
                 <div class="fg-form-row">
                     <div class="fg-form-field">
@@ -267,7 +267,7 @@ class Friends_Gestionale_Meta_Boxes {
             </div>
             
             <!-- Data Scadenza section - shown only for solo_donatore -->
-            <div class="fg-form-section fg-data-scadenza-donatore-section" style="display: <?php echo $tipo_donatore === 'solo_donatore' ? 'block' : 'none'; ?>;">
+            <div class="fg-form-section fg-data-scadenza-donatore-section" style="display: <?php echo esc_attr($tipo_donatore) === 'solo_donatore' ? 'block' : 'none'; ?>;">
                 <h3 class="fg-section-title"><?php _e('Data Scadenza', 'friends-gestionale'); ?></h3>
                 <div class="fg-form-row">
                     <div class="fg-form-field">
@@ -279,7 +279,7 @@ class Friends_Gestionale_Meta_Boxes {
             </div>
             
             <!-- Iscrizione section - shown only for anche_socio -->
-            <div class="fg-form-section fg-iscrizione-section" style="display: <?php echo $tipo_donatore === 'anche_socio' ? 'block' : 'none'; ?>;">
+            <div class="fg-form-section fg-iscrizione-section" style="display: <?php echo esc_attr($tipo_donatore) === 'anche_socio' ? 'block' : 'none'; ?>;">
                 <h3 class="fg-section-title"><?php _e('Iscrizione', 'friends-gestionale'); ?></h3>
                 
                 <!-- Category selector for auto-filling quota -->
