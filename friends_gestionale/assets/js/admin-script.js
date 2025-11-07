@@ -867,6 +867,14 @@
             }
         }
         
+        // Update fundraiser total when extra funds change
+        $('#fg_fondi_extra, #fg_raccolto').on('input change', function() {
+            var raccolto = parseFloat($('#fg_raccolto').val()) || 0;
+            var fondiExtra = parseFloat($('#fg_fondi_extra').val()) || 0;
+            var totale = raccolto + fondiExtra;
+            $('#fg_totale_raccolto').val(totale.toFixed(2));
+        });
+        
     });
     
 })(jQuery);
