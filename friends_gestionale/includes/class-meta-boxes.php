@@ -769,6 +769,9 @@ class Friends_Gestionale_Meta_Boxes {
     public function render_raccolta_info_meta_box($post) {
         wp_nonce_field('fg_raccolta_meta_box', 'fg_raccolta_meta_box_nonce');
         
+        // Recalculate the total from all payments (ensures accuracy for existing fundraisers)
+        $this->update_raccolta_total($post->ID);
+        
         $titolo_raccolta = get_post_meta($post->ID, '_fg_titolo_raccolta', true);
         if (empty($titolo_raccolta)) {
             $titolo_raccolta = $post->post_title;
