@@ -165,12 +165,14 @@
             var tipoDonatore = $(this).val();
             
             if (tipoDonatore === 'solo_donatore') {
-                // Show donor category section, hide membership section
+                // Show donor category section and expiry date, hide membership section
                 $('.fg-categoria-donatore-section').show();
+                $('.fg-data-scadenza-donatore-section').show();
                 $('.fg-iscrizione-section').hide();
             } else if (tipoDonatore === 'anche_socio') {
-                // Show membership section, hide donor category section
+                // Show membership section, hide donor category section and donor expiry date
                 $('.fg-categoria-donatore-section').hide();
+                $('.fg-data-scadenza-donatore-section').hide();
                 $('.fg-iscrizione-section').show();
             }
         });

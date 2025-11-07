@@ -266,6 +266,18 @@ class Friends_Gestionale_Meta_Boxes {
                 </div>
             </div>
             
+            <!-- Data Scadenza section - shown only for solo_donatore -->
+            <div class="fg-form-section fg-data-scadenza-donatore-section" style="display: <?php echo $tipo_donatore === 'solo_donatore' ? 'block' : 'none'; ?>;">
+                <h3 class="fg-section-title"><?php _e('Data Scadenza', 'friends-gestionale'); ?></h3>
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_data_scadenza_donatore"><strong><?php _e('Data Scadenza:', 'friends-gestionale'); ?></strong></label>
+                        <input type="date" id="fg_data_scadenza_donatore" name="fg_data_scadenza" value="<?php echo esc_attr($data_scadenza); ?>" class="widefat" />
+                        <p class="description"><?php _e('Data di scadenza del donatore. Viene aggiornata automaticamente quando il donatore effettua una donazione.', 'friends-gestionale'); ?></p>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Iscrizione section - shown only for anche_socio -->
             <div class="fg-form-section fg-iscrizione-section" style="display: <?php echo $tipo_donatore === 'anche_socio' ? 'block' : 'none'; ?>;">
                 <h3 class="fg-section-title"><?php _e('Iscrizione', 'friends-gestionale'); ?></h3>
@@ -1352,6 +1364,9 @@ class Friends_Gestionale_Meta_Boxes {
                     wp_set_post_terms($socio_id, array($new_categoria_id), 'fg_categoria_socio', false);
                 }
             }
+            // Track old raccolta_id before updating (for recalculating totals)
+            $old_raccolta_id = get_post_meta($post_id, '_fg_raccolta_id', true);
+            
             if (isset($_POST['fg_raccolta_id'])) {
                 update_post_meta($post_id, '_fg_raccolta_id', absint($_POST['fg_raccolta_id']));
             }
@@ -1359,11 +1374,12 @@ class Friends_Gestionale_Meta_Boxes {
                 update_post_meta($post_id, '_fg_note', sanitize_textarea_field($_POST['fg_note']));
             }
             
-            // Update member expiry date if this is a quota payment
+            // Update member/donor expiry date if this is a quota, donation or fundraiser payment
             $tipo_pagamento = isset($_POST['fg_tipo_pagamento']) ? sanitize_text_field($_POST['fg_tipo_pagamento']) : get_post_meta($post_id, '_fg_tipo_pagamento', true);
             $socio_id = isset($_POST['fg_socio_id']) ? absint($_POST['fg_socio_id']) : get_post_meta($post_id, '_fg_socio_id', true);
             
-            if ($tipo_pagamento === 'quota' && $socio_id) {
+            // Apply expiry date update for quota, donation, and fundraiser payments
+            if (in_array($tipo_pagamento, array('quota', 'donazione', 'raccolta')) && $socio_id) {
                 // Get payment date to check if it's from current year
                 $data_pagamento = isset($_POST['fg_data_pagamento']) ? sanitize_text_field($_POST['fg_data_pagamento']) : get_post_meta($post_id, '_fg_data_pagamento', true);
                 
@@ -1390,7 +1406,7 @@ class Friends_Gestionale_Meta_Boxes {
                             $new_expiry = $expiry_date->format('Y-m-d');
                         }
                         
-                        // Update the member's expiry date
+                        // Update the member/donor's expiry date
                         update_post_meta($socio_id, '_fg_data_scadenza', $new_expiry);
                         
                         // Also update stato to 'attivo' if it's currently scaduto
@@ -1461,8 +1477,17 @@ class Friends_Gestionale_Meta_Boxes {
             }
             
             // Update raccolta total if this is a raccolta payment
-            if (isset($_POST['fg_tipo_pagamento']) && $_POST['fg_tipo_pagamento'] === 'raccolta' && isset($_POST['fg_raccolta_id']) && !empty($_POST['fg_raccolta_id'])) {
-                $this->update_raccolta_total(absint($_POST['fg_raccolta_id']));
+            // Get the current raccolta_id (after save)
+            $new_raccolta_id = isset($_POST['fg_raccolta_id']) ? absint($_POST['fg_raccolta_id']) : get_post_meta($post_id, '_fg_raccolta_id', true);
+            
+            // Update total for old raccolta if it changed
+            if ($old_raccolta_id && $old_raccolta_id != $new_raccolta_id) {
+                $this->update_raccolta_total($old_raccolta_id);
+            }
+            
+            // Update total for new/current raccolta
+            if ($new_raccolta_id) {
+                $this->update_raccolta_total($new_raccolta_id);
             }
         }
         
