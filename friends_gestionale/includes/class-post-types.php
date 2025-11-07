@@ -733,9 +733,11 @@ class Friends_Gestionale_Post_Types {
                 echo $obiettivo ? '€' . number_format($obiettivo, 2, ',', '.') : '-';
                 break;
             case 'fg_raccolto':
-                $raccolto = get_post_meta($post_id, '_fg_raccolto', true);
-                if ($raccolto && $raccolto > 0) {
-                    echo '<span class="fg-donatori-count" data-post-id="' . esc_attr($post_id) . '" style="cursor: pointer; color: #0073aa; text-decoration: underline;">€' . number_format($raccolto, 2, ',', '.') . '</span>';
+                $raccolto = floatval(get_post_meta($post_id, '_fg_raccolto', true));
+                $fondi_extra = floatval(get_post_meta($post_id, '_fg_fondi_extra', true));
+                $totale_raccolto = $raccolto + $fondi_extra;
+                if ($totale_raccolto > 0) {
+                    echo '<span class="fg-donatori-count" data-post-id="' . esc_attr($post_id) . '" style="cursor: pointer; color: #0073aa; text-decoration: underline;">€' . number_format($totale_raccolto, 2, ',', '.') . '</span>';
                 } else {
                     echo '-';
                 }
@@ -743,8 +745,10 @@ class Friends_Gestionale_Post_Types {
             case 'fg_progresso':
                 $obiettivo = floatval(get_post_meta($post_id, '_fg_obiettivo', true));
                 $raccolto = floatval(get_post_meta($post_id, '_fg_raccolto', true));
+                $fondi_extra = floatval(get_post_meta($post_id, '_fg_fondi_extra', true));
+                $totale_raccolto = $raccolto + $fondi_extra;
                 if ($obiettivo > 0) {
-                    $percentuale = ($raccolto / $obiettivo) * 100;
+                    $percentuale = ($totale_raccolto / $obiettivo) * 100;
                     $percentuale_display = min(100, $percentuale);
                     echo '<div class="fg-progress-wrapper">';
                     echo '<div class="fg-progress-bar-small" style="width: 100px; height: 18px; background: #e0e0e0; border-radius: 3px; position: relative; display: inline-block; vertical-align: middle; margin-right: 8px;">';
