@@ -1374,45 +1374,59 @@ class Friends_Gestionale_Meta_Boxes {
                 update_post_meta($post_id, '_fg_note', sanitize_textarea_field($_POST['fg_note']));
             }
             
-            // Update member/donor expiry date if this is a quota, donation or fundraiser payment
+            // Update member/donor expiry date based on payment type and donor type
             $tipo_pagamento = isset($_POST['fg_tipo_pagamento']) ? sanitize_text_field($_POST['fg_tipo_pagamento']) : get_post_meta($post_id, '_fg_tipo_pagamento', true);
             $socio_id = isset($_POST['fg_socio_id']) ? absint($_POST['fg_socio_id']) : get_post_meta($post_id, '_fg_socio_id', true);
             
-            // Apply expiry date update for quota, donation, and fundraiser payments
-            if (in_array($tipo_pagamento, array('quota', 'donazione', 'raccolta')) && $socio_id) {
-                // Get payment date to check if it's from current year
-                $data_pagamento = isset($_POST['fg_data_pagamento']) ? sanitize_text_field($_POST['fg_data_pagamento']) : get_post_meta($post_id, '_fg_data_pagamento', true);
+            if ($socio_id) {
+                // Get the donor type to apply correct logic
+                $tipo_donatore = get_post_meta($socio_id, '_fg_tipo_donatore', true);
+                $should_update_expiry = false;
                 
-                // Validate payment date before processing
-                $payment_timestamp = strtotime($data_pagamento);
-                if ($payment_timestamp !== false) {
-                    $current_year = date('Y');
-                    $payment_year = date('Y', $payment_timestamp);
+                // For members (anche_socio): only update expiry for quota payments
+                if ($tipo_donatore === 'anche_socio' && $tipo_pagamento === 'quota') {
+                    $should_update_expiry = true;
+                }
+                // For simple donors (solo_donatore): update expiry for donation and fundraiser payments
+                elseif ($tipo_donatore === 'solo_donatore' && in_array($tipo_pagamento, array('donazione', 'raccolta'))) {
+                    $should_update_expiry = true;
+                }
+                
+                if ($should_update_expiry) {
+                    // Get payment date to check if it's from current year
+                    $data_pagamento = isset($_POST['fg_data_pagamento']) ? sanitize_text_field($_POST['fg_data_pagamento']) : get_post_meta($post_id, '_fg_data_pagamento', true);
                     
-                    // Only update expiry date if payment is from current year
-                    if ($payment_year == $current_year) {
-                        // Get current expiry date
-                        $current_expiry = get_post_meta($socio_id, '_fg_data_scadenza', true);
+                    // Validate payment date before processing
+                    $payment_timestamp = strtotime($data_pagamento);
+                    if ($payment_timestamp !== false) {
+                        $current_year = date('Y');
+                        $payment_year = date('Y', $payment_timestamp);
                         
-                        if ($current_expiry) {
-                            // Add one year to current expiry date
-                            $expiry_date = new DateTime($current_expiry);
-                            $expiry_date->modify('+1 year');
-                            $new_expiry = $expiry_date->format('Y-m-d');
-                        } else {
-                            // If no expiry date exists, set to one year from today
-                            $expiry_date = new DateTime();
-                            $expiry_date->modify('+1 year');
-                            $new_expiry = $expiry_date->format('Y-m-d');
-                        }
-                        
-                        // Update the member/donor's expiry date
-                        update_post_meta($socio_id, '_fg_data_scadenza', $new_expiry);
-                        
-                        // Also update stato to 'attivo' if it's currently scaduto
-                        $current_stato = get_post_meta($socio_id, '_fg_stato', true);
-                        if ($current_stato === 'scaduto' || empty($current_stato)) {
-                            update_post_meta($socio_id, '_fg_stato', 'attivo');
+                        // Only update expiry date if payment is from current year
+                        if ($payment_year == $current_year) {
+                            // Get current expiry date
+                            $current_expiry = get_post_meta($socio_id, '_fg_data_scadenza', true);
+                            
+                            if ($current_expiry) {
+                                // Add one year to current expiry date
+                                $expiry_date = new DateTime($current_expiry);
+                                $expiry_date->modify('+1 year');
+                                $new_expiry = $expiry_date->format('Y-m-d');
+                            } else {
+                                // If no expiry date exists, set to one year from today
+                                $expiry_date = new DateTime();
+                                $expiry_date->modify('+1 year');
+                                $new_expiry = $expiry_date->format('Y-m-d');
+                            }
+                            
+                            // Update the member/donor's expiry date
+                            update_post_meta($socio_id, '_fg_data_scadenza', $new_expiry);
+                            
+                            // Also update stato to 'attivo' if it's currently scaduto
+                            $current_stato = get_post_meta($socio_id, '_fg_stato', true);
+                            if ($current_stato === 'scaduto' || empty($current_stato)) {
+                                update_post_meta($socio_id, '_fg_stato', 'attivo');
+                            }
                         }
                     }
                 }
