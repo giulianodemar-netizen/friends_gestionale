@@ -169,13 +169,22 @@
                 $('.fg-categoria-donatore-section').show();
                 $('.fg-data-scadenza-donatore-section').show();
                 $('.fg-iscrizione-section').hide();
+                // Enable donor expiry date field, disable member expiry date field
+                $('#fg_data_scadenza_donatore').prop('disabled', false);
+                $('#fg_data_scadenza').prop('disabled', true);
             } else if (tipoDonatore === 'anche_socio') {
                 // Show membership section, hide donor category section and donor expiry date
                 $('.fg-categoria-donatore-section').hide();
                 $('.fg-data-scadenza-donatore-section').hide();
                 $('.fg-iscrizione-section').show();
+                // Enable member expiry date field, disable donor expiry date field
+                $('#fg_data_scadenza').prop('disabled', false);
+                $('#fg_data_scadenza_donatore').prop('disabled', true);
             }
         });
+        
+        // Trigger on page load to set initial state
+        $('#fg_tipo_donatore').trigger('change');
         
         // Handle person type change (privato/società)
         $('input[name="fg_tipo_persona"]').on('change', function() {
