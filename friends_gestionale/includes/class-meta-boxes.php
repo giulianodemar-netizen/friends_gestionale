@@ -1381,6 +1381,9 @@ class Friends_Gestionale_Meta_Boxes {
             if ($socio_id) {
                 // Get the donor type to apply correct logic
                 $tipo_donatore = get_post_meta($socio_id, '_fg_tipo_donatore', true);
+                if (empty($tipo_donatore)) {
+                    $tipo_donatore = 'anche_socio'; // Default to member for backward compatibility
+                }
                 $should_update_expiry = false;
                 
                 // For members (anche_socio): only update expiry for quota payments
