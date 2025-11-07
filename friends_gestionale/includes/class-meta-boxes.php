@@ -1411,17 +1411,25 @@ class Friends_Gestionale_Meta_Boxes {
                         
                         // Only update expiry date if payment is from current year
                         if ($payment_year == $current_year) {
-                            // Get current expiry date
-                            $current_expiry = get_post_meta($socio_id, '_fg_data_scadenza', true);
-                            
-                            if ($current_expiry) {
-                                // Add one year to current expiry date
-                                $expiry_date = new DateTime($current_expiry);
-                                $expiry_date->modify('+1 year');
-                                $new_expiry = $expiry_date->format('Y-m-d');
+                            // Different logic for members vs donors
+                            if ($tipo_donatore === 'anche_socio') {
+                                // For members: add one year to current expiry date
+                                $current_expiry = get_post_meta($socio_id, '_fg_data_scadenza', true);
+                                
+                                if ($current_expiry) {
+                                    // Add one year to current expiry date
+                                    $expiry_date = new DateTime($current_expiry);
+                                    $expiry_date->modify('+1 year');
+                                    $new_expiry = $expiry_date->format('Y-m-d');
+                                } else {
+                                    // If no expiry date exists, set to one year from today
+                                    $expiry_date = new DateTime();
+                                    $expiry_date->modify('+1 year');
+                                    $new_expiry = $expiry_date->format('Y-m-d');
+                                }
                             } else {
-                                // If no expiry date exists, set to one year from today
-                                $expiry_date = new DateTime();
+                                // For donors: set expiry to payment date + 1 year
+                                $expiry_date = new DateTime($data_pagamento);
                                 $expiry_date->modify('+1 year');
                                 $new_expiry = $expiry_date->format('Y-m-d');
                             }
