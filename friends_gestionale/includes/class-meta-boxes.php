@@ -20,6 +20,7 @@ class Friends_Gestionale_Meta_Boxes {
         add_action('save_post', array($this, 'save_meta_boxes'), 10, 2);
         add_action('admin_init', array($this, 'setup_upload_handler'));
         add_action('before_delete_post', array($this, 'before_delete_payment'));
+        add_action('wp_trash_post', array($this, 'before_delete_payment'));
         
         // AJAX handlers for payment modal
         add_action('wp_ajax_fg_get_payment_form', array($this, 'ajax_get_payment_form'));
