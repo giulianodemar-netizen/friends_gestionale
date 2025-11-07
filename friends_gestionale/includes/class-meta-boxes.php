@@ -1652,18 +1652,45 @@ class Friends_Gestionale_Meta_Boxes {
             $socio_id = get_post_meta($post_id, '_fg_socio_id', true);
             
             if ($tipo_pagamento === 'raccolta' && $raccolta_id) {
-                // Update total after this payment is deleted
-                // We need to do this on shutdown to ensure the post is actually deleted
-                add_action('shutdown', function() use ($raccolta_id) {
-                    $this->update_raccolta_total($raccolta_id);
-                });
+                // Store raccolta_id as a property to update after deletion
+                if (!isset($this->raccolte_to_update)) {
+                    $this->raccolte_to_update = array();
+                    // Register shutdown hook once
+                    add_action('shutdown', array($this, 'update_raccolte_after_delete'));
+                }
+                $this->raccolte_to_update[] = $raccolta_id;
             }
             
             // Update donor's total donations after payment is deleted
             if ($socio_id) {
-                add_action('shutdown', function() use ($socio_id) {
-                    $this->update_donor_total($socio_id);
-                });
+                if (!isset($this->donors_to_update)) {
+                    $this->donors_to_update = array();
+                    // Register shutdown hook once
+                    add_action('shutdown', array($this, 'update_donors_after_delete'));
+                }
+                $this->donors_to_update[] = $socio_id;
+            }
+        }
+    }
+    
+    /**
+     * Update fundraiser totals after payment deletion
+     */
+    public function update_raccolte_after_delete() {
+        if (isset($this->raccolte_to_update) && !empty($this->raccolte_to_update)) {
+            foreach (array_unique($this->raccolte_to_update) as $raccolta_id) {
+                $this->update_raccolta_total($raccolta_id);
+            }
+        }
+    }
+    
+    /**
+     * Update donor totals after payment deletion
+     */
+    public function update_donors_after_delete() {
+        if (isset($this->donors_to_update) && !empty($this->donors_to_update)) {
+            foreach (array_unique($this->donors_to_update) as $socio_id) {
+                $this->update_donor_total($socio_id);
             }
         }
     }
