@@ -800,26 +800,39 @@ class Friends_Gestionale_Meta_Boxes {
             $eventi_associati = array();
         }
         
+        // Fetch all payments for associated events in a single query (avoid N+1)
+        $eventi_payments_map = array(); // Map evento_id => array of payments
         $totale_da_eventi = 0;
+        
         if (!empty($eventi_associati)) {
-            foreach ($eventi_associati as $evento_id) {
-                // Get all payments for this event
-                $event_payments = get_posts(array(
-                    'post_type' => 'fg_pagamento',
-                    'posts_per_page' => -1,
-                    'meta_query' => array(
-                        array(
-                            'key' => '_fg_evento_id',
-                            'value' => $evento_id,
-                            'compare' => '='
-                        )
+            // Single query to get all payments for all associated events
+            $all_event_payments = get_posts(array(
+                'post_type' => 'fg_pagamento',
+                'posts_per_page' => -1,
+                'meta_query' => array(
+                    array(
+                        'key' => '_fg_evento_id',
+                        'value' => $eventi_associati,
+                        'compare' => 'IN'
                     )
-                ));
+                )
+            ));
+            
+            // Group payments by event ID and calculate totals
+            foreach ($all_event_payments as $payment) {
+                $evento_id = get_post_meta($payment->ID, '_fg_evento_id', true);
+                $importo = get_post_meta($payment->ID, '_fg_importo', true);
                 
-                foreach ($event_payments as $payment) {
-                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
-                    $totale_da_eventi += floatval($importo);
+                if (!isset($eventi_payments_map[$evento_id])) {
+                    $eventi_payments_map[$evento_id] = array(
+                        'payments' => array(),
+                        'total' => 0
+                    );
                 }
+                
+                $eventi_payments_map[$evento_id]['payments'][] = $payment;
+                $eventi_payments_map[$evento_id]['total'] += floatval($importo);
+                $totale_da_eventi += floatval($importo);
             }
         }
         
@@ -945,24 +958,9 @@ class Friends_Gestionale_Meta_Boxes {
                                 <?php foreach ($eventi_associati as $evento_id):
                                     $evento = get_post($evento_id);
                                     if ($evento):
-                                        // Calculate total for this specific event
-                                        $event_payments = get_posts(array(
-                                            'post_type' => 'fg_pagamento',
-                                            'posts_per_page' => -1,
-                                            'meta_query' => array(
-                                                array(
-                                                    'key' => '_fg_evento_id',
-                                                    'value' => $evento_id,
-                                                    'compare' => '='
-                                                )
-                                            )
-                                        ));
-                                        
-                                        $evento_total = 0;
-                                        foreach ($event_payments as $payment) {
-                                            $importo = get_post_meta($payment->ID, '_fg_importo', true);
-                                            $evento_total += floatval($importo);
-                                        }
+                                        // Use cached data from earlier query
+                                        $evento_total = isset($eventi_payments_map[$evento_id]) ? $eventi_payments_map[$evento_id]['total'] : 0;
+                                        $payment_count = isset($eventi_payments_map[$evento_id]) ? count($eventi_payments_map[$evento_id]['payments']) : 0;
                                 ?>
                                     <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
                                         <div>
@@ -970,7 +968,7 @@ class Friends_Gestionale_Meta_Boxes {
                                                 <?php echo esc_html($evento->post_title); ?>
                                             </a>
                                             <small style="color: #666; display: block; margin-top: 3px;">
-                                                <?php echo count($event_payments); ?> <?php _e('pagamenti', 'friends-gestionale'); ?>
+                                                <?php echo $payment_count; ?> <?php _e('pagamenti', 'friends-gestionale'); ?>
                                             </small>
                                         </div>
                                         <strong style="color: #28a745; font-size: 14px;">
