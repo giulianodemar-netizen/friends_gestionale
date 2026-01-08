@@ -794,8 +794,37 @@ class Friends_Gestionale_Meta_Boxes {
         $data_fine = get_post_meta($post->ID, '_fg_data_fine', true);
         $stato = get_post_meta($post->ID, '_fg_stato', true);
         
-        // Calculate total collected (auto + extra)
-        $totale_raccolto = floatval($raccolto) + floatval($fondi_extra);
+        // Get currently associated events and calculate their total
+        $eventi_associati = get_post_meta($post->ID, '_fg_eventi_associati', true);
+        if (!is_array($eventi_associati)) {
+            $eventi_associati = array();
+        }
+        
+        $totale_da_eventi = 0;
+        if (!empty($eventi_associati)) {
+            foreach ($eventi_associati as $evento_id) {
+                // Get all payments for this event
+                $event_payments = get_posts(array(
+                    'post_type' => 'fg_pagamento',
+                    'posts_per_page' => -1,
+                    'meta_query' => array(
+                        array(
+                            'key' => '_fg_evento_id',
+                            'value' => $evento_id,
+                            'compare' => '='
+                        )
+                    )
+                ));
+                
+                foreach ($event_payments as $payment) {
+                    $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                    $totale_da_eventi += floatval($importo);
+                }
+            }
+        }
+        
+        // Calculate total collected (auto + extra + events)
+        $totale_raccolto = floatval($raccolto) + floatval($fondi_extra) + $totale_da_eventi;
         ?>
         <div class="fg-meta-box fg-improved-form">
             <div class="fg-form-section">
@@ -829,7 +858,7 @@ class Friends_Gestionale_Meta_Boxes {
                     <div class="fg-form-field fg-field-half">
                         <label for="fg_totale_raccolto"><strong><?php _e('Totale Raccolto (€):', 'friends-gestionale'); ?></strong></label>
                         <input type="number" id="fg_totale_raccolto" name="fg_totale_raccolto" value="<?php echo esc_attr($totale_raccolto); ?>" step="0.01" min="0" class="widefat" readonly style="background-color: #f0f0f0;" />
-                        <small style="color: #666;"><?php _e('Piattaforma + Extra', 'friends-gestionale'); ?></small>
+                        <small style="color: #666;"><?php _e('Piattaforma + Extra + Eventi', 'friends-gestionale'); ?></small>
                     </div>
                 </div>
                 
@@ -855,6 +884,39 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                 </div>
                 
+                <?php
+                // Get all events for the multiselect
+                $all_eventi = get_posts(array(
+                    'post_type' => 'fg_evento',
+                    'posts_per_page' => -1,
+                    'orderby' => 'title',
+                    'order' => 'ASC'
+                ));
+                ?>
+                
+                <?php if (!empty($all_eventi)): ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <label for="fg_eventi_associati"><strong><?php _e('Eventi Associati:', 'friends-gestionale'); ?></strong></label>
+                            <select id="fg_eventi_associati" name="fg_eventi_associati[]" class="widefat" multiple size="5" style="height: auto; min-height: 120px;">
+                                <?php foreach ($all_eventi as $evento): ?>
+                                    <option value="<?php echo $evento->ID; ?>" <?php echo in_array($evento->ID, $eventi_associati) ? 'selected' : ''; ?>>
+                                        <?php echo esc_html($evento->post_title); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                <?php _e('Tieni premuto Ctrl (Cmd su Mac) per selezionare più eventi. I fondi raccolti dagli eventi selezionati verranno aggiunti automaticamente al totale della raccolta.', 'friends-gestionale'); ?>
+                            </small>
+                            <?php if ($totale_da_eventi > 0): ?>
+                                <div style="margin-top: 10px; padding: 10px; background: #d4edda; border-left: 4px solid #28a745; border-radius: 3px;">
+                                    <strong><?php _e('Totale da Eventi Associati:', 'friends-gestionale'); ?></strong> €<?php echo number_format($totale_da_eventi, 2, ',', '.'); ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
                 <?php if ($obiettivo > 0): ?>
                     <div class="fg-form-row">
                         <div class="fg-form-field">
@@ -868,6 +930,61 @@ class Friends_Gestionale_Meta_Boxes {
                                     <strong><?php _e('Fondi Raccolti Extra Piattaforma:', 'friends-gestionale'); ?></strong> €<?php echo number_format($fondi_extra, 2, ',', '.'); ?>
                                 </div>
                             <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
+                <?php
+                // Display associated events with their totals if this is an existing raccolta
+                if ($post->ID > 0 && !empty($eventi_associati)):
+                ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <label><strong><?php _e('Dettaglio Eventi Associati:', 'friends-gestionale'); ?></strong></label>
+                            <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px; max-height: 300px; overflow-y: auto;">
+                                <?php foreach ($eventi_associati as $evento_id):
+                                    $evento = get_post($evento_id);
+                                    if ($evento):
+                                        // Calculate total for this specific event
+                                        $event_payments = get_posts(array(
+                                            'post_type' => 'fg_pagamento',
+                                            'posts_per_page' => -1,
+                                            'meta_query' => array(
+                                                array(
+                                                    'key' => '_fg_evento_id',
+                                                    'value' => $evento_id,
+                                                    'compare' => '='
+                                                )
+                                            )
+                                        ));
+                                        
+                                        $evento_total = 0;
+                                        foreach ($event_payments as $payment) {
+                                            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                                            $evento_total += floatval($importo);
+                                        }
+                                ?>
+                                    <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <a href="<?php echo get_edit_post_link($evento_id); ?>" target="_blank" style="color: #0073aa; text-decoration: none; font-weight: 500;">
+                                                <?php echo esc_html($evento->post_title); ?>
+                                            </a>
+                                            <small style="color: #666; display: block; margin-top: 3px;">
+                                                <?php echo count($event_payments); ?> <?php _e('pagamenti', 'friends-gestionale'); ?>
+                                            </small>
+                                        </div>
+                                        <strong style="color: #28a745; font-size: 14px;">
+                                            €<?php echo number_format($evento_total, 2, ',', '.'); ?>
+                                        </strong>
+                                    </div>
+                                <?php
+                                    endif;
+                                endforeach; ?>
+                                <div style="padding: 10px; margin-top: 10px; background: #d4edda; border-radius: 3px; display: flex; justify-content: space-between; align-items: center;">
+                                    <strong><?php _e('Totale da Eventi:', 'friends-gestionale'); ?></strong>
+                                    <strong style="color: #28a745; font-size: 16px;">€<?php echo number_format($totale_da_eventi, 2, ',', '.'); ?></strong>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -1648,6 +1765,14 @@ class Friends_Gestionale_Meta_Boxes {
             }
             if (isset($_POST['fg_stato'])) {
                 update_post_meta($post_id, '_fg_stato', sanitize_text_field($_POST['fg_stato']));
+            }
+            
+            // Save associated events
+            if (isset($_POST['fg_eventi_associati']) && is_array($_POST['fg_eventi_associati'])) {
+                $eventi_associati = array_map('intval', $_POST['fg_eventi_associati']);
+                update_post_meta($post_id, '_fg_eventi_associati', $eventi_associati);
+            } else {
+                update_post_meta($post_id, '_fg_eventi_associati', array());
             }
         }
         
