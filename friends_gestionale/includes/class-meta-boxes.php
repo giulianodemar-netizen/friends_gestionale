@@ -36,7 +36,7 @@ class Friends_Gestionale_Meta_Boxes {
      */
     public function hide_default_editor() {
         global $post_type;
-        if (in_array($post_type, array('fg_socio', 'fg_pagamento', 'fg_evento', 'fg_raccolta'))) {
+        if (in_array($post_type, array('fg_socio', 'fg_pagamento', 'fg_evento', 'fg_raccolta', 'fg_contatto'))) {
             remove_post_type_support($post_type, 'editor');
             remove_post_type_support($post_type, 'title');
         }
@@ -102,6 +102,16 @@ class Friends_Gestionale_Meta_Boxes {
             'fg_evento',
             'normal',
             'default'
+        );
+        
+        // Contatti meta boxes
+        add_meta_box(
+            'fg_contatto_info',
+            __('Informazioni Contatto', 'friends-gestionale'),
+            array($this, 'render_contatto_info_meta_box'),
+            'fg_contatto',
+            'normal',
+            'high'
         );
     }
     
@@ -1194,6 +1204,86 @@ class Friends_Gestionale_Meta_Boxes {
     }
     
     /**
+     * Render Contatto info meta box
+     */
+    public function render_contatto_info_meta_box($post) {
+        wp_nonce_field('fg_contatto_meta_box', 'fg_contatto_meta_box_nonce');
+        
+        $nome_contatto = get_post_meta($post->ID, '_fg_nome_contatto', true);
+        $tipo_contatto = get_post_meta($post->ID, '_fg_tipo_contatto', true);
+        $azienda = get_post_meta($post->ID, '_fg_azienda', true);
+        $email = get_post_meta($post->ID, '_fg_email_contatto', true);
+        $telefono = get_post_meta($post->ID, '_fg_telefono_contatto', true);
+        $indirizzo = get_post_meta($post->ID, '_fg_indirizzo_contatto', true);
+        $note = get_post_meta($post->ID, '_fg_note_contatto', true);
+        ?>
+        <div class="fg-meta-box fg-improved-form">
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Dati Principali', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_nome_contatto"><strong><?php _e('Nome:', 'friends-gestionale'); ?></strong> <span class="required">*</span></label>
+                        <input type="text" id="fg_nome_contatto" name="fg_nome_contatto" value="<?php echo esc_attr($nome_contatto); ?>" class="widefat" required />
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_tipo_contatto"><strong><?php _e('Tipo Contatto:', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_tipo_contatto" name="fg_tipo_contatto" class="widefat">
+                            <option value=""><?php _e('Seleziona tipo', 'friends-gestionale'); ?></option>
+                            <option value="fornitore" <?php selected($tipo_contatto, 'fornitore'); ?>><?php _e('Fornitore', 'friends-gestionale'); ?></option>
+                            <option value="istituzione" <?php selected($tipo_contatto, 'istituzione'); ?>><?php _e('Istituzione', 'friends-gestionale'); ?></option>
+                            <option value="partner" <?php selected($tipo_contatto, 'partner'); ?>><?php _e('Partner', 'friends-gestionale'); ?></option>
+                            <option value="sponsor" <?php selected($tipo_contatto, 'sponsor'); ?>><?php _e('Sponsor', 'friends-gestionale'); ?></option>
+                            <option value="altro" <?php selected($tipo_contatto, 'altro'); ?>><?php _e('Altro', 'friends-gestionale'); ?></option>
+                        </select>
+                    </div>
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_azienda"><strong><?php _e('Azienda/Organizzazione:', 'friends-gestionale'); ?></strong></label>
+                        <input type="text" id="fg_azienda" name="fg_azienda" value="<?php echo esc_attr($azienda); ?>" class="widefat" />
+                    </div>
+                </div>
+            </div>
+            
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Contatti', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_email_contatto"><strong><?php _e('Email:', 'friends-gestionale'); ?></strong></label>
+                        <input type="email" id="fg_email_contatto" name="fg_email_contatto" value="<?php echo esc_attr($email); ?>" class="widefat" />
+                    </div>
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_telefono_contatto"><strong><?php _e('Telefono:', 'friends-gestionale'); ?></strong></label>
+                        <input type="text" id="fg_telefono_contatto" name="fg_telefono_contatto" value="<?php echo esc_attr($telefono); ?>" class="widefat" />
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_indirizzo_contatto"><strong><?php _e('Indirizzo:', 'friends-gestionale'); ?></strong></label>
+                        <textarea id="fg_indirizzo_contatto" name="fg_indirizzo_contatto" rows="3" class="widefat"><?php echo esc_textarea($indirizzo); ?></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Note', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_note_contatto"><strong><?php _e('Note:', 'friends-gestionale'); ?></strong></label>
+                        <textarea id="fg_note_contatto" name="fg_note_contatto" rows="4" class="widefat"><?php echo esc_textarea($note); ?></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+    
+    /**
      * Save meta boxes
      */
     public function save_meta_boxes($post_id, $post) {
@@ -1608,6 +1698,47 @@ class Friends_Gestionale_Meta_Boxes {
                 update_post_meta($post_id, '_fg_partecipanti', $partecipanti);
             } else {
                 update_post_meta($post_id, '_fg_partecipanti', array());
+            }
+        }
+        
+        // Save Contatto meta
+        if ($post->post_type === 'fg_contatto') {
+            if (!isset($_POST['fg_contatto_meta_box_nonce']) || !wp_verify_nonce($_POST['fg_contatto_meta_box_nonce'], 'fg_contatto_meta_box')) {
+                return;
+            }
+            
+            // Update post title with nome_contatto
+            if (isset($_POST['fg_nome_contatto'])) {
+                $nome_contatto = sanitize_text_field($_POST['fg_nome_contatto']);
+                
+                // Update post title
+                remove_action('save_post', array($this, 'save_meta_boxes'), 10);
+                wp_update_post(array(
+                    'ID' => $post_id,
+                    'post_title' => $nome_contatto
+                ));
+                add_action('save_post', array($this, 'save_meta_boxes'), 10, 2);
+                
+                update_post_meta($post_id, '_fg_nome_contatto', $nome_contatto);
+            }
+            
+            if (isset($_POST['fg_tipo_contatto'])) {
+                update_post_meta($post_id, '_fg_tipo_contatto', sanitize_text_field($_POST['fg_tipo_contatto']));
+            }
+            if (isset($_POST['fg_azienda'])) {
+                update_post_meta($post_id, '_fg_azienda', sanitize_text_field($_POST['fg_azienda']));
+            }
+            if (isset($_POST['fg_email_contatto'])) {
+                update_post_meta($post_id, '_fg_email_contatto', sanitize_email($_POST['fg_email_contatto']));
+            }
+            if (isset($_POST['fg_telefono_contatto'])) {
+                update_post_meta($post_id, '_fg_telefono_contatto', sanitize_text_field($_POST['fg_telefono_contatto']));
+            }
+            if (isset($_POST['fg_indirizzo_contatto'])) {
+                update_post_meta($post_id, '_fg_indirizzo_contatto', sanitize_textarea_field($_POST['fg_indirizzo_contatto']));
+            }
+            if (isset($_POST['fg_note_contatto'])) {
+                update_post_meta($post_id, '_fg_note_contatto', sanitize_textarea_field($_POST['fg_note_contatto']));
             }
         }
     }

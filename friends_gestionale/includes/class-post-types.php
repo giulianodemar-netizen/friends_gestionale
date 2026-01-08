@@ -30,6 +30,8 @@ class Friends_Gestionale_Post_Types {
         add_action('manage_fg_raccolta_posts_custom_column', array($this, 'render_raccolta_columns'), 10, 2);
         add_filter('manage_fg_evento_posts_columns', array($this, 'set_evento_columns'));
         add_action('manage_fg_evento_posts_custom_column', array($this, 'render_evento_columns'), 10, 2);
+        add_filter('manage_fg_contatto_posts_columns', array($this, 'set_contatto_columns'));
+        add_action('manage_fg_contatto_posts_custom_column', array($this, 'render_contatto_columns'), 10, 2);
         
         // Taxonomy custom fields for categoria_socio
         add_action('fg_categoria_socio_add_form_fields', array($this, 'add_categoria_quota_field'));
@@ -161,6 +163,33 @@ class Friends_Gestionale_Post_Types {
             'supports' => array('thumbnail'),
             'has_archive' => true,
             'rewrite' => array('slug' => 'eventi'),
+            'capability_type' => 'post',
+            'show_in_rest' => true
+        ));
+        
+        // Register Contatti (Contacts) post type
+        register_post_type('fg_contatto', array(
+            'labels' => array(
+                'name' => __('Contatti', 'friends-gestionale'),
+                'singular_name' => __('Contatto', 'friends-gestionale'),
+                'add_new' => __('Aggiungi Contatto', 'friends-gestionale'),
+                'add_new_item' => __('Aggiungi Nuovo Contatto', 'friends-gestionale'),
+                'edit_item' => __('Modifica Contatto', 'friends-gestionale'),
+                'new_item' => __('Nuovo Contatto', 'friends-gestionale'),
+                'view_item' => __('Visualizza Contatto', 'friends-gestionale'),
+                'search_items' => __('Cerca Contatti', 'friends-gestionale'),
+                'not_found' => __('Nessun contatto trovato', 'friends-gestionale'),
+                'not_found_in_trash' => __('Nessun contatto nel cestino', 'friends-gestionale'),
+                'menu_name' => __('Contatti', 'friends-gestionale')
+            ),
+            'public' => false,
+            'show_ui' => true,
+            'show_in_menu' => true,
+            'menu_position' => 29,
+            'menu_icon' => 'dashicons-id-alt',
+            'supports' => array('thumbnail'),
+            'has_archive' => false,
+            'rewrite' => array('slug' => 'contatti'),
             'capability_type' => 'post',
             'show_in_rest' => true
         ));
@@ -850,6 +879,45 @@ class Friends_Gestionale_Post_Types {
                 } else {
                     echo '-';
                 }
+                break;
+        }
+    }
+    
+    /**
+     * Set custom columns for Contatti
+     */
+    public function set_contatto_columns($columns) {
+        return array(
+            'cb' => $columns['cb'],
+            'title' => __('Nome', 'friends-gestionale'),
+            'fg_tipo_contatto' => __('Tipo', 'friends-gestionale'),
+            'fg_email_contatto' => __('Email', 'friends-gestionale'),
+            'fg_telefono_contatto' => __('Telefono', 'friends-gestionale'),
+            'fg_azienda' => __('Azienda/Organizzazione', 'friends-gestionale'),
+            'date' => $columns['date']
+        );
+    }
+    
+    /**
+     * Render custom columns for Contatti
+     */
+    public function render_contatto_columns($column, $post_id) {
+        switch ($column) {
+            case 'fg_tipo_contatto':
+                $tipo = get_post_meta($post_id, '_fg_tipo_contatto', true);
+                echo $tipo ? esc_html(ucfirst($tipo)) : '-';
+                break;
+            case 'fg_email_contatto':
+                $email = get_post_meta($post_id, '_fg_email_contatto', true);
+                echo $email ? '<a href="mailto:' . esc_attr($email) . '">' . esc_html($email) . '</a>' : '-';
+                break;
+            case 'fg_telefono_contatto':
+                $telefono = get_post_meta($post_id, '_fg_telefono_contatto', true);
+                echo $telefono ? esc_html($telefono) : '-';
+                break;
+            case 'fg_azienda':
+                $azienda = get_post_meta($post_id, '_fg_azienda', true);
+                echo $azienda ? esc_html($azienda) : '-';
                 break;
         }
     }
