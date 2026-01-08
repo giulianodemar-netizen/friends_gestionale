@@ -806,6 +806,10 @@ class Friends_Gestionale_Meta_Boxes {
         
         if (!empty($eventi_associati)) {
             // Single query to get all payments for all associated events
+            // Note: Using -1 for posts_per_page is acceptable here as:
+            // 1. Query is limited to payments linked to specific events (filtered by IN clause)
+            // 2. Typical associations have manageable payment volumes
+            // 3. This only runs on fundraiser edit page, not on high-traffic frontend
             $all_event_payments = get_posts(array(
                 'post_type' => 'fg_pagamento',
                 'posts_per_page' => -1,

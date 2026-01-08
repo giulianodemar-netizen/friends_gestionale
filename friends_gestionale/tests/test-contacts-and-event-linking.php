@@ -2,7 +2,12 @@
 /**
  * Contacts and Event Linking Tests
  * 
+ * MOCK TEST SUITE - Standalone validation without WordPress
  * Run with: php test-contacts-and-event-linking.php
+ * 
+ * This is a mock test suite that validates the implementation logic
+ * without requiring a full WordPress installation. For integration
+ * testing, use WordPress PHPUnit test framework.
  * 
  * Tests the new functionality:
  * - Contacts (fg_contatto) post type is registered
