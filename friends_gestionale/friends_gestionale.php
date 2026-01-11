@@ -195,6 +195,7 @@ class Friends_Gestionale {
             // - Pagamenti (fg_pagamento)
             // - Raccolte Fondi (fg_raccolta)
             // - Eventi (fg_evento)
+            // - Contatti (fg_contatto)
         }
         
         // Viewer role restrictions - similar to payment manager but also remove import
@@ -251,7 +252,7 @@ class Friends_Gestionale {
             // Prevent access to post types outside the plugin
             if ($pagenow == 'post.php' && isset($_GET['post'])) {
                 $post_type = get_post_type($_GET['post']);
-                $allowed_types = array('fg_socio', 'fg_pagamento', 'fg_raccolta', 'fg_evento');
+                $allowed_types = array('fg_socio', 'fg_pagamento', 'fg_raccolta', 'fg_evento', 'fg_contatto');
                 if ($post_type && !in_array($post_type, $allowed_types)) {
                     wp_die(__('Non hai i permessi per accedere a questa pagina.', 'friends-gestionale'));
                 }
@@ -259,7 +260,7 @@ class Friends_Gestionale {
             
             // Prevent access to other post types via post_type parameter
             if (isset($_GET['post_type'])) {
-                $allowed_types = array('fg_socio', 'fg_pagamento', 'fg_raccolta', 'fg_evento');
+                $allowed_types = array('fg_socio', 'fg_pagamento', 'fg_raccolta', 'fg_evento', 'fg_contatto');
                 if (!in_array($_GET['post_type'], $allowed_types)) {
                     wp_die(__('Non hai i permessi per accedere a questa pagina.', 'friends-gestionale'));
                 }
@@ -277,7 +278,7 @@ class Friends_Gestionale {
                     // Redirect to view mode instead of edit
                     $post_id = intval($_GET['post']);
                     $post_type = get_post_type($post_id);
-                    $allowed_types = array('fg_socio', 'fg_pagamento', 'fg_raccolta', 'fg_evento');
+                    $allowed_types = array('fg_socio', 'fg_pagamento', 'fg_raccolta', 'fg_evento', 'fg_contatto');
                     
                     if (in_array($post_type, $allowed_types)) {
                         wp_die(__('Non hai i permessi per modificare questo contenuto. Puoi solo visualizzarlo.', 'friends-gestionale'));
