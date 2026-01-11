@@ -27,6 +27,9 @@ class Friends_Gestionale_Meta_Boxes {
         add_action('wp_ajax_fg_save_payment', array($this, 'ajax_save_payment'));
         add_action('wp_ajax_fg_get_member_quota', array($this, 'ajax_get_member_quota'));
         
+        // AJAX handler for contact conversion
+        add_action('wp_ajax_fg_convert_contact_to_donor', array($this, 'ajax_convert_contact_to_donor'));
+        
         // Hide default editor for custom post types
         add_action('admin_head', array($this, 'hide_default_editor'));
     }
@@ -1330,6 +1333,7 @@ class Friends_Gestionale_Meta_Boxes {
         
         $nome_contatto = get_post_meta($post->ID, '_fg_nome_contatto', true);
         $tipo_contatto = get_post_meta($post->ID, '_fg_tipo_contatto', true);
+        $tipo_contatto_altro = get_post_meta($post->ID, '_fg_tipo_contatto_altro', true);
         $azienda = get_post_meta($post->ID, '_fg_azienda', true);
         $email = get_post_meta($post->ID, '_fg_email_contatto', true);
         $telefono = get_post_meta($post->ID, '_fg_telefono_contatto', true);
@@ -1364,7 +1368,31 @@ class Friends_Gestionale_Meta_Boxes {
                         <input type="text" id="fg_azienda" name="fg_azienda" value="<?php echo esc_attr($azienda); ?>" class="widefat" />
                     </div>
                 </div>
+                
+                <!-- Conditional field for "altro" type -->
+                <div class="fg-form-row" id="fg_tipo_contatto_altro_field" style="display: <?php echo ($tipo_contatto === 'altro') ? 'block' : 'none'; ?>;">
+                    <div class="fg-form-field">
+                        <label for="fg_tipo_contatto_altro"><strong><?php _e('Specifica Tipo:', 'friends-gestionale'); ?></strong></label>
+                        <input type="text" id="fg_tipo_contatto_altro" name="fg_tipo_contatto_altro" value="<?php echo esc_attr($tipo_contatto_altro); ?>" class="widefat" placeholder="<?php _e('Es: Consulente, Volontario, ecc.', 'friends-gestionale'); ?>" />
+                    </div>
+                </div>
             </div>
+            
+            <?php if ($post->ID > 0): ?>
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Conversione', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <p style="color: #666; margin-bottom: 10px;"><?php _e('Converti questo contatto in un donatore o socio per permettergli di effettuare pagamenti e partecipare agli eventi.', 'friends-gestionale'); ?></p>
+                        <button type="button" id="fg_convert_to_donor_btn" class="button button-primary button-large">
+                            <span class="dashicons dashicons-randomize" style="margin-top: 3px;"></span>
+                            <?php _e('Converti in Donatore/Socio', 'friends-gestionale'); ?>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
             
             <div class="fg-form-section">
                 <h3 class="fg-section-title"><?php _e('Contatti', 'friends-gestionale'); ?></h3>
@@ -1851,6 +1879,9 @@ class Friends_Gestionale_Meta_Boxes {
             
             if (isset($_POST['fg_tipo_contatto'])) {
                 update_post_meta($post_id, '_fg_tipo_contatto', sanitize_text_field($_POST['fg_tipo_contatto']));
+            }
+            if (isset($_POST['fg_tipo_contatto_altro'])) {
+                update_post_meta($post_id, '_fg_tipo_contatto_altro', sanitize_text_field($_POST['fg_tipo_contatto_altro']));
             }
             if (isset($_POST['fg_azienda'])) {
                 update_post_meta($post_id, '_fg_azienda', sanitize_text_field($_POST['fg_azienda']));
@@ -2343,6 +2374,89 @@ class Friends_Gestionale_Meta_Boxes {
         wp_send_json_success(array(
             'categoria_id' => $categoria_id,
             'quota' => $quota ? floatval($quota) : 0
+        ));
+    }
+    
+    /**
+     * AJAX handler to convert contact to donor
+     */
+    public function ajax_convert_contact_to_donor() {
+        // Verify nonce
+        check_ajax_referer('friends_gestionale_nonce', 'nonce');
+        
+        // Check permissions
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Permessi insufficienti'));
+        }
+        
+        $contact_id = isset($_POST['contact_id']) ? absint($_POST['contact_id']) : 0;
+        $nome = isset($_POST['nome']) ? sanitize_text_field($_POST['nome']) : '';
+        $cognome = isset($_POST['cognome']) ? sanitize_text_field($_POST['cognome']) : '';
+        $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+        $telefono = isset($_POST['telefono']) ? sanitize_text_field($_POST['telefono']) : '';
+        $tipo_donatore = isset($_POST['tipo_donatore']) ? sanitize_text_field($_POST['tipo_donatore']) : 'solo_donatore';
+        
+        if (!$contact_id || !$nome || !$cognome) {
+            wp_send_json_error(array('message' => 'Dati obbligatori mancanti'));
+        }
+        
+        // Get contact post
+        $contact = get_post($contact_id);
+        if (!$contact || $contact->post_type !== 'fg_contatto') {
+            wp_send_json_error(array('message' => 'Contatto non trovato'));
+        }
+        
+        // Get additional contact data
+        $azienda = get_post_meta($contact_id, '_fg_azienda', true);
+        $indirizzo = get_post_meta($contact_id, '_fg_indirizzo_contatto', true);
+        $note_contatto = get_post_meta($contact_id, '_fg_note_contatto', true);
+        
+        // Create new donor post
+        $donor_title = $nome . ' ' . $cognome;
+        $donor_data = array(
+            'post_type' => 'fg_socio',
+            'post_title' => $donor_title,
+            'post_status' => 'publish'
+        );
+        
+        $donor_id = wp_insert_post($donor_data);
+        
+        if (is_wp_error($donor_id)) {
+            wp_send_json_error(array('message' => 'Errore nella creazione del donatore'));
+        }
+        
+        // Save donor meta data
+        update_post_meta($donor_id, '_fg_nome', $nome);
+        update_post_meta($donor_id, '_fg_cognome', $cognome);
+        update_post_meta($donor_id, '_fg_email', $email);
+        update_post_meta($donor_id, '_fg_telefono', $telefono);
+        update_post_meta($donor_id, '_fg_tipo_donatore', $tipo_donatore);
+        
+        if ($azienda) {
+            update_post_meta($donor_id, '_fg_azienda', $azienda);
+        }
+        if ($indirizzo) {
+            update_post_meta($donor_id, '_fg_indirizzo', $indirizzo);
+        }
+        if ($note_contatto) {
+            update_post_meta($donor_id, '_fg_note', $note_contatto);
+        }
+        
+        // Add a note that this was converted from a contact
+        $conversion_note = "Convertito da contatto (ID: {$contact_id}) in data " . date_i18n(get_option('date_format'));
+        if ($note_contatto) {
+            update_post_meta($donor_id, '_fg_note', $note_contatto . "\n\n" . $conversion_note);
+        } else {
+            update_post_meta($donor_id, '_fg_note', $conversion_note);
+        }
+        
+        // Delete the contact
+        wp_delete_post($contact_id, true);
+        
+        wp_send_json_success(array(
+            'message' => 'Contatto convertito con successo',
+            'donor_id' => $donor_id,
+            'edit_url' => get_edit_post_link($donor_id, 'raw')
         ));
     }
 }
