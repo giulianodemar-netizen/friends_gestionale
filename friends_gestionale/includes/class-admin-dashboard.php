@@ -408,14 +408,42 @@ class Friends_Gestionale_Admin_Dashboard {
                                 <?php
                                 $obiettivo = get_post_meta(get_the_ID(), '_fg_obiettivo', true);
                                 $raccolto = get_post_meta(get_the_ID(), '_fg_raccolto', true);
-                                $percentuale = $obiettivo > 0 ? ($raccolto / $obiettivo) * 100 : 0;
+                                $fondi_extra = get_post_meta(get_the_ID(), '_fg_fondi_extra', true);
+                                
+                                // Get associated events and calculate their total
+                                $eventi_associati = get_post_meta(get_the_ID(), '_fg_eventi_associati', true);
+                                $totale_da_eventi = 0;
+                                
+                                if (is_array($eventi_associati) && !empty($eventi_associati)) {
+                                    // Get all payments for associated events
+                                    $all_event_payments = get_posts(array(
+                                        'post_type' => 'fg_pagamento',
+                                        'posts_per_page' => -1,
+                                        'meta_query' => array(
+                                            array(
+                                                'key' => '_fg_evento_id',
+                                                'value' => $eventi_associati,
+                                                'compare' => 'IN'
+                                            )
+                                        ),
+                                        'fields' => 'ids'
+                                    ));
+                                    
+                                    foreach ($all_event_payments as $payment_id) {
+                                        $importo = get_post_meta($payment_id, '_fg_importo', true);
+                                        $totale_da_eventi += floatval($importo);
+                                    }
+                                }
+                                
+                                $totale_raccolto = floatval($raccolto) + floatval($fondi_extra) + $totale_da_eventi;
+                                $percentuale = $obiettivo > 0 ? ($totale_raccolto / $obiettivo) * 100 : 0;
                                 ?>
                                 <div class="fg-raccolta-item">
                                     <h4><?php the_title(); ?></h4>
                                     <div class="fg-progress-bar">
                                         <div class="fg-progress-fill" style="width: <?php echo min(100, $percentuale); ?>%"></div>
                                     </div>
-                                    <p>€<?php echo number_format($raccolto, 2); ?> / €<?php echo number_format($obiettivo, 2); ?> (<?php echo number_format($percentuale, 1); ?>%)</p>
+                                    <p>€<?php echo number_format($totale_raccolto, 2); ?> / €<?php echo number_format($obiettivo, 2); ?> (<?php echo number_format($percentuale, 1); ?>%)</p>
                                 </div>
                             <?php endwhile; ?>
                         </div>

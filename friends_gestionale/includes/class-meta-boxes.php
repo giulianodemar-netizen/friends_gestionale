@@ -905,28 +905,66 @@ class Friends_Gestionale_Meta_Boxes {
                 </div>
                 
                 <?php
-                // Get all events for the multiselect
+                // Get all events for checkboxes
                 $all_eventi = get_posts(array(
                     'post_type' => 'fg_evento',
                     'posts_per_page' => -1,
                     'orderby' => 'title',
                     'order' => 'ASC'
                 ));
+                
+                // Calculate totals for each event
+                $eventi_totals = array();
+                if (!empty($all_eventi)) {
+                    foreach ($all_eventi as $evento) {
+                        $event_payments = get_posts(array(
+                            'post_type' => 'fg_pagamento',
+                            'posts_per_page' => -1,
+                            'meta_query' => array(
+                                array(
+                                    'key' => '_fg_evento_id',
+                                    'value' => $evento->ID,
+                                    'compare' => '='
+                                )
+                            ),
+                            'fields' => 'ids'
+                        ));
+                        
+                        $evento_total = 0;
+                        foreach ($event_payments as $payment_id) {
+                            $importo = get_post_meta($payment_id, '_fg_importo', true);
+                            $evento_total += floatval($importo);
+                        }
+                        $eventi_totals[$evento->ID] = $evento_total;
+                    }
+                }
                 ?>
                 
                 <?php if (!empty($all_eventi)): ?>
                     <div class="fg-form-row">
                         <div class="fg-form-field">
-                            <label for="fg_eventi_associati"><strong><?php _e('Eventi Associati:', 'friends-gestionale'); ?></strong></label>
-                            <select id="fg_eventi_associati" name="fg_eventi_associati[]" class="widefat" multiple size="5" style="height: auto; min-height: 120px;">
+                            <label><strong><?php _e('Eventi Associati:', 'friends-gestionale'); ?></strong></label>
+                            <div style="border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9; max-height: 300px; overflow-y: auto;">
                                 <?php foreach ($all_eventi as $evento): ?>
-                                    <option value="<?php echo $evento->ID; ?>" <?php echo in_array($evento->ID, $eventi_associati) ? 'selected' : ''; ?>>
-                                        <?php echo esc_html($evento->post_title); ?>
-                                    </option>
+                                    <div style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 3px; border: 1px solid #e0e0e0;">
+                                        <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin: 0;">
+                                            <div style="display: flex; align-items: center; flex: 1;">
+                                                <input type="checkbox" 
+                                                       name="fg_eventi_associati[]" 
+                                                       value="<?php echo $evento->ID; ?>" 
+                                                       <?php checked(in_array($evento->ID, $eventi_associati)); ?>
+                                                       style="margin-right: 10px;">
+                                                <span style="font-weight: 500;"><?php echo esc_html($evento->post_title); ?></span>
+                                            </div>
+                                            <span style="color: #28a745; font-weight: bold; margin-left: 10px;">
+                                                €<?php echo number_format($eventi_totals[$evento->ID], 2, ',', '.'); ?>
+                                            </span>
+                                        </label>
+                                    </div>
                                 <?php endforeach; ?>
-                            </select>
+                            </div>
                             <small style="color: #666; display: block; margin-top: 5px;">
-                                <?php _e('Tieni premuto Ctrl (Cmd su Mac) per selezionare più eventi. I fondi raccolti dagli eventi selezionati verranno aggiunti automaticamente al totale della raccolta.', 'friends-gestionale'); ?>
+                                <?php _e('Seleziona gli eventi i cui fondi devono essere inclusi in questa raccolta fondi.', 'friends-gestionale'); ?>
                             </small>
                             <?php if ($totale_da_eventi > 0): ?>
                                 <div style="margin-top: 10px; padding: 10px; background: #d4edda; border-left: 4px solid #28a745; border-radius: 3px;">

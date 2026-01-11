@@ -904,7 +904,7 @@
                 '<form id="fg-convert-form">' +
                 '<input type="hidden" name="contact_id" value="' + contactId + '">' +
                 '<input type="hidden" name="action" value="fg_convert_contact_to_donor">' +
-                '<input type="hidden" name="nonce" value="' + friendsGestionaleAdmin.nonce + '">' +
+                '<input type="hidden" name="nonce" value="' + friendsGestionale.nonce + '">' +
                 '<div style="margin-bottom: 15px;">' +
                 '<label style="display: block; font-weight: bold; margin-bottom: 5px;">Nome: <span style="color: red;">*</span></label>' +
                 '<input type="text" name="nome" value="' + (contactName || '') + '" class="widefat" required>' +
