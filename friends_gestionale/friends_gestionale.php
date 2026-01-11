@@ -416,6 +416,32 @@ class Friends_Gestionale {
                 $admin_role->add_cap($cap);
             }
         }
+        
+        // Add capabilities for fg_contatto (Contatti) to both roles
+        $contatto_capabilities = array(
+            'edit_fg_contatto',
+            'read_fg_contatto',
+            'delete_fg_contatto',
+            'edit_fg_contattos',
+            'edit_others_fg_contattos',
+            'publish_fg_contattos',
+            'read_private_fg_contattos',
+            'delete_fg_contattos',
+            'delete_private_fg_contattos',
+            'delete_published_fg_contattos',
+            'delete_others_fg_contattos',
+            'edit_private_fg_contattos',
+            'edit_published_fg_contattos',
+        );
+        
+        foreach ($contatto_capabilities as $cap) {
+            if ($plugin_role) {
+                $plugin_role->add_cap($cap);
+            }
+            if ($admin_role) {
+                $admin_role->add_cap($cap);
+            }
+        }
     }
     
     /**
@@ -452,6 +478,11 @@ class Friends_Gestionale {
             'read_fg_pagamento',
             'edit_fg_pagamentos', // List capability
             'edit_others_fg_pagamentos',
+            
+            // Contatti (fg_contatto)
+            'read_fg_contatto',
+            'edit_fg_contattos', // List capability
+            'edit_others_fg_contattos',
             
             // Raccolte Fondi (fg_raccolta) - uses standard 'post' capability_type
             'read_private_posts',

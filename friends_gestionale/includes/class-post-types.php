@@ -194,7 +194,8 @@ class Friends_Gestionale_Post_Types {
             'supports' => array('thumbnail'),
             'has_archive' => false,
             'rewrite' => array('slug' => 'contatti'),
-            'capability_type' => 'post',
+            'capability_type' => array('fg_contatto', 'fg_contattos'),
+            'map_meta_cap' => true,
             'show_in_rest' => true
         ));
     }
