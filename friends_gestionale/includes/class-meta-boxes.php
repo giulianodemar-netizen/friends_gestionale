@@ -2458,8 +2458,8 @@ class Friends_Gestionale_Meta_Boxes {
     public function ajax_recalculate_expiry_dates() {
         check_ajax_referer('fg_ajax_nonce', 'nonce');
         
-        // Check user permissions - restrict to administrators only
-        if (!current_user_can('manage_options')) {
+        // Check user permissions - allow administrators and Gestore Donatori role
+        if (!current_user_can('edit_posts')) {
             wp_send_json_error(array('message' => __('Permessi insufficienti', 'friends-gestionale')));
         }
         
