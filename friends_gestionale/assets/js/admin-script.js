@@ -875,6 +875,104 @@
             $('#fg_totale_raccolto').val(totale.toFixed(2));
         });
         
+        // Contact tipo conditional field
+        $('#fg_tipo_contatto').on('change', function() {
+            if ($(this).val() === 'altro') {
+                $('#fg_tipo_contatto_altro_field').slideDown();
+            } else {
+                $('#fg_tipo_contatto_altro_field').slideUp();
+            }
+        });
+        
+        // Convert contact to donor button
+        $('#fg_convert_to_donor_btn').on('click', function() {
+            var contactId = $('#post_ID').val();
+            var contactName = $('#fg_nome_contatto').val();
+            var contactEmail = $('#fg_email_contatto').val();
+            var contactPhone = $('#fg_telefono_contatto').val();
+            
+            if (!contactName) {
+                alert('Salva prima il contatto prima di convertirlo.');
+                return;
+            }
+            
+            // Create modal
+            var modal = '<div id="fg-convert-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100000; display: flex; align-items: center; justify-content: center;">' +
+                '<div style="background: white; padding: 30px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">' +
+                '<h2 style="margin-top: 0;">Converti in Donatore/Socio</h2>' +
+                '<p>Compila i campi obbligatori per convertire questo contatto:</p>' +
+                '<form id="fg-convert-form">' +
+                '<input type="hidden" name="contact_id" value="' + contactId + '">' +
+                '<input type="hidden" name="action" value="fg_convert_contact_to_donor">' +
+                '<input type="hidden" name="nonce" value="' + friendsGestionale.nonce + '">' +
+                '<div style="margin-bottom: 15px;">' +
+                '<label style="display: block; font-weight: bold; margin-bottom: 5px;">Nome: <span style="color: red;">*</span></label>' +
+                '<input type="text" name="nome" value="' + (contactName || '') + '" class="widefat" required>' +
+                '</div>' +
+                '<div style="margin-bottom: 15px;">' +
+                '<label style="display: block; font-weight: bold; margin-bottom: 5px;">Cognome: <span style="color: red;">*</span></label>' +
+                '<input type="text" name="cognome" value="" class="widefat" required>' +
+                '</div>' +
+                '<div style="margin-bottom: 15px;">' +
+                '<label style="display: block; font-weight: bold; margin-bottom: 5px;">Email:</label>' +
+                '<input type="email" name="email" value="' + (contactEmail || '') + '" class="widefat">' +
+                '</div>' +
+                '<div style="margin-bottom: 15px;">' +
+                '<label style="display: block; font-weight: bold; margin-bottom: 5px;">Telefono:</label>' +
+                '<input type="text" name="telefono" value="' + (contactPhone || '') + '" class="widefat">' +
+                '</div>' +
+                '<div style="margin-bottom: 15px;">' +
+                '<label style="display: block; font-weight: bold; margin-bottom: 5px;">Tipo Donatore: <span style="color: red;">*</span></label>' +
+                '<select name="tipo_donatore" class="widefat" required>' +
+                '<option value="solo_donatore">Solo Donatore</option>' +
+                '<option value="anche_socio">Anche Socio</option>' +
+                '</select>' +
+                '</div>' +
+                '<div style="margin-top: 20px; text-align: right;">' +
+                '<button type="button" id="fg-convert-cancel" class="button" style="margin-right: 10px;">Annulla</button>' +
+                '<button type="submit" class="button button-primary">Converti</button>' +
+                '</div>' +
+                '</form>' +
+                '</div>' +
+                '</div>';
+            
+            $('body').append(modal);
+            
+            // Cancel button
+            $('#fg-convert-cancel, #fg-convert-modal').on('click', function(e) {
+                if (e.target.id === 'fg-convert-cancel' || e.target.id === 'fg-convert-modal') {
+                    $('#fg-convert-modal').remove();
+                }
+            });
+            
+            // Form submit
+            $('#fg-convert-form').on('submit', function(e) {
+                e.preventDefault();
+                var $form = $(this);
+                var $submitBtn = $form.find('button[type="submit"]');
+                $submitBtn.prop('disabled', true).text('Conversione...');
+                
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: $form.serialize(),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Contatto convertito con successo in donatore!');
+                            window.location.href = response.data.edit_url;
+                        } else {
+                            alert('Errore: ' + response.data.message);
+                            $submitBtn.prop('disabled', false).text('Converti');
+                        }
+                    },
+                    error: function() {
+                        alert('Errore nella conversione. Riprova.');
+                        $submitBtn.prop('disabled', false).text('Converti');
+                    }
+                });
+            });
+        });
+        
     });
     
 })(jQuery);

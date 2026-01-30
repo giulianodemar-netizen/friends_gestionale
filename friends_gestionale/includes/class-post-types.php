@@ -30,6 +30,8 @@ class Friends_Gestionale_Post_Types {
         add_action('manage_fg_raccolta_posts_custom_column', array($this, 'render_raccolta_columns'), 10, 2);
         add_filter('manage_fg_evento_posts_columns', array($this, 'set_evento_columns'));
         add_action('manage_fg_evento_posts_custom_column', array($this, 'render_evento_columns'), 10, 2);
+        add_filter('manage_fg_contatto_posts_columns', array($this, 'set_contatto_columns'));
+        add_action('manage_fg_contatto_posts_custom_column', array($this, 'render_contatto_columns'), 10, 2);
         
         // Taxonomy custom fields for categoria_socio
         add_action('fg_categoria_socio_add_form_fields', array($this, 'add_categoria_quota_field'));
@@ -47,6 +49,10 @@ class Friends_Gestionale_Post_Types {
         
         // Add admin footer script for participant popup
         add_action('admin_footer', array($this, 'add_partecipanti_popup_script'));
+        
+        // AJAX handlers
+        add_action('wp_ajax_fg_get_raccolta_donors', array($this, 'ajax_get_raccolta_donors'));
+        add_action('wp_ajax_fg_get_evento_donations', array($this, 'ajax_get_evento_donations'));
         
         // Populate missing totale_donato meta fields
         add_action('admin_init', array($this, 'maybe_populate_donor_totals'), 5);
@@ -162,6 +168,34 @@ class Friends_Gestionale_Post_Types {
             'has_archive' => true,
             'rewrite' => array('slug' => 'eventi'),
             'capability_type' => 'post',
+            'show_in_rest' => true
+        ));
+        
+        // Register Contatti (Contacts) post type
+        register_post_type('fg_contatto', array(
+            'labels' => array(
+                'name' => __('Contatti', 'friends-gestionale'),
+                'singular_name' => __('Contatto', 'friends-gestionale'),
+                'add_new' => __('Aggiungi Contatto', 'friends-gestionale'),
+                'add_new_item' => __('Aggiungi Nuovo Contatto', 'friends-gestionale'),
+                'edit_item' => __('Modifica Contatto', 'friends-gestionale'),
+                'new_item' => __('Nuovo Contatto', 'friends-gestionale'),
+                'view_item' => __('Visualizza Contatto', 'friends-gestionale'),
+                'search_items' => __('Cerca Contatti', 'friends-gestionale'),
+                'not_found' => __('Nessun contatto trovato', 'friends-gestionale'),
+                'not_found_in_trash' => __('Nessun contatto nel cestino', 'friends-gestionale'),
+                'menu_name' => __('Contatti', 'friends-gestionale')
+            ),
+            'public' => false,
+            'show_ui' => true,
+            'show_in_menu' => true,
+            'menu_position' => 29,
+            'menu_icon' => 'dashicons-id-alt',
+            'supports' => array('thumbnail'),
+            'has_archive' => false,
+            'rewrite' => array('slug' => 'contatti'),
+            'capability_type' => array('fg_contatto', 'fg_contattos'),
+            'map_meta_cap' => true,
             'show_in_rest' => true
         ));
     }
@@ -735,7 +769,33 @@ class Friends_Gestionale_Post_Types {
             case 'fg_raccolto':
                 $raccolto = floatval(get_post_meta($post_id, '_fg_raccolto', true));
                 $fondi_extra = floatval(get_post_meta($post_id, '_fg_fondi_extra', true));
-                $totale_raccolto = $raccolto + $fondi_extra;
+                
+                // Get associated events and calculate their total
+                $eventi_associati = get_post_meta($post_id, '_fg_eventi_associati', true);
+                $totale_da_eventi = 0;
+                
+                if (is_array($eventi_associati) && !empty($eventi_associati)) {
+                    // Get all payments for associated events
+                    $all_event_payments = get_posts(array(
+                        'post_type' => 'fg_pagamento',
+                        'posts_per_page' => -1,
+                        'meta_query' => array(
+                            array(
+                                'key' => '_fg_evento_id',
+                                'value' => $eventi_associati,
+                                'compare' => 'IN'
+                            )
+                        ),
+                        'fields' => 'ids'
+                    ));
+                    
+                    foreach ($all_event_payments as $payment_id) {
+                        $importo = get_post_meta($payment_id, '_fg_importo', true);
+                        $totale_da_eventi += floatval($importo);
+                    }
+                }
+                
+                $totale_raccolto = $raccolto + $fondi_extra + $totale_da_eventi;
                 if ($totale_raccolto > 0) {
                     echo '<span class="fg-donatori-count" data-post-id="' . esc_attr($post_id) . '" style="cursor: pointer; color: #0073aa; text-decoration: underline;">€' . number_format($totale_raccolto, 2, ',', '.') . '</span>';
                 } else {
@@ -746,7 +806,33 @@ class Friends_Gestionale_Post_Types {
                 $obiettivo = floatval(get_post_meta($post_id, '_fg_obiettivo', true));
                 $raccolto = floatval(get_post_meta($post_id, '_fg_raccolto', true));
                 $fondi_extra = floatval(get_post_meta($post_id, '_fg_fondi_extra', true));
-                $totale_raccolto = $raccolto + $fondi_extra;
+                
+                // Get associated events and calculate their total
+                $eventi_associati = get_post_meta($post_id, '_fg_eventi_associati', true);
+                $totale_da_eventi = 0;
+                
+                if (is_array($eventi_associati) && !empty($eventi_associati)) {
+                    // Get all payments for associated events
+                    $all_event_payments = get_posts(array(
+                        'post_type' => 'fg_pagamento',
+                        'posts_per_page' => -1,
+                        'meta_query' => array(
+                            array(
+                                'key' => '_fg_evento_id',
+                                'value' => $eventi_associati,
+                                'compare' => 'IN'
+                            )
+                        ),
+                        'fields' => 'ids'
+                    ));
+                    
+                    foreach ($all_event_payments as $payment_id) {
+                        $importo = get_post_meta($payment_id, '_fg_importo', true);
+                        $totale_da_eventi += floatval($importo);
+                    }
+                }
+                
+                $totale_raccolto = $raccolto + $fondi_extra + $totale_da_eventi;
                 if ($obiettivo > 0) {
                     $percentuale = ($totale_raccolto / $obiettivo) * 100;
                     $percentuale_display = min(100, $percentuale);
@@ -850,6 +936,45 @@ class Friends_Gestionale_Post_Types {
                 } else {
                     echo '-';
                 }
+                break;
+        }
+    }
+    
+    /**
+     * Set custom columns for Contatti
+     */
+    public function set_contatto_columns($columns) {
+        return array(
+            'cb' => $columns['cb'],
+            'title' => __('Nome', 'friends-gestionale'),
+            'fg_tipo_contatto' => __('Tipo', 'friends-gestionale'),
+            'fg_email_contatto' => __('Email', 'friends-gestionale'),
+            'fg_telefono_contatto' => __('Telefono', 'friends-gestionale'),
+            'fg_azienda' => __('Azienda/Organizzazione', 'friends-gestionale'),
+            'date' => $columns['date']
+        );
+    }
+    
+    /**
+     * Render custom columns for Contatti
+     */
+    public function render_contatto_columns($column, $post_id) {
+        switch ($column) {
+            case 'fg_tipo_contatto':
+                $tipo = get_post_meta($post_id, '_fg_tipo_contatto', true);
+                echo $tipo ? esc_html(ucfirst($tipo)) : '-';
+                break;
+            case 'fg_email_contatto':
+                $email = get_post_meta($post_id, '_fg_email_contatto', true);
+                echo $email ? '<a href="mailto:' . esc_attr($email) . '">' . esc_html($email) . '</a>' : '-';
+                break;
+            case 'fg_telefono_contatto':
+                $telefono = get_post_meta($post_id, '_fg_telefono_contatto', true);
+                echo $telefono ? esc_html($telefono) : '-';
+                break;
+            case 'fg_azienda':
+                $azienda = get_post_meta($post_id, '_fg_azienda', true);
+                echo $azienda ? esc_html($azienda) : '-';
                 break;
         }
     }
@@ -1213,6 +1338,23 @@ class Friends_Gestionale_Post_Types {
                                     html += '</div>';
                                 }
                                 
+                                // Show associated events if they exist
+                                if (response.data.eventi_associati && response.data.eventi_associati.length > 0) {
+                                    html += '<div style="background: #d4edda; border: 2px solid #28a745; padding: 12px; margin-bottom: 15px; border-radius: 4px;">';
+                                    html += '<strong style="color: #28a745; display: block; margin-bottom: 8px;">Eventi Associati:</strong>';
+                                    $.each(response.data.eventi_associati, function(index, evento) {
+                                        html += '<div style="padding: 6px 0; border-bottom: 1px solid #28a74533;">';
+                                        html += '<span style="font-weight: 500;">' + evento.name + '</span>';
+                                        html += ' - ' + evento.count + ' pagamenti';
+                                        html += ' <strong style="color: #28a745;">€' + evento.total.toFixed(2).replace('.', ',') + '</strong>';
+                                        html += '</div>';
+                                    });
+                                    html += '<div style="margin-top: 8px; padding-top: 8px; border-top: 2px solid #28a745;">';
+                                    html += '<strong style="color: #28a745;">Totale da Eventi: €' + response.data.totale_da_eventi.toFixed(2).replace('.', ',') + '</strong>';
+                                    html += '</div>';
+                                    html += '</div>';
+                                }
+                                
                                 $.each(response.data.donors, function(index, donor) {
                                     html += '<div class="fg-donatore-item">';
                                     html += '<div class="fg-donatore-info">';
@@ -1544,6 +1686,184 @@ class Friends_Gestionale_Post_Types {
         }
         
         update_post_meta($donor_id, '_fg_totale_donato', $total);
+    }
+    
+    /**
+     * AJAX handler to get raccolta donors
+     */
+    public function ajax_get_raccolta_donors() {
+        check_ajax_referer('fg_get_donors', 'nonce');
+        
+        $post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+        
+        if (!$post_id) {
+            wp_send_json_error();
+        }
+        
+        // Get fondi extra
+        $fondi_extra = floatval(get_post_meta($post_id, '_fg_fondi_extra', true));
+        
+        // Get associated events and their totals
+        $eventi_associati = get_post_meta($post_id, '_fg_eventi_associati', true);
+        $totale_da_eventi = 0;
+        $eventi_details = array();
+        
+        if (is_array($eventi_associati) && !empty($eventi_associati)) {
+            foreach ($eventi_associati as $evento_id) {
+                $evento = get_post($evento_id);
+                if ($evento) {
+                    $event_payments = get_posts(array(
+                        'post_type' => 'fg_pagamento',
+                        'posts_per_page' => -1,
+                        'meta_query' => array(
+                            array(
+                                'key' => '_fg_evento_id',
+                                'value' => $evento_id,
+                                'compare' => '='
+                            )
+                        )
+                    ));
+                    
+                    $evento_total = 0;
+                    foreach ($event_payments as $payment) {
+                        $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                        $evento_total += floatval($importo);
+                    }
+                    
+                    $totale_da_eventi += $evento_total;
+                    $eventi_details[] = array(
+                        'name' => $evento->post_title,
+                        'total' => $evento_total,
+                        'count' => count($event_payments)
+                    );
+                }
+            }
+        }
+        
+        // Get all payments for this raccolta
+        $payments = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_raccolta_id',
+                    'value' => $post_id,
+                    'compare' => '='
+                )
+            ),
+            'orderby' => 'meta_value_num',
+            'meta_key' => '_fg_importo',
+            'order' => 'DESC'
+        ));
+        
+        $donors = array();
+        foreach ($payments as $payment) {
+            $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
+            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+            $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+            
+            if ($socio_id) {
+                $socio = get_post($socio_id);
+                if ($socio) {
+                    $tipo_donatore = get_post_meta($socio_id, '_fg_tipo_donatore', true);
+                    if (empty($tipo_donatore)) {
+                        $tipo_donatore = 'anche_socio';
+                    }
+                    
+                    $donors[] = array(
+                        'name' => $socio->post_title,
+                        'amount' => number_format(floatval($importo), 2, ',', '.'),
+                        'tipo' => $tipo_donatore === 'anche_socio' ? 'Socio' : 'Donatore',
+                        'date' => $data_pagamento ? date_i18n(get_option('date_format'), strtotime($data_pagamento)) : '',
+                        'edit_link' => get_edit_post_link($socio_id)
+                    );
+                }
+            }
+        }
+        
+        wp_send_json_success(array(
+            'donors' => $donors,
+            'fondi_extra' => $fondi_extra,
+            'eventi_associati' => $eventi_details,
+            'totale_da_eventi' => $totale_da_eventi
+        ));
+    }
+    
+    /**
+     * AJAX handler to get event donations
+     */
+    public function ajax_get_evento_donations() {
+        $evento_id = isset($_POST['evento_id']) ? absint($_POST['evento_id']) : 0;
+        
+        if (!$evento_id) {
+            wp_send_json_error();
+        }
+        
+        // Get all payments for this event
+        $payments = get_posts(array(
+            'post_type' => 'fg_pagamento',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => '_fg_evento_id',
+                    'value' => $evento_id,
+                    'compare' => '='
+                )
+            ),
+            'orderby' => 'meta_value_num',
+            'meta_key' => '_fg_importo',
+            'order' => 'DESC'
+        ));
+        
+        if (empty($payments)) {
+            wp_send_json_success(array('html' => '<p>Nessuna donazione trovata per questo evento.</p>'));
+            return;
+        }
+        
+        $html = '<div style="max-height: 400px; overflow-y: auto;">';
+        $total = 0;
+        
+        foreach ($payments as $payment) {
+            $socio_id = get_post_meta($payment->ID, '_fg_socio_id', true);
+            $importo = get_post_meta($payment->ID, '_fg_importo', true);
+            $data_pagamento = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+            
+            $total += floatval($importo);
+            
+            if ($socio_id) {
+                $socio = get_post($socio_id);
+                if ($socio) {
+                    $tipo_donatore = get_post_meta($socio_id, '_fg_tipo_donatore', true);
+                    if (empty($tipo_donatore)) {
+                        $tipo_donatore = 'anche_socio';
+                    }
+                    
+                    $html .= '<div style="padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">';
+                    $html .= '<div>';
+                    $html .= '<a href="' . get_edit_post_link($socio_id) . '" target="_blank" style="color: #0073aa; font-weight: 500; text-decoration: none;">';
+                    $html .= esc_html($socio->post_title);
+                    $html .= '</a>';
+                    
+                    $badge_color = $tipo_donatore === 'anche_socio' ? '#0073aa' : '#7e8993';
+                    $badge_text = $tipo_donatore === 'anche_socio' ? 'Socio' : 'Donatore';
+                    $html .= '<span style="display: inline-block; margin-left: 8px; padding: 2px 6px; background: ' . $badge_color . '; color: white; border-radius: 3px; font-size: 10px; font-weight: bold;">' . $badge_text . '</span>';
+                    
+                    if ($data_pagamento) {
+                        $html .= '<div style="font-size: 12px; color: #666; margin-top: 3px;">' . date_i18n(get_option('date_format'), strtotime($data_pagamento)) . '</div>';
+                    }
+                    $html .= '</div>';
+                    $html .= '<strong style="color: #0073aa; font-size: 14px;">€' . number_format(floatval($importo), 2, ',', '.') . '</strong>';
+                    $html .= '</div>';
+                }
+            }
+        }
+        
+        $html .= '</div>';
+        $html .= '<div style="margin-top: 15px; padding: 12px; background: #f0f6fc; border-radius: 4px; text-align: center;">';
+        $html .= '<strong style="font-size: 16px;">Totale: €' . number_format($total, 2, ',', '.') . '</strong>';
+        $html .= '</div>';
+        
+        wp_send_json_success(array('html' => $html));
     }
 }
 

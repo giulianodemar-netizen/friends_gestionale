@@ -27,6 +27,9 @@ class Friends_Gestionale_Meta_Boxes {
         add_action('wp_ajax_fg_save_payment', array($this, 'ajax_save_payment'));
         add_action('wp_ajax_fg_get_member_quota', array($this, 'ajax_get_member_quota'));
         
+        // AJAX handler for contact conversion
+        add_action('wp_ajax_fg_convert_contact_to_donor', array($this, 'ajax_convert_contact_to_donor'));
+        
         // Hide default editor for custom post types
         add_action('admin_head', array($this, 'hide_default_editor'));
     }
@@ -36,7 +39,7 @@ class Friends_Gestionale_Meta_Boxes {
      */
     public function hide_default_editor() {
         global $post_type;
-        if (in_array($post_type, array('fg_socio', 'fg_pagamento', 'fg_evento', 'fg_raccolta'))) {
+        if (in_array($post_type, array('fg_socio', 'fg_pagamento', 'fg_evento', 'fg_raccolta', 'fg_contatto'))) {
             remove_post_type_support($post_type, 'editor');
             remove_post_type_support($post_type, 'title');
         }
@@ -102,6 +105,16 @@ class Friends_Gestionale_Meta_Boxes {
             'fg_evento',
             'normal',
             'default'
+        );
+        
+        // Contatti meta boxes
+        add_meta_box(
+            'fg_contatto_info',
+            __('Informazioni Contatto', 'friends-gestionale'),
+            array($this, 'render_contatto_info_meta_box'),
+            'fg_contatto',
+            'normal',
+            'high'
         );
     }
     
@@ -784,8 +797,54 @@ class Friends_Gestionale_Meta_Boxes {
         $data_fine = get_post_meta($post->ID, '_fg_data_fine', true);
         $stato = get_post_meta($post->ID, '_fg_stato', true);
         
-        // Calculate total collected (auto + extra)
-        $totale_raccolto = floatval($raccolto) + floatval($fondi_extra);
+        // Get currently associated events and calculate their total
+        $eventi_associati = get_post_meta($post->ID, '_fg_eventi_associati', true);
+        if (!is_array($eventi_associati)) {
+            $eventi_associati = array();
+        }
+        
+        // Fetch all payments for associated events in a single query (avoid N+1)
+        $eventi_payments_map = array(); // Map evento_id => array of payments
+        $totale_da_eventi = 0;
+        
+        if (!empty($eventi_associati)) {
+            // Single query to get all payments for all associated events
+            // Note: Using -1 for posts_per_page is acceptable here as:
+            // 1. Query is limited to payments linked to specific events (filtered by IN clause)
+            // 2. Typical associations have manageable payment volumes
+            // 3. This only runs on fundraiser edit page, not on high-traffic frontend
+            $all_event_payments = get_posts(array(
+                'post_type' => 'fg_pagamento',
+                'posts_per_page' => -1,
+                'meta_query' => array(
+                    array(
+                        'key' => '_fg_evento_id',
+                        'value' => $eventi_associati,
+                        'compare' => 'IN'
+                    )
+                )
+            ));
+            
+            // Group payments by event ID and calculate totals
+            foreach ($all_event_payments as $payment) {
+                $evento_id = get_post_meta($payment->ID, '_fg_evento_id', true);
+                $importo = get_post_meta($payment->ID, '_fg_importo', true);
+                
+                if (!isset($eventi_payments_map[$evento_id])) {
+                    $eventi_payments_map[$evento_id] = array(
+                        'payments' => array(),
+                        'total' => 0
+                    );
+                }
+                
+                $eventi_payments_map[$evento_id]['payments'][] = $payment;
+                $eventi_payments_map[$evento_id]['total'] += floatval($importo);
+                $totale_da_eventi += floatval($importo);
+            }
+        }
+        
+        // Calculate total collected (auto + extra + events)
+        $totale_raccolto = floatval($raccolto) + floatval($fondi_extra) + $totale_da_eventi;
         ?>
         <div class="fg-meta-box fg-improved-form">
             <div class="fg-form-section">
@@ -819,7 +878,7 @@ class Friends_Gestionale_Meta_Boxes {
                     <div class="fg-form-field fg-field-half">
                         <label for="fg_totale_raccolto"><strong><?php _e('Totale Raccolto (€):', 'friends-gestionale'); ?></strong></label>
                         <input type="number" id="fg_totale_raccolto" name="fg_totale_raccolto" value="<?php echo esc_attr($totale_raccolto); ?>" step="0.01" min="0" class="widefat" readonly style="background-color: #f0f0f0;" />
-                        <small style="color: #666;"><?php _e('Piattaforma + Extra', 'friends-gestionale'); ?></small>
+                        <small style="color: #666;"><?php _e('Piattaforma + Extra + Eventi', 'friends-gestionale'); ?></small>
                     </div>
                 </div>
                 
@@ -845,6 +904,77 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                 </div>
                 
+                <?php
+                // Get all events for checkboxes
+                $all_eventi = get_posts(array(
+                    'post_type' => 'fg_evento',
+                    'posts_per_page' => -1,
+                    'orderby' => 'title',
+                    'order' => 'ASC'
+                ));
+                
+                // Calculate totals for each event
+                $eventi_totals = array();
+                if (!empty($all_eventi)) {
+                    foreach ($all_eventi as $evento) {
+                        $event_payments = get_posts(array(
+                            'post_type' => 'fg_pagamento',
+                            'posts_per_page' => -1,
+                            'meta_query' => array(
+                                array(
+                                    'key' => '_fg_evento_id',
+                                    'value' => $evento->ID,
+                                    'compare' => '='
+                                )
+                            ),
+                            'fields' => 'ids'
+                        ));
+                        
+                        $evento_total = 0;
+                        foreach ($event_payments as $payment_id) {
+                            $importo = get_post_meta($payment_id, '_fg_importo', true);
+                            $evento_total += floatval($importo);
+                        }
+                        $eventi_totals[$evento->ID] = $evento_total;
+                    }
+                }
+                ?>
+                
+                <?php if (!empty($all_eventi)): ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <label><strong><?php _e('Eventi Associati:', 'friends-gestionale'); ?></strong></label>
+                            <div style="border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9; max-height: 300px; overflow-y: auto;">
+                                <?php foreach ($all_eventi as $evento): ?>
+                                    <div style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 3px; border: 1px solid #e0e0e0;">
+                                        <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin: 0;">
+                                            <div style="display: flex; align-items: center; flex: 1;">
+                                                <input type="checkbox" 
+                                                       name="fg_eventi_associati[]" 
+                                                       value="<?php echo $evento->ID; ?>" 
+                                                       <?php checked(in_array($evento->ID, $eventi_associati)); ?>
+                                                       style="margin-right: 10px;">
+                                                <span style="font-weight: 500;"><?php echo esc_html($evento->post_title); ?></span>
+                                            </div>
+                                            <span style="color: #28a745; font-weight: bold; margin-left: 10px;">
+                                                €<?php echo number_format($eventi_totals[$evento->ID], 2, ',', '.'); ?>
+                                            </span>
+                                        </label>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                <?php _e('Seleziona gli eventi i cui fondi devono essere inclusi in questa raccolta fondi.', 'friends-gestionale'); ?>
+                            </small>
+                            <?php if ($totale_da_eventi > 0): ?>
+                                <div style="margin-top: 10px; padding: 10px; background: #d4edda; border-left: 4px solid #28a745; border-radius: 3px;">
+                                    <strong><?php _e('Totale da Eventi Associati:', 'friends-gestionale'); ?></strong> €<?php echo number_format($totale_da_eventi, 2, ',', '.'); ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
                 <?php if ($obiettivo > 0): ?>
                     <div class="fg-form-row">
                         <div class="fg-form-field">
@@ -858,6 +988,46 @@ class Friends_Gestionale_Meta_Boxes {
                                     <strong><?php _e('Fondi Raccolti Extra Piattaforma:', 'friends-gestionale'); ?></strong> €<?php echo number_format($fondi_extra, 2, ',', '.'); ?>
                                 </div>
                             <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
+                <?php
+                // Display associated events with their totals if this is an existing raccolta
+                if ($post->ID > 0 && !empty($eventi_associati)):
+                ?>
+                    <div class="fg-form-row">
+                        <div class="fg-form-field">
+                            <label><strong><?php _e('Dettaglio Eventi Associati:', 'friends-gestionale'); ?></strong></label>
+                            <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px; max-height: 300px; overflow-y: auto;">
+                                <?php foreach ($eventi_associati as $evento_id):
+                                    $evento = get_post($evento_id);
+                                    if ($evento):
+                                        // Use cached data from earlier query
+                                        $evento_total = isset($eventi_payments_map[$evento_id]) ? $eventi_payments_map[$evento_id]['total'] : 0;
+                                        $payment_count = isset($eventi_payments_map[$evento_id]) ? count($eventi_payments_map[$evento_id]['payments']) : 0;
+                                ?>
+                                    <div style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <a href="<?php echo get_edit_post_link($evento_id); ?>" target="_blank" style="color: #0073aa; text-decoration: none; font-weight: 500;">
+                                                <?php echo esc_html($evento->post_title); ?>
+                                            </a>
+                                            <small style="color: #666; display: block; margin-top: 3px;">
+                                                <?php echo $payment_count; ?> <?php _e('pagamenti', 'friends-gestionale'); ?>
+                                            </small>
+                                        </div>
+                                        <strong style="color: #28a745; font-size: 14px;">
+                                            €<?php echo number_format($evento_total, 2, ',', '.'); ?>
+                                        </strong>
+                                    </div>
+                                <?php
+                                    endif;
+                                endforeach; ?>
+                                <div style="padding: 10px; margin-top: 10px; background: #d4edda; border-radius: 3px; display: flex; justify-content: space-between; align-items: center;">
+                                    <strong><?php _e('Totale da Eventi:', 'friends-gestionale'); ?></strong>
+                                    <strong style="color: #28a745; font-size: 16px;">€<?php echo number_format($totale_da_eventi, 2, ',', '.'); ?></strong>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -1189,6 +1359,111 @@ class Friends_Gestionale_Meta_Boxes {
                     <p class="description"><?php _e('Invia un\'email di invito all\'evento a tutti i partecipanti nella lista.', 'friends-gestionale'); ?></p>
                 </div>
             <?php endif; ?>
+        </div>
+        <?php
+    }
+    
+    /**
+     * Render Contatto info meta box
+     */
+    public function render_contatto_info_meta_box($post) {
+        wp_nonce_field('fg_contatto_meta_box', 'fg_contatto_meta_box_nonce');
+        
+        $nome_contatto = get_post_meta($post->ID, '_fg_nome_contatto', true);
+        $tipo_contatto = get_post_meta($post->ID, '_fg_tipo_contatto', true);
+        $tipo_contatto_altro = get_post_meta($post->ID, '_fg_tipo_contatto_altro', true);
+        $azienda = get_post_meta($post->ID, '_fg_azienda', true);
+        $email = get_post_meta($post->ID, '_fg_email_contatto', true);
+        $telefono = get_post_meta($post->ID, '_fg_telefono_contatto', true);
+        $indirizzo = get_post_meta($post->ID, '_fg_indirizzo_contatto', true);
+        $note = get_post_meta($post->ID, '_fg_note_contatto', true);
+        ?>
+        <div class="fg-meta-box fg-improved-form">
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Dati Principali', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_nome_contatto"><strong><?php _e('Nome:', 'friends-gestionale'); ?></strong> <span class="required">*</span></label>
+                        <input type="text" id="fg_nome_contatto" name="fg_nome_contatto" value="<?php echo esc_attr($nome_contatto); ?>" class="widefat" required />
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_tipo_contatto"><strong><?php _e('Tipo Contatto:', 'friends-gestionale'); ?></strong></label>
+                        <select id="fg_tipo_contatto" name="fg_tipo_contatto" class="widefat">
+                            <option value=""><?php _e('Seleziona tipo', 'friends-gestionale'); ?></option>
+                            <option value="fornitore" <?php selected($tipo_contatto, 'fornitore'); ?>><?php _e('Fornitore', 'friends-gestionale'); ?></option>
+                            <option value="istituzione" <?php selected($tipo_contatto, 'istituzione'); ?>><?php _e('Istituzione', 'friends-gestionale'); ?></option>
+                            <option value="partner" <?php selected($tipo_contatto, 'partner'); ?>><?php _e('Partner', 'friends-gestionale'); ?></option>
+                            <option value="sponsor" <?php selected($tipo_contatto, 'sponsor'); ?>><?php _e('Sponsor', 'friends-gestionale'); ?></option>
+                            <option value="altro" <?php selected($tipo_contatto, 'altro'); ?>><?php _e('Altro', 'friends-gestionale'); ?></option>
+                        </select>
+                    </div>
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_azienda"><strong><?php _e('Azienda/Organizzazione:', 'friends-gestionale'); ?></strong></label>
+                        <input type="text" id="fg_azienda" name="fg_azienda" value="<?php echo esc_attr($azienda); ?>" class="widefat" />
+                    </div>
+                </div>
+                
+                <!-- Conditional field for "altro" type -->
+                <div class="fg-form-row" id="fg_tipo_contatto_altro_field" style="display: <?php echo ($tipo_contatto === 'altro') ? 'block' : 'none'; ?>;">
+                    <div class="fg-form-field">
+                        <label for="fg_tipo_contatto_altro"><strong><?php _e('Specifica Tipo:', 'friends-gestionale'); ?></strong></label>
+                        <input type="text" id="fg_tipo_contatto_altro" name="fg_tipo_contatto_altro" value="<?php echo esc_attr($tipo_contatto_altro); ?>" class="widefat" placeholder="<?php _e('Es: Consulente, Volontario, ecc.', 'friends-gestionale'); ?>" />
+                    </div>
+                </div>
+            </div>
+            
+            <?php if ($post->ID > 0): ?>
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Conversione', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <p style="color: #666; margin-bottom: 10px;"><?php _e('Converti questo contatto in un donatore o socio per permettergli di effettuare pagamenti e partecipare agli eventi.', 'friends-gestionale'); ?></p>
+                        <button type="button" id="fg_convert_to_donor_btn" class="button button-primary button-large">
+                            <span class="dashicons dashicons-randomize" style="margin-top: 3px;"></span>
+                            <?php _e('Converti in Donatore/Socio', 'friends-gestionale'); ?>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Contatti', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_email_contatto"><strong><?php _e('Email:', 'friends-gestionale'); ?></strong></label>
+                        <input type="email" id="fg_email_contatto" name="fg_email_contatto" value="<?php echo esc_attr($email); ?>" class="widefat" />
+                    </div>
+                    <div class="fg-form-field fg-field-half">
+                        <label for="fg_telefono_contatto"><strong><?php _e('Telefono:', 'friends-gestionale'); ?></strong></label>
+                        <input type="text" id="fg_telefono_contatto" name="fg_telefono_contatto" value="<?php echo esc_attr($telefono); ?>" class="widefat" />
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_indirizzo_contatto"><strong><?php _e('Indirizzo:', 'friends-gestionale'); ?></strong></label>
+                        <textarea id="fg_indirizzo_contatto" name="fg_indirizzo_contatto" rows="3" class="widefat"><?php echo esc_textarea($indirizzo); ?></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="fg-form-section">
+                <h3 class="fg-section-title"><?php _e('Note', 'friends-gestionale'); ?></h3>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_note_contatto"><strong><?php _e('Note:', 'friends-gestionale'); ?></strong></label>
+                        <textarea id="fg_note_contatto" name="fg_note_contatto" rows="4" class="widefat"><?php echo esc_textarea($note); ?></textarea>
+                    </div>
+                </div>
+            </div>
         </div>
         <?php
     }
@@ -1559,6 +1834,14 @@ class Friends_Gestionale_Meta_Boxes {
             if (isset($_POST['fg_stato'])) {
                 update_post_meta($post_id, '_fg_stato', sanitize_text_field($_POST['fg_stato']));
             }
+            
+            // Save associated events
+            if (isset($_POST['fg_eventi_associati']) && is_array($_POST['fg_eventi_associati'])) {
+                $eventi_associati = array_map('intval', $_POST['fg_eventi_associati']);
+                update_post_meta($post_id, '_fg_eventi_associati', $eventi_associati);
+            } else {
+                update_post_meta($post_id, '_fg_eventi_associati', array());
+            }
         }
         
         // Save Evento meta
@@ -1608,6 +1891,50 @@ class Friends_Gestionale_Meta_Boxes {
                 update_post_meta($post_id, '_fg_partecipanti', $partecipanti);
             } else {
                 update_post_meta($post_id, '_fg_partecipanti', array());
+            }
+        }
+        
+        // Save Contatto meta
+        if ($post->post_type === 'fg_contatto') {
+            if (!isset($_POST['fg_contatto_meta_box_nonce']) || !wp_verify_nonce($_POST['fg_contatto_meta_box_nonce'], 'fg_contatto_meta_box')) {
+                return;
+            }
+            
+            // Update post title with nome_contatto
+            if (isset($_POST['fg_nome_contatto'])) {
+                $nome_contatto = sanitize_text_field($_POST['fg_nome_contatto']);
+                
+                // Update post title
+                remove_action('save_post', array($this, 'save_meta_boxes'), 10);
+                wp_update_post(array(
+                    'ID' => $post_id,
+                    'post_title' => $nome_contatto
+                ));
+                add_action('save_post', array($this, 'save_meta_boxes'), 10, 2);
+                
+                update_post_meta($post_id, '_fg_nome_contatto', $nome_contatto);
+            }
+            
+            if (isset($_POST['fg_tipo_contatto'])) {
+                update_post_meta($post_id, '_fg_tipo_contatto', sanitize_text_field($_POST['fg_tipo_contatto']));
+            }
+            if (isset($_POST['fg_tipo_contatto_altro'])) {
+                update_post_meta($post_id, '_fg_tipo_contatto_altro', sanitize_text_field($_POST['fg_tipo_contatto_altro']));
+            }
+            if (isset($_POST['fg_azienda'])) {
+                update_post_meta($post_id, '_fg_azienda', sanitize_text_field($_POST['fg_azienda']));
+            }
+            if (isset($_POST['fg_email_contatto'])) {
+                update_post_meta($post_id, '_fg_email_contatto', sanitize_email($_POST['fg_email_contatto']));
+            }
+            if (isset($_POST['fg_telefono_contatto'])) {
+                update_post_meta($post_id, '_fg_telefono_contatto', sanitize_text_field($_POST['fg_telefono_contatto']));
+            }
+            if (isset($_POST['fg_indirizzo_contatto'])) {
+                update_post_meta($post_id, '_fg_indirizzo_contatto', sanitize_textarea_field($_POST['fg_indirizzo_contatto']));
+            }
+            if (isset($_POST['fg_note_contatto'])) {
+                update_post_meta($post_id, '_fg_note_contatto', sanitize_textarea_field($_POST['fg_note_contatto']));
             }
         }
     }
@@ -2085,6 +2412,89 @@ class Friends_Gestionale_Meta_Boxes {
         wp_send_json_success(array(
             'categoria_id' => $categoria_id,
             'quota' => $quota ? floatval($quota) : 0
+        ));
+    }
+    
+    /**
+     * AJAX handler to convert contact to donor
+     */
+    public function ajax_convert_contact_to_donor() {
+        // Verify nonce
+        check_ajax_referer('friends_gestionale_nonce', 'nonce');
+        
+        // Check permissions
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Permessi insufficienti'));
+        }
+        
+        $contact_id = isset($_POST['contact_id']) ? absint($_POST['contact_id']) : 0;
+        $nome = isset($_POST['nome']) ? sanitize_text_field($_POST['nome']) : '';
+        $cognome = isset($_POST['cognome']) ? sanitize_text_field($_POST['cognome']) : '';
+        $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+        $telefono = isset($_POST['telefono']) ? sanitize_text_field($_POST['telefono']) : '';
+        $tipo_donatore = isset($_POST['tipo_donatore']) ? sanitize_text_field($_POST['tipo_donatore']) : 'solo_donatore';
+        
+        if (!$contact_id || !$nome || !$cognome) {
+            wp_send_json_error(array('message' => 'Dati obbligatori mancanti'));
+        }
+        
+        // Get contact post
+        $contact = get_post($contact_id);
+        if (!$contact || $contact->post_type !== 'fg_contatto') {
+            wp_send_json_error(array('message' => 'Contatto non trovato'));
+        }
+        
+        // Get additional contact data
+        $azienda = get_post_meta($contact_id, '_fg_azienda', true);
+        $indirizzo = get_post_meta($contact_id, '_fg_indirizzo_contatto', true);
+        $note_contatto = get_post_meta($contact_id, '_fg_note_contatto', true);
+        
+        // Create new donor post
+        $donor_title = $nome . ' ' . $cognome;
+        $donor_data = array(
+            'post_type' => 'fg_socio',
+            'post_title' => $donor_title,
+            'post_status' => 'publish'
+        );
+        
+        $donor_id = wp_insert_post($donor_data);
+        
+        if (is_wp_error($donor_id)) {
+            wp_send_json_error(array('message' => 'Errore nella creazione del donatore'));
+        }
+        
+        // Save donor meta data
+        update_post_meta($donor_id, '_fg_nome', $nome);
+        update_post_meta($donor_id, '_fg_cognome', $cognome);
+        update_post_meta($donor_id, '_fg_email', $email);
+        update_post_meta($donor_id, '_fg_telefono', $telefono);
+        update_post_meta($donor_id, '_fg_tipo_donatore', $tipo_donatore);
+        
+        if ($azienda) {
+            update_post_meta($donor_id, '_fg_azienda', $azienda);
+        }
+        if ($indirizzo) {
+            update_post_meta($donor_id, '_fg_indirizzo', $indirizzo);
+        }
+        if ($note_contatto) {
+            update_post_meta($donor_id, '_fg_note', $note_contatto);
+        }
+        
+        // Add a note that this was converted from a contact
+        $conversion_note = "Convertito da contatto (ID: {$contact_id}) in data " . date_i18n(get_option('date_format'));
+        if ($note_contatto) {
+            update_post_meta($donor_id, '_fg_note', $note_contatto . "\n\n" . $conversion_note);
+        } else {
+            update_post_meta($donor_id, '_fg_note', $conversion_note);
+        }
+        
+        // Delete the contact
+        wp_delete_post($contact_id, true);
+        
+        wp_send_json_success(array(
+            'message' => 'Contatto convertito con successo',
+            'donor_id' => $donor_id,
+            'edit_url' => get_edit_post_link($donor_id, 'raw')
         ));
     }
 }
