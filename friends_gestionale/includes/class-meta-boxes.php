@@ -1664,6 +1664,9 @@ class Friends_Gestionale_Meta_Boxes {
                 $data_pagamento = isset($_POST['fg_data_pagamento']) ? sanitize_text_field($_POST['fg_data_pagamento']) : get_post_meta($post_id, '_fg_data_pagamento', true);
                 
                 // Validate payment date before processing
+                // Note: If payment date is invalid/empty, strtotime returns false and
+                // expiry date won't be updated. This is intentional - invalid payment
+                // dates should not affect member/donor status.
                 $payment_timestamp = strtotime($data_pagamento);
                 if ($payment_timestamp !== false) {
                     // Set expiry to payment date + 1 year for ALL payments
@@ -2455,9 +2458,9 @@ class Friends_Gestionale_Meta_Boxes {
     public function ajax_recalculate_expiry_dates() {
         check_ajax_referer('fg_ajax_nonce', 'nonce');
         
-        // Check user permissions
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(array('message' => 'Permessi insufficienti'));
+        // Check user permissions - restrict to administrators only
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permessi insufficienti', 'friends-gestionale')));
         }
         
         // Get all donors/members
@@ -2467,6 +2470,28 @@ class Friends_Gestionale_Meta_Boxes {
             'post_status' => 'publish'
         ));
         
+        // Get all payments at once to avoid N+1 queries
+        global $wpdb;
+        $payment_dates_query = "
+            SELECT p.ID as payment_id, pm_socio.meta_value as donor_id, pm_date.meta_value as payment_date
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} pm_socio ON p.ID = pm_socio.post_id AND pm_socio.meta_key = '_fg_socio_id'
+            INNER JOIN {$wpdb->postmeta} pm_date ON p.ID = pm_date.post_id AND pm_date.meta_key = '_fg_data_pagamento'
+            WHERE p.post_type = 'fg_pagamento' AND p.post_status = 'publish'
+            ORDER BY pm_date.meta_value DESC
+        ";
+        $all_payments = $wpdb->get_results($payment_dates_query);
+        
+        // Group payments by donor
+        $payments_by_donor = array();
+        foreach ($all_payments as $payment) {
+            $donor_id = intval($payment->donor_id);
+            if (!isset($payments_by_donor[$donor_id])) {
+                $payments_by_donor[$donor_id] = array();
+            }
+            $payments_by_donor[$donor_id][] = $payment;
+        }
+        
         $updated_count = 0;
         $cleared_count = 0;
         $skipped_count = 0;
@@ -2474,21 +2499,8 @@ class Friends_Gestionale_Meta_Boxes {
         foreach ($donors as $donor) {
             $donor_id = $donor->ID;
             
-            // Get all payments for this donor
-            $payments = get_posts(array(
-                'post_type' => 'fg_pagamento',
-                'posts_per_page' => -1,
-                'post_status' => 'publish',
-                'meta_query' => array(
-                    array(
-                        'key' => '_fg_socio_id',
-                        'value' => $donor_id,
-                        'compare' => '='
-                    )
-                )
-            ));
-            
-            if (empty($payments)) {
+            // Check if this donor has any payments
+            if (!isset($payments_by_donor[$donor_id]) || empty($payments_by_donor[$donor_id])) {
                 // No payments - clear expiry date
                 delete_post_meta($donor_id, '_fg_data_scadenza');
                 $cleared_count++;
@@ -2497,8 +2509,8 @@ class Friends_Gestionale_Meta_Boxes {
                 $latest_payment_date = null;
                 $latest_timestamp = 0;
                 
-                foreach ($payments as $payment) {
-                    $payment_date = get_post_meta($payment->ID, '_fg_data_pagamento', true);
+                foreach ($payments_by_donor[$donor_id] as $payment) {
+                    $payment_date = $payment->payment_date;
                     if ($payment_date) {
                         $payment_timestamp = strtotime($payment_date);
                         if ($payment_timestamp !== false && $payment_timestamp > $latest_timestamp) {
@@ -2535,7 +2547,7 @@ class Friends_Gestionale_Meta_Boxes {
         
         wp_send_json_success(array(
             'message' => sprintf(
-                'Ricalcolo completato: %d date aggiornate, %d scadenze cancellate, %d ignorati',
+                __('Ricalcolo completato: %d date aggiornate, %d scadenze cancellate, %d ignorati', 'friends-gestionale'),
                 $updated_count,
                 $cleared_count,
                 $skipped_count

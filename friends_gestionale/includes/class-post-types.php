@@ -1942,9 +1942,11 @@ class Friends_Gestionale_Post_Types {
                     sessionStorage.removeItem('fg_recalc_message');
                     sessionStorage.removeItem('fg_recalc_type');
                     
-                    // Display the notice
+                    // Display the notice with proper text escaping
                     var noticeClass = type === 'success' ? 'notice-success' : 'notice-error';
-                    var notice = $('<div class="notice ' + noticeClass + ' is-dismissible"><p>' + message + '</p></div>');
+                    var notice = $('<div class="notice is-dismissible"></div>')
+                        .addClass(noticeClass)
+                        .append($('<p></p>').text(message));
                     $('.wrap h1').after(notice);
                     
                     // Make it dismissible
