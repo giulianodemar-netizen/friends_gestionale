@@ -290,7 +290,7 @@
             $('#fg_evento_custom_field').hide();
             $('#fg_categoria_socio_field').hide();
             $('#fg_raccolta_field').hide();
-            $('#fg_quota_warning').hide();
+            // Note: fg_expiry_warning is always visible now
             
             // Show fields based on payment type
             if (tipoPagamento === 'evento') {
@@ -306,7 +306,6 @@
                 $('#fg_importo').css('background-color', '');
             } else if (tipoPagamento === 'quota') {
                 $('#fg_categoria_socio_field').show();
-                $('#fg_quota_warning').show();
                 // Auto-populate amount when quota type is selected
                 updatePaymentAmountFromCategory();
             } else if (tipoPagamento === 'raccolta') {

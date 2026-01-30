@@ -759,12 +759,12 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                 </div>
                 
-                <!-- Warning message for quota payments -->
-                <div class="fg-form-row" id="fg_quota_warning" style="display: none;">
+                <!-- Warning message for all payments -->
+                <div class="fg-form-row" id="fg_expiry_warning" style="display: block;">
                     <div class="notice notice-info inline" style="margin: 0; padding: 12px;">
                         <p style="margin: 0;">
                             <strong><?php _e('Attenzione:', 'friends-gestionale'); ?></strong>
-                            <?php _e('L\'inserimento di questo pagamento comporterà l\'automatico aggiornamento della data di scadenza del socio di un anno rispetto alla scadenza attuale. È comunque possibile modificare manualmente la data di scadenza dalla sezione Donatori.', 'friends-gestionale'); ?>
+                            <?php _e('L\'inserimento di questo pagamento aggiornerà automaticamente la data di scadenza del socio/donatore a un anno dalla data del pagamento specificata. È comunque possibile modificare manualmente la data di scadenza dalla sezione Donatori.', 'friends-gestionale'); ?>
                         </p>
                     </div>
                 </div>
