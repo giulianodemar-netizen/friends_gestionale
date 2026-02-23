@@ -30,6 +30,9 @@ class Friends_Gestionale_Meta_Boxes {
         // AJAX handler for contact conversion
         add_action('wp_ajax_fg_convert_contact_to_donor', array($this, 'ajax_convert_contact_to_donor'));
         
+        // AJAX handler for payment from event
+        add_action('wp_ajax_fg_add_payment_from_event', array($this, 'ajax_add_payment_from_event'));
+        
         // AJAX handler for recalculating expiry dates
         add_action('wp_ajax_fg_recalculate_expiry_dates', array($this, 'ajax_recalculate_expiry_dates'));
         
@@ -131,6 +134,10 @@ class Friends_Gestionale_Meta_Boxes {
         $cognome = get_post_meta($post->ID, '_fg_cognome', true);
         $codice_fiscale = get_post_meta($post->ID, '_fg_codice_fiscale', true);
         $email = get_post_meta($post->ID, '_fg_email', true);
+        $email_aggiuntive = get_post_meta($post->ID, '_fg_email_aggiuntive', true);
+        if (!is_array($email_aggiuntive)) {
+            $email_aggiuntive = array();
+        }
         $telefono = get_post_meta($post->ID, '_fg_telefono', true);
         $indirizzo = get_post_meta($post->ID, '_fg_indirizzo', true);
         $data_iscrizione = get_post_meta($post->ID, '_fg_data_iscrizione', true);
@@ -221,12 +228,29 @@ class Friends_Gestionale_Meta_Boxes {
                 <h3 class="fg-section-title"><?php _e('Contatti', 'friends-gestionale'); ?></h3>
                 <div class="fg-form-row">
                     <div class="fg-form-field fg-field-half">
-                        <label for="fg_email"><strong><?php _e('Email:', 'friends-gestionale'); ?></strong></label>
+                        <label for="fg_email"><strong><?php _e('Email Principale:', 'friends-gestionale'); ?></strong></label>
                         <input type="email" id="fg_email" name="fg_email" value="<?php echo esc_attr($email); ?>" class="widefat" />
                     </div>
                     <div class="fg-form-field fg-field-half">
                         <label for="fg_telefono"><strong><?php _e('Telefono:', 'friends-gestionale'); ?></strong></label>
                         <input type="text" id="fg_telefono" name="fg_telefono" value="<?php echo esc_attr($telefono); ?>" class="widefat" />
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label><strong><?php _e('Email Aggiuntive:', 'friends-gestionale'); ?></strong></label>
+                        <div id="fg_email_aggiuntive_container">
+                            <?php foreach ($email_aggiuntive as $extra_email): ?>
+                            <div class="fg-email-aggiuntiva-row" style="display: flex; align-items: center; margin-bottom: 5px;">
+                                <input type="email" name="fg_email_aggiuntive[]" value="<?php echo esc_attr($extra_email); ?>" class="widefat" style="margin-right: 5px;" />
+                                <button type="button" class="button fg-remove-email-aggiuntiva">&times;</button>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <button type="button" id="fg_add_email_btn" class="button" style="margin-top: 5px;">
+                            + <?php _e('Aggiungi Email', 'friends-gestionale'); ?>
+                        </button>
                     </div>
                 </div>
                 
@@ -1267,6 +1291,83 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                 </div>
                 <?php endif; ?>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <?php
+                        $all_socios = get_posts(array(
+                            'post_type' => 'fg_socio',
+                            'posts_per_page' => -1,
+                            'post_status' => 'publish',
+                            'orderby' => 'title',
+                            'order' => 'ASC'
+                        ));
+                        ?>
+                        <button type="button" id="fg_registra_donazione_btn" class="button button-primary"
+                                data-evento-id="<?php echo esc_attr($post->ID); ?>"
+                                data-nonce="<?php echo esc_attr(wp_create_nonce('fg_ajax_nonce')); ?>">
+                            + <?php _e('Registra Donazione per questo Evento', 'friends-gestionale'); ?>
+                        </button>
+                        
+                        <!-- Modal for payment registration -->
+                        <div id="fg-evento-payment-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100000; align-items: center; justify-content: center;">
+                            <div style="background: #fff; border-radius: 8px; padding: 30px; max-width: 550px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #0073aa; padding-bottom: 10px;">
+                                    <h2 style="margin: 0; color: #0073aa;"><?php _e('Registra Donazione', 'friends-gestionale'); ?></h2>
+                                    <button type="button" id="fg-close-evento-payment-modal" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+                                </div>
+                                <form id="fg-evento-payment-form">
+                                    <input type="hidden" name="action" value="fg_add_payment_from_event" />
+                                    <input type="hidden" name="nonce" value="<?php echo esc_attr(wp_create_nonce('fg_ajax_nonce')); ?>" />
+                                    <input type="hidden" name="evento_id" value="<?php echo esc_attr($post->ID); ?>" />
+                                    
+                                    <div style="margin-bottom: 15px;">
+                                        <label style="display: block; font-weight: 600; margin-bottom: 5px;"><strong><?php _e('Donatore:', 'friends-gestionale'); ?></strong> <span style="color: red;">*</span></label>
+                                        <select name="socio_id" id="fg_evento_modal_socio_id" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;" required>
+                                            <option value=""><?php _e('Seleziona donatore...', 'friends-gestionale'); ?></option>
+                                            <?php foreach ($all_socios as $socio): ?>
+                                                <option value="<?php echo esc_attr($socio->ID); ?>"><?php echo esc_html($socio->post_title); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 15px;">
+                                        <label style="display: block; font-weight: 600; margin-bottom: 5px;"><strong><?php _e('Importo (€):', 'friends-gestionale'); ?></strong> <span style="color: red;">*</span></label>
+                                        <input type="number" name="importo" step="0.01" min="0" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;" required />
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 15px;">
+                                        <label style="display: block; font-weight: 600; margin-bottom: 5px;"><strong><?php _e('Data Pagamento:', 'friends-gestionale'); ?></strong> <span style="color: red;">*</span></label>
+                                        <input type="date" name="data_pagamento" value="<?php echo esc_attr(date('Y-m-d')); ?>" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;" required />
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 15px;">
+                                        <label style="display: block; font-weight: 600; margin-bottom: 5px;"><strong><?php _e('Metodo di Pagamento:', 'friends-gestionale'); ?></strong></label>
+                                        <select name="metodo_pagamento" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                                            <option value="contanti"><?php _e('Contanti', 'friends-gestionale'); ?></option>
+                                            <option value="bonifico"><?php _e('Bonifico Bancario', 'friends-gestionale'); ?></option>
+                                            <option value="carta"><?php _e('Carta di Credito', 'friends-gestionale'); ?></option>
+                                            <option value="paypal"><?php _e('PayPal', 'friends-gestionale'); ?></option>
+                                            <option value="altro"><?php _e('Altro', 'friends-gestionale'); ?></option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 20px;">
+                                        <label style="display: block; font-weight: 600; margin-bottom: 5px;"><strong><?php _e('Note:', 'friends-gestionale'); ?></strong></label>
+                                        <textarea name="note" rows="3" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                                    </div>
+                                    
+                                    <div id="fg-evento-payment-message" style="display: none; margin-bottom: 15px; padding: 10px; border-radius: 4px;"></div>
+                                    
+                                    <div style="text-align: right; border-top: 1px solid #ddd; padding-top: 15px;">
+                                        <button type="button" id="fg-cancel-evento-payment" class="button" style="margin-right: 10px;"><?php _e('Annulla', 'friends-gestionale'); ?></button>
+                                        <button type="submit" class="button button-primary"><?php _e('Salva Donazione', 'friends-gestionale'); ?></button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <?php endif; ?>
         </div>
@@ -1377,6 +1478,10 @@ class Friends_Gestionale_Meta_Boxes {
         $tipo_contatto_altro = get_post_meta($post->ID, '_fg_tipo_contatto_altro', true);
         $azienda = get_post_meta($post->ID, '_fg_azienda', true);
         $email = get_post_meta($post->ID, '_fg_email_contatto', true);
+        $email_aggiuntive_contatto = get_post_meta($post->ID, '_fg_email_aggiuntive_contatto', true);
+        if (!is_array($email_aggiuntive_contatto)) {
+            $email_aggiuntive_contatto = array();
+        }
         $telefono = get_post_meta($post->ID, '_fg_telefono_contatto', true);
         $indirizzo = get_post_meta($post->ID, '_fg_indirizzo_contatto', true);
         $note = get_post_meta($post->ID, '_fg_note_contatto', true);
@@ -1440,12 +1545,29 @@ class Friends_Gestionale_Meta_Boxes {
                 
                 <div class="fg-form-row">
                     <div class="fg-form-field fg-field-half">
-                        <label for="fg_email_contatto"><strong><?php _e('Email:', 'friends-gestionale'); ?></strong></label>
+                        <label for="fg_email_contatto"><strong><?php _e('Email Principale:', 'friends-gestionale'); ?></strong></label>
                         <input type="email" id="fg_email_contatto" name="fg_email_contatto" value="<?php echo esc_attr($email); ?>" class="widefat" />
                     </div>
                     <div class="fg-form-field fg-field-half">
                         <label for="fg_telefono_contatto"><strong><?php _e('Telefono:', 'friends-gestionale'); ?></strong></label>
                         <input type="text" id="fg_telefono_contatto" name="fg_telefono_contatto" value="<?php echo esc_attr($telefono); ?>" class="widefat" />
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label><strong><?php _e('Email Aggiuntive:', 'friends-gestionale'); ?></strong></label>
+                        <div id="fg_email_aggiuntive_contatto_container">
+                            <?php foreach ($email_aggiuntive_contatto as $extra_email): ?>
+                            <div class="fg-email-aggiuntiva-row" style="display: flex; align-items: center; margin-bottom: 5px;">
+                                <input type="email" name="fg_email_aggiuntive_contatto[]" value="<?php echo esc_attr($extra_email); ?>" class="widefat" style="margin-right: 5px;" />
+                                <button type="button" class="button fg-remove-email-aggiuntiva">&times;</button>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <button type="button" id="fg_add_email_contatto_btn" class="button" style="margin-top: 5px;">
+                            + <?php _e('Aggiungi Email', 'friends-gestionale'); ?>
+                        </button>
                     </div>
                 </div>
                 
@@ -1538,6 +1660,12 @@ class Friends_Gestionale_Meta_Boxes {
             }
             if (isset($_POST['fg_email'])) {
                 update_post_meta($post_id, '_fg_email', sanitize_email($_POST['fg_email']));
+            }
+            if (isset($_POST['fg_email_aggiuntive'])) {
+                $email_aggiuntive = array_filter(array_map('sanitize_email', $_POST['fg_email_aggiuntive']));
+                update_post_meta($post_id, '_fg_email_aggiuntive', $email_aggiuntive);
+            } else {
+                update_post_meta($post_id, '_fg_email_aggiuntive', array());
             }
             if (isset($_POST['fg_telefono'])) {
                 update_post_meta($post_id, '_fg_telefono', sanitize_text_field($_POST['fg_telefono']));
@@ -1890,6 +2018,12 @@ class Friends_Gestionale_Meta_Boxes {
             }
             if (isset($_POST['fg_email_contatto'])) {
                 update_post_meta($post_id, '_fg_email_contatto', sanitize_email($_POST['fg_email_contatto']));
+            }
+            if (isset($_POST['fg_email_aggiuntive_contatto'])) {
+                $email_aggiuntive = array_filter(array_map('sanitize_email', $_POST['fg_email_aggiuntive_contatto']));
+                update_post_meta($post_id, '_fg_email_aggiuntive_contatto', $email_aggiuntive);
+            } else {
+                update_post_meta($post_id, '_fg_email_aggiuntive_contatto', array());
             }
             if (isset($_POST['fg_telefono_contatto'])) {
                 update_post_meta($post_id, '_fg_telefono_contatto', sanitize_text_field($_POST['fg_telefono_contatto']));
@@ -2365,6 +2499,101 @@ class Friends_Gestionale_Meta_Boxes {
         wp_send_json_success(array(
             'categoria_id' => $categoria_id,
             'quota' => $quota ? floatval($quota) : 0
+        ));
+    }
+    
+    /**
+     * AJAX handler to add payment from event page
+     */
+    public function ajax_add_payment_from_event() {
+        check_ajax_referer('fg_ajax_nonce', 'nonce');
+        
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => __('Permessi insufficienti', 'friends-gestionale')));
+        }
+        
+        $evento_id = isset($_POST['evento_id']) ? absint($_POST['evento_id']) : 0;
+        $socio_id = isset($_POST['socio_id']) ? absint($_POST['socio_id']) : 0;
+        $importo = isset($_POST['importo']) ? floatval($_POST['importo']) : 0;
+        $data_pagamento = isset($_POST['data_pagamento']) ? sanitize_text_field($_POST['data_pagamento']) : '';
+        $metodo_pagamento = isset($_POST['metodo_pagamento']) ? sanitize_text_field($_POST['metodo_pagamento']) : 'contanti';
+        $note = isset($_POST['note']) ? sanitize_textarea_field($_POST['note']) : '';
+        
+        if (!$evento_id || !$socio_id || !$importo || !$data_pagamento) {
+            wp_send_json_error(array('message' => __('Dati obbligatori mancanti', 'friends-gestionale')));
+        }
+        
+        // Create payment post
+        $payment_id = wp_insert_post(array(
+            'post_type' => 'fg_pagamento',
+            'post_status' => 'publish',
+            'post_title' => 'Pagamento ' . date('Y-m-d H:i:s')
+        ));
+        
+        if (is_wp_error($payment_id)) {
+            wp_send_json_error(array('message' => __('Errore nella creazione del pagamento', 'friends-gestionale')));
+        }
+        
+        // Save payment metadata
+        update_post_meta($payment_id, '_fg_socio_id', $socio_id);
+        update_post_meta($payment_id, '_fg_importo', $importo);
+        update_post_meta($payment_id, '_fg_data_pagamento', $data_pagamento);
+        update_post_meta($payment_id, '_fg_metodo_pagamento', $metodo_pagamento);
+        update_post_meta($payment_id, '_fg_tipo_pagamento', 'evento');
+        update_post_meta($payment_id, '_fg_evento_id', $evento_id);
+        if ($note) {
+            update_post_meta($payment_id, '_fg_note', $note);
+        }
+        
+        // Calculate and save progressive number
+        global $wpdb;
+        $max_number = $wpdb->get_var(
+            "SELECT MAX(CAST(meta_value AS UNSIGNED)) 
+            FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_fg_progressive_number'"
+        );
+        $progressive_number = $max_number ? intval($max_number) + 1 : 1;
+        update_post_meta($payment_id, '_fg_progressive_number', $progressive_number);
+        
+        // Generate title
+        $metodi_labels = array(
+            'contanti' => 'Contanti',
+            'bonifico' => 'Bonifico',
+            'carta' => 'Carta',
+            'paypal' => 'PayPal',
+            'altro' => 'Altro'
+        );
+        $formatted_number = str_pad($progressive_number, 4, '0', STR_PAD_LEFT);
+        $metodo_label = isset($metodi_labels[$metodo_pagamento]) ? $metodi_labels[$metodo_pagamento] : $metodo_pagamento;
+        $title = sprintf('#%s - %s - Evento', $formatted_number, $metodo_label);
+        
+        wp_update_post(array(
+            'ID' => $payment_id,
+            'post_title' => $title
+        ));
+        
+        // Update donor's expiry date
+        try {
+            $expiry_date = new DateTime($data_pagamento);
+            $expiry_date->modify('+1 year');
+            $new_expiry = $expiry_date->format('Y-m-d');
+            update_post_meta($socio_id, '_fg_data_scadenza', $new_expiry);
+            
+            $current_stato = get_post_meta($socio_id, '_fg_stato', true);
+            if ($current_stato === 'scaduto' || empty($current_stato)) {
+                update_post_meta($socio_id, '_fg_stato', 'attivo');
+            }
+        } catch (Exception $e) {
+            // Invalid date, skip expiry update
+        }
+        
+        // Update donor's total donations
+        $this->update_donor_total($socio_id);
+        
+        wp_send_json_success(array(
+            'payment_id' => $payment_id,
+            'payment_link' => get_edit_post_link($payment_id, 'raw'),
+            'message' => __('Donazione registrata con successo', 'friends-gestionale')
         ));
     }
     
