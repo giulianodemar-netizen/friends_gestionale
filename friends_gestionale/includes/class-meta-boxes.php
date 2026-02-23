@@ -153,6 +153,7 @@ class Friends_Gestionale_Meta_Boxes {
         $quota_annuale = get_post_meta($post->ID, '_fg_quota_annuale', true);
         $stato = get_post_meta($post->ID, '_fg_stato', true);
         $note = get_post_meta($post->ID, '_fg_note', true);
+        $numero_tessera = get_post_meta($post->ID, '_fg_numero_tessera', true);
         $tipo_donatore = get_post_meta($post->ID, '_fg_tipo_donatore', true);
         if (empty($tipo_donatore)) {
             $tipo_donatore = 'anche_socio'; // Default to member for backward compatibility
@@ -380,6 +381,13 @@ class Friends_Gestionale_Meta_Boxes {
                             <option value="scaduto" <?php selected($stato, 'scaduto'); ?>><?php _e('Scaduto', 'friends-gestionale'); ?></option>
                             <option value="inattivo" <?php selected($stato, 'inattivo'); ?>><?php _e('Inattivo', 'friends-gestionale'); ?></option>
                         </select>
+                    </div>
+                </div>
+                
+                <div class="fg-form-row">
+                    <div class="fg-form-field">
+                        <label for="fg_numero_tessera"><strong><?php _e('Numero di Tessera:', 'friends-gestionale'); ?></strong></label>
+                        <input type="text" id="fg_numero_tessera" name="fg_numero_tessera" value="<?php echo esc_attr($numero_tessera); ?>" class="widefat" />
                     </div>
                 </div>
             </div>
@@ -1316,14 +1324,14 @@ class Friends_Gestionale_Meta_Boxes {
                                     <h2 style="margin: 0; color: #0073aa;"><?php _e('Registra Donazione', 'friends-gestionale'); ?></h2>
                                     <button type="button" id="fg-close-evento-payment-modal" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
                                 </div>
-                                <form id="fg-evento-payment-form">
-                                    <input type="hidden" name="action" value="fg_add_payment_from_event" />
-                                    <input type="hidden" name="nonce" value="<?php echo esc_attr(wp_create_nonce('fg_ajax_nonce')); ?>" />
-                                    <input type="hidden" name="evento_id" value="<?php echo esc_attr($post->ID); ?>" />
+                                <div id="fg-evento-payment-form">
+                                    <input type="hidden" id="fg_ep_action" value="fg_add_payment_from_event" />
+                                    <input type="hidden" id="fg_ep_nonce" value="<?php echo esc_attr(wp_create_nonce('fg_ajax_nonce')); ?>" />
+                                    <input type="hidden" id="fg_ep_evento_id" value="<?php echo esc_attr($post->ID); ?>" />
                                     
                                     <div style="margin-bottom: 15px;">
                                         <label style="display: block; font-weight: 600; margin-bottom: 5px;"><strong><?php _e('Donatore:', 'friends-gestionale'); ?></strong> <span style="color: red;">*</span></label>
-                                        <select name="socio_id" id="fg_evento_modal_socio_id" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;" required>
+                                        <select id="fg_evento_modal_socio_id" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
                                             <option value=""><?php _e('Seleziona donatore...', 'friends-gestionale'); ?></option>
                                             <?php foreach ($all_socios as $socio): ?>
                                                 <option value="<?php echo esc_attr($socio->ID); ?>"><?php echo esc_html($socio->post_title); ?></option>
@@ -1333,17 +1341,17 @@ class Friends_Gestionale_Meta_Boxes {
                                     
                                     <div style="margin-bottom: 15px;">
                                         <label style="display: block; font-weight: 600; margin-bottom: 5px;"><strong><?php _e('Importo (€):', 'friends-gestionale'); ?></strong> <span style="color: red;">*</span></label>
-                                        <input type="number" name="importo" step="0.01" min="0" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;" required />
+                                        <input type="number" id="fg_ep_importo" step="0.01" min="0" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;" />
                                     </div>
                                     
                                     <div style="margin-bottom: 15px;">
                                         <label style="display: block; font-weight: 600; margin-bottom: 5px;"><strong><?php _e('Data Pagamento:', 'friends-gestionale'); ?></strong> <span style="color: red;">*</span></label>
-                                        <input type="date" name="data_pagamento" value="<?php echo esc_attr(date('Y-m-d')); ?>" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;" required />
+                                        <input type="date" id="fg_ep_data_pagamento" value="<?php echo esc_attr(date('Y-m-d')); ?>" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;" />
                                     </div>
                                     
                                     <div style="margin-bottom: 15px;">
                                         <label style="display: block; font-weight: 600; margin-bottom: 5px;"><strong><?php _e('Metodo di Pagamento:', 'friends-gestionale'); ?></strong></label>
-                                        <select name="metodo_pagamento" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <select id="fg_ep_metodo_pagamento" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
                                             <option value="contanti"><?php _e('Contanti', 'friends-gestionale'); ?></option>
                                             <option value="bonifico"><?php _e('Bonifico Bancario', 'friends-gestionale'); ?></option>
                                             <option value="carta"><?php _e('Carta di Credito', 'friends-gestionale'); ?></option>
@@ -1354,16 +1362,16 @@ class Friends_Gestionale_Meta_Boxes {
                                     
                                     <div style="margin-bottom: 20px;">
                                         <label style="display: block; font-weight: 600; margin-bottom: 5px;"><strong><?php _e('Note:', 'friends-gestionale'); ?></strong></label>
-                                        <textarea name="note" rows="3" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                                        <textarea id="fg_ep_note" rows="3" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
                                     </div>
                                     
                                     <div id="fg-evento-payment-message" style="display: none; margin-bottom: 15px; padding: 10px; border-radius: 4px;"></div>
                                     
                                     <div style="text-align: right; border-top: 1px solid #ddd; padding-top: 15px;">
                                         <button type="button" id="fg-cancel-evento-payment" class="button" style="margin-right: 10px;"><?php _e('Annulla', 'friends-gestionale'); ?></button>
-                                        <button type="submit" class="button button-primary"><?php _e('Salva Donazione', 'friends-gestionale'); ?></button>
+                                        <button type="button" id="fg-submit-evento-payment" class="button button-primary"><?php _e('Salva Donazione', 'friends-gestionale'); ?></button>
                                     </div>
-                                </form>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1711,6 +1719,9 @@ class Friends_Gestionale_Meta_Boxes {
             }
             if (isset($_POST['fg_stato'])) {
                 update_post_meta($post_id, '_fg_stato', sanitize_text_field($_POST['fg_stato']));
+            }
+            if (isset($_POST['fg_numero_tessera'])) {
+                update_post_meta($post_id, '_fg_numero_tessera', sanitize_text_field($_POST['fg_numero_tessera']));
             }
             if (isset($_POST['fg_note'])) {
                 update_post_meta($post_id, '_fg_note', sanitize_textarea_field($_POST['fg_note']));

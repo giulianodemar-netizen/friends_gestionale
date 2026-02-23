@@ -1019,11 +1019,20 @@
         });
         
         // Event payment: form submit
-        $('#fg-evento-payment-form').on('submit', function(e) {
+        $(document).on('click', '#fg-submit-evento-payment', function(e) {
             e.preventDefault();
-            var $form = $(this);
-            var $submitBtn = $form.find('button[type="submit"]');
+            var $submitBtn = $(this);
             var $msg = $('#fg-evento-payment-message');
+            
+            var socio_id = $('#fg_evento_modal_socio_id').val();
+            var importo = $('#fg_ep_importo').val();
+            var data_pagamento = $('#fg_ep_data_pagamento').val();
+            
+            if (!socio_id || !importo || !data_pagamento) {
+                $msg.css({'background': '#f8d7da', 'color': '#721c24', 'border': '1px solid #f5c6cb'})
+                    .text('Compilare tutti i campi obbligatori.').show();
+                return;
+            }
             
             $submitBtn.prop('disabled', true).text('Salvataggio...');
             $msg.hide();
@@ -1031,7 +1040,16 @@
             $.ajax({
                 url: ajaxurl,
                 type: 'POST',
-                data: $form.serialize(),
+                data: {
+                    action: $('#fg_ep_action').val(),
+                    nonce: $('#fg_ep_nonce').val(),
+                    evento_id: $('#fg_ep_evento_id').val(),
+                    socio_id: socio_id,
+                    importo: importo,
+                    data_pagamento: data_pagamento,
+                    metodo_pagamento: $('#fg_ep_metodo_pagamento').val(),
+                    note: $('#fg_ep_note').val()
+                },
                 success: function(response) {
                     if (response.success) {
                         $msg.css({'background': '#d4edda', 'color': '#155724', 'border': '1px solid #c3e6cb'})
