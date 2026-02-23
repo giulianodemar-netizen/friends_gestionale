@@ -30,6 +30,9 @@ class Friends_Gestionale_Meta_Boxes {
         // AJAX handler for contact conversion
         add_action('wp_ajax_fg_convert_contact_to_donor', array($this, 'ajax_convert_contact_to_donor'));
         
+        // AJAX handler for recalculating expiry dates
+        add_action('wp_ajax_fg_recalculate_expiry_dates', array($this, 'ajax_recalculate_expiry_dates'));
+        
         // Hide default editor for custom post types
         add_action('admin_head', array($this, 'hide_default_editor'));
     }
@@ -756,12 +759,12 @@ class Friends_Gestionale_Meta_Boxes {
                     </div>
                 </div>
                 
-                <!-- Warning message for quota payments -->
-                <div class="fg-form-row" id="fg_quota_warning" style="display: none;">
+                <!-- Warning message for all payments -->
+                <div class="fg-form-row" id="fg_expiry_warning" style="display: block;">
                     <div class="notice notice-info inline" style="margin: 0; padding: 12px;">
                         <p style="margin: 0;">
                             <strong><?php _e('Attenzione:', 'friends-gestionale'); ?></strong>
-                            <?php _e('L\'inserimento di questo pagamento comporterà l\'automatico aggiornamento della data di scadenza del socio di un anno rispetto alla scadenza attuale. È comunque possibile modificare manualmente la data di scadenza dalla sezione Donatori.', 'friends-gestionale'); ?>
+                            <?php _e('L\'inserimento di questo pagamento aggiornerà automaticamente la data di scadenza del socio/donatore a un anno dalla data del pagamento specificata. È comunque possibile modificare manualmente la data di scadenza dalla sezione Donatori.', 'friends-gestionale'); ?>
                         </p>
                     </div>
                 </div>
@@ -1653,71 +1656,32 @@ class Friends_Gestionale_Meta_Boxes {
                 update_post_meta($post_id, '_fg_note', sanitize_textarea_field($_POST['fg_note']));
             }
             
-            // Update member/donor expiry date based on payment type and donor type
-            $tipo_pagamento = isset($_POST['fg_tipo_pagamento']) ? sanitize_text_field($_POST['fg_tipo_pagamento']) : get_post_meta($post_id, '_fg_tipo_pagamento', true);
+            // Update member/donor expiry date for ANY payment
             $socio_id = isset($_POST['fg_socio_id']) ? absint($_POST['fg_socio_id']) : get_post_meta($post_id, '_fg_socio_id', true);
             
             if ($socio_id) {
-                // Get the donor type to apply correct logic
-                $tipo_donatore = get_post_meta($socio_id, '_fg_tipo_donatore', true);
-                if (empty($tipo_donatore)) {
-                    $tipo_donatore = 'anche_socio'; // Default to member for backward compatibility
-                }
-                $should_update_expiry = false;
+                // Get payment date
+                $data_pagamento = isset($_POST['fg_data_pagamento']) ? sanitize_text_field($_POST['fg_data_pagamento']) : get_post_meta($post_id, '_fg_data_pagamento', true);
                 
-                // For members (anche_socio): only update expiry for quota payments
-                if ($tipo_donatore === 'anche_socio' && $tipo_pagamento === 'quota') {
-                    $should_update_expiry = true;
-                }
-                // For simple donors (solo_donatore): update expiry for donation and fundraiser payments
-                elseif ($tipo_donatore === 'solo_donatore' && in_array($tipo_pagamento, array('donazione', 'raccolta'))) {
-                    $should_update_expiry = true;
-                }
-                
-                if ($should_update_expiry) {
-                    // Get payment date to check if it's from current year
-                    $data_pagamento = isset($_POST['fg_data_pagamento']) ? sanitize_text_field($_POST['fg_data_pagamento']) : get_post_meta($post_id, '_fg_data_pagamento', true);
+                // Validate payment date before processing
+                // Note: If payment date is invalid/empty, strtotime returns false and
+                // expiry date won't be updated. This is intentional - invalid payment
+                // dates should not affect member/donor status.
+                $payment_timestamp = strtotime($data_pagamento);
+                if ($payment_timestamp !== false) {
+                    // Set expiry to payment date + 1 year for ALL payments
+                    // No restrictions on payment type or year
+                    $expiry_date = new DateTime($data_pagamento);
+                    $expiry_date->modify('+1 year');
+                    $new_expiry = $expiry_date->format('Y-m-d');
                     
-                    // Validate payment date before processing
-                    $payment_timestamp = strtotime($data_pagamento);
-                    if ($payment_timestamp !== false) {
-                        $current_year = date('Y');
-                        $payment_year = date('Y', $payment_timestamp);
-                        
-                        // Only update expiry date if payment is from current year
-                        if ($payment_year == $current_year) {
-                            // Different logic for members vs donors
-                            if ($tipo_donatore === 'anche_socio') {
-                                // For members: add one year to current expiry date
-                                $current_expiry = get_post_meta($socio_id, '_fg_data_scadenza', true);
-                                
-                                if ($current_expiry) {
-                                    // Add one year to current expiry date
-                                    $expiry_date = new DateTime($current_expiry);
-                                    $expiry_date->modify('+1 year');
-                                    $new_expiry = $expiry_date->format('Y-m-d');
-                                } else {
-                                    // If no expiry date exists, set to one year from today
-                                    $expiry_date = new DateTime();
-                                    $expiry_date->modify('+1 year');
-                                    $new_expiry = $expiry_date->format('Y-m-d');
-                                }
-                            } else {
-                                // For donors: set expiry to payment date + 1 year
-                                $expiry_date = new DateTime($data_pagamento);
-                                $expiry_date->modify('+1 year');
-                                $new_expiry = $expiry_date->format('Y-m-d');
-                            }
-                            
-                            // Update the member/donor's expiry date
-                            update_post_meta($socio_id, '_fg_data_scadenza', $new_expiry);
-                            
-                            // Also update stato to 'attivo' if it's currently scaduto
-                            $current_stato = get_post_meta($socio_id, '_fg_stato', true);
-                            if ($current_stato === 'scaduto' || empty($current_stato)) {
-                                update_post_meta($socio_id, '_fg_stato', 'attivo');
-                            }
-                        }
+                    // Update the member/donor's expiry date
+                    update_post_meta($socio_id, '_fg_data_scadenza', $new_expiry);
+                    
+                    // Also update stato to 'attivo' if it's currently scaduto
+                    $current_stato = get_post_meta($socio_id, '_fg_stato', true);
+                    if ($current_stato === 'scaduto' || empty($current_stato)) {
+                        update_post_meta($socio_id, '_fg_stato', 'attivo');
                     }
                 }
             }
@@ -2302,32 +2266,21 @@ class Friends_Gestionale_Meta_Boxes {
             update_post_meta($payment_id, '_fg_note', $note);
         }
         
-        // Update member expiry date if this is a quota payment and current year
-        if ($tipo_pagamento === 'quota' && $donor_id) {
+        // Update member/donor expiry date for ANY payment
+        if ($donor_id) {
             $payment_timestamp = strtotime($data_pagamento);
             if ($payment_timestamp !== false) {
-                $current_year = date('Y');
-                $payment_year = date('Y', $payment_timestamp);
+                // Set expiry to payment date + 1 year for ALL payments
+                // No restrictions on payment type or year
+                $expiry_date = new DateTime($data_pagamento);
+                $expiry_date->modify('+1 year');
+                $new_expiry = $expiry_date->format('Y-m-d');
                 
-                if ($payment_year == $current_year) {
-                    $current_expiry = get_post_meta($donor_id, '_fg_data_scadenza', true);
-                    
-                    if ($current_expiry) {
-                        $expiry_date = new DateTime($current_expiry);
-                        $expiry_date->modify('+1 year');
-                        $new_expiry = $expiry_date->format('Y-m-d');
-                    } else {
-                        $expiry_date = new DateTime();
-                        $expiry_date->modify('+1 year');
-                        $new_expiry = $expiry_date->format('Y-m-d');
-                    }
-                    
-                    update_post_meta($donor_id, '_fg_data_scadenza', $new_expiry);
-                    
-                    $current_stato = get_post_meta($donor_id, '_fg_stato', true);
-                    if ($current_stato === 'scaduto' || empty($current_stato)) {
-                        update_post_meta($donor_id, '_fg_stato', 'attivo');
-                    }
+                update_post_meta($donor_id, '_fg_data_scadenza', $new_expiry);
+                
+                $current_stato = get_post_meta($donor_id, '_fg_stato', true);
+                if ($current_stato === 'scaduto' || empty($current_stato)) {
+                    update_post_meta($donor_id, '_fg_stato', 'attivo');
                 }
             }
         }
@@ -2495,6 +2448,113 @@ class Friends_Gestionale_Meta_Boxes {
             'message' => 'Contatto convertito con successo',
             'donor_id' => $donor_id,
             'edit_url' => get_edit_post_link($donor_id, 'raw')
+        ));
+    }
+    
+    /**
+     * AJAX handler to recalculate expiry dates for all members and donors
+     * Based on the latest payment date + 1 year
+     */
+    public function ajax_recalculate_expiry_dates() {
+        check_ajax_referer('fg_ajax_nonce', 'nonce');
+        
+        // Check user permissions - allow administrators and Gestore Donatori role
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => __('Permessi insufficienti', 'friends-gestionale')));
+        }
+        
+        // Get all donors/members
+        $donors = get_posts(array(
+            'post_type' => 'fg_socio',
+            'posts_per_page' => -1,
+            'post_status' => 'publish'
+        ));
+        
+        // Get all payments at once to avoid N+1 queries
+        global $wpdb;
+        $payment_dates_query = "
+            SELECT p.ID as payment_id, pm_socio.meta_value as donor_id, pm_date.meta_value as payment_date
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} pm_socio ON p.ID = pm_socio.post_id AND pm_socio.meta_key = '_fg_socio_id'
+            INNER JOIN {$wpdb->postmeta} pm_date ON p.ID = pm_date.post_id AND pm_date.meta_key = '_fg_data_pagamento'
+            WHERE p.post_type = 'fg_pagamento' AND p.post_status = 'publish'
+            ORDER BY pm_date.meta_value DESC
+        ";
+        $all_payments = $wpdb->get_results($payment_dates_query);
+        
+        // Group payments by donor
+        $payments_by_donor = array();
+        foreach ($all_payments as $payment) {
+            $donor_id = intval($payment->donor_id);
+            if (!isset($payments_by_donor[$donor_id])) {
+                $payments_by_donor[$donor_id] = array();
+            }
+            $payments_by_donor[$donor_id][] = $payment;
+        }
+        
+        $updated_count = 0;
+        $cleared_count = 0;
+        $skipped_count = 0;
+        
+        foreach ($donors as $donor) {
+            $donor_id = $donor->ID;
+            
+            // Check if this donor has any payments
+            if (!isset($payments_by_donor[$donor_id]) || empty($payments_by_donor[$donor_id])) {
+                // No payments - clear expiry date
+                delete_post_meta($donor_id, '_fg_data_scadenza');
+                $cleared_count++;
+            } else {
+                // Find the latest payment date
+                $latest_payment_date = null;
+                $latest_timestamp = 0;
+                
+                foreach ($payments_by_donor[$donor_id] as $payment) {
+                    $payment_date = $payment->payment_date;
+                    if ($payment_date) {
+                        $payment_timestamp = strtotime($payment_date);
+                        if ($payment_timestamp !== false && $payment_timestamp > $latest_timestamp) {
+                            $latest_timestamp = $payment_timestamp;
+                            $latest_payment_date = $payment_date;
+                        }
+                    }
+                }
+                
+                if ($latest_payment_date) {
+                    // Set expiry to latest payment date + 1 year
+                    $expiry_date = new DateTime($latest_payment_date);
+                    $expiry_date->modify('+1 year');
+                    $new_expiry = $expiry_date->format('Y-m-d');
+                    
+                    // Update expiry date
+                    update_post_meta($donor_id, '_fg_data_scadenza', $new_expiry);
+                    
+                    // Update status based on expiry
+                    $today = date('Y-m-d');
+                    if ($new_expiry >= $today) {
+                        update_post_meta($donor_id, '_fg_stato', 'attivo');
+                    } else {
+                        update_post_meta($donor_id, '_fg_stato', 'scaduto');
+                    }
+                    
+                    $updated_count++;
+                } else {
+                    // Has payments but no valid payment dates - skip
+                    $skipped_count++;
+                }
+            }
+        }
+        
+        wp_send_json_success(array(
+            'message' => sprintf(
+                __('Ricalcolo completato: %d date aggiornate, %d scadenze cancellate, %d ignorati', 'friends-gestionale'),
+                $updated_count,
+                $cleared_count,
+                $skipped_count
+            ),
+            'updated' => $updated_count,
+            'cleared' => $cleared_count,
+            'skipped' => $skipped_count
         ));
     }
 }

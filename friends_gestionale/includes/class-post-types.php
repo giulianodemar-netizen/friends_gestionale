@@ -47,6 +47,10 @@ class Friends_Gestionale_Post_Types {
         add_action('restrict_manage_posts', array($this, 'add_donor_stato_filter'));
         add_filter('parse_query', array($this, 'filter_donors_by_stato'));
         
+        // Add recalculate expiry button for donors
+        add_action('restrict_manage_posts', array($this, 'add_recalculate_expiry_button'));
+        add_action('admin_notices', array($this, 'show_recalculation_notice'));
+        
         // Add admin footer script for participant popup
         add_action('admin_footer', array($this, 'add_partecipanti_popup_script'));
         
@@ -1864,6 +1868,96 @@ class Friends_Gestionale_Post_Types {
         $html .= '</div>';
         
         wp_send_json_success(array('html' => $html));
+    }
+    
+    /**
+     * Add recalculate expiry button to Donatori list page
+     */
+    public function add_recalculate_expiry_button() {
+        global $typenow;
+        
+        if ($typenow == 'fg_socio') {
+            ?>
+            <button type="button" id="fg-recalculate-expiry" class="button" style="margin-left: 8px;">
+                <?php _e('Ricalcola Scadenze', 'friends-gestionale'); ?>
+            </button>
+            <script type="text/javascript">
+            jQuery(document).ready(function($) {
+                $('#fg-recalculate-expiry').on('click', function(e) {
+                    e.preventDefault();
+                    
+                    if (!confirm('<?php echo esc_js(__('Vuoi ricalcolare tutte le date di scadenza sulla base dell\'ultimo pagamento? Questa operazione potrebbe richiedere alcuni secondi.', 'friends-gestionale')); ?>')) {
+                        return;
+                    }
+                    
+                    var $button = $(this);
+                    $button.prop('disabled', true).text('<?php echo esc_js(__('Ricalcolo in corso...', 'friends-gestionale')); ?>');
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'fg_recalculate_expiry_dates',
+                            nonce: '<?php echo wp_create_nonce('fg_ajax_nonce'); ?>'
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                // Store message in sessionStorage to display after reload
+                                sessionStorage.setItem('fg_recalc_message', response.data.message);
+                                sessionStorage.setItem('fg_recalc_type', 'success');
+                                location.reload();
+                            } else {
+                                alert('<?php echo esc_js(__('Errore:', 'friends-gestionale')); ?> ' + (response.data.message || '<?php echo esc_js(__('Errore sconosciuto', 'friends-gestionale')); ?>'));
+                                $button.prop('disabled', false).text('<?php echo esc_js(__('Ricalcola Scadenze', 'friends-gestionale')); ?>');
+                            }
+                        },
+                        error: function() {
+                            alert('<?php echo esc_js(__('Errore di connessione', 'friends-gestionale')); ?>');
+                            $button.prop('disabled', false).text('<?php echo esc_js(__('Ricalcola Scadenze', 'friends-gestionale')); ?>');
+                        }
+                    });
+                });
+            });
+            </script>
+            <?php
+        }
+    }
+    
+    /**
+     * Show recalculation notice
+     */
+    public function show_recalculation_notice() {
+        global $typenow;
+        
+        if ($typenow == 'fg_socio') {
+            ?>
+            <script type="text/javascript">
+            jQuery(document).ready(function($) {
+                // Check if we have a message to display
+                var message = sessionStorage.getItem('fg_recalc_message');
+                var type = sessionStorage.getItem('fg_recalc_type');
+                
+                if (message) {
+                    // Clear the stored message
+                    sessionStorage.removeItem('fg_recalc_message');
+                    sessionStorage.removeItem('fg_recalc_type');
+                    
+                    // Display the notice with proper text escaping
+                    var noticeClass = type === 'success' ? 'notice-success' : 'notice-error';
+                    var notice = $('<div class="notice is-dismissible"></div>')
+                        .addClass(noticeClass)
+                        .append($('<p></p>').text(message));
+                    $('.wrap h1').after(notice);
+                    
+                    // Make it dismissible
+                    notice.on('click', '.notice-dismiss', function() {
+                        notice.remove();
+                    });
+                }
+            });
+            </script>
+            <?php
+        }
     }
 }
 
