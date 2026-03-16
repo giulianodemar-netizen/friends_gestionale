@@ -212,7 +212,9 @@ class Friends_Gestionale_Admin_Dashboard {
         $pagamenti_recenti = get_posts(array(
             'post_type' => 'fg_pagamento',
             'posts_per_page' => 5,
-            'orderby' => 'date',
+            'orderby' => 'meta_value',
+            'meta_key' => '_fg_data_pagamento',
+            'meta_type' => 'DATE',
             'order' => 'DESC'
         ));
         ?>

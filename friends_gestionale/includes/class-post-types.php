@@ -1755,8 +1755,9 @@ class Friends_Gestionale_Post_Types {
                     'compare' => '='
                 )
             ),
-            'orderby' => 'meta_value_num',
-            'meta_key' => '_fg_importo',
+            'orderby' => 'meta_value',
+            'meta_key' => '_fg_data_pagamento',
+            'meta_type' => 'DATE',
             'order' => 'DESC'
         ));
         
@@ -1814,8 +1815,9 @@ class Friends_Gestionale_Post_Types {
                     'compare' => '='
                 )
             ),
-            'orderby' => 'meta_value_num',
-            'meta_key' => '_fg_importo',
+            'orderby' => 'meta_value',
+            'meta_key' => '_fg_data_pagamento',
+            'meta_type' => 'DATE',
             'order' => 'DESC'
         ));
         
