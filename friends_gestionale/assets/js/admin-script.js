@@ -972,6 +972,105 @@
             });
         });
         
+        // Multi-email: Add email for Donatore/Socio
+        $('#fg_add_email_btn').on('click', function(e) {
+            e.preventDefault();
+            var row = '<div class="fg-email-aggiuntiva-row" style="display: flex; align-items: center; margin-bottom: 5px;">' +
+                '<input type="email" name="fg_email_aggiuntive[]" value="" class="widefat" style="margin-right: 5px;" />' +
+                '<button type="button" class="button fg-remove-email-aggiuntiva">&times;</button>' +
+                '</div>';
+            $('#fg_email_aggiuntive_container').append(row);
+        });
+        
+        // Multi-email: Add email for Contatto
+        $('#fg_add_email_contatto_btn').on('click', function(e) {
+            e.preventDefault();
+            var row = '<div class="fg-email-aggiuntiva-row" style="display: flex; align-items: center; margin-bottom: 5px;">' +
+                '<input type="email" name="fg_email_aggiuntive_contatto[]" value="" class="widefat" style="margin-right: 5px;" />' +
+                '<button type="button" class="button fg-remove-email-aggiuntiva">&times;</button>' +
+                '</div>';
+            $('#fg_email_aggiuntive_contatto_container').append(row);
+        });
+        
+        // Multi-email: Remove email row
+        $(document).on('click', '.fg-remove-email-aggiuntiva', function(e) {
+            e.preventDefault();
+            $(this).closest('.fg-email-aggiuntiva-row').remove();
+        });
+        
+        // Event payment: open modal
+        $('#fg_registra_donazione_btn').on('click', function(e) {
+            e.preventDefault();
+            $('#fg-evento-payment-modal').css('display', 'flex');
+            $('#fg-evento-payment-message').hide();
+        });
+        
+        // Event payment: close modal
+        $('#fg-close-evento-payment-modal, #fg-cancel-evento-payment').on('click', function(e) {
+            e.preventDefault();
+            $('#fg-evento-payment-modal').hide();
+        });
+        
+        // Close modal on backdrop click
+        $('#fg-evento-payment-modal').on('click', function(e) {
+            if (e.target === this) {
+                $(this).hide();
+            }
+        });
+        
+        // Event payment: form submit
+        $(document).on('click', '#fg-submit-evento-payment', function(e) {
+            e.preventDefault();
+            var $submitBtn = $(this);
+            var $msg = $('#fg-evento-payment-message');
+            
+            var socio_id = $('#fg_evento_modal_socio_id').val();
+            var importo = $('#fg_ep_importo').val();
+            var data_pagamento = $('#fg_ep_data_pagamento').val();
+            
+            if (!socio_id || !importo || !data_pagamento) {
+                $msg.css({'background': '#f8d7da', 'color': '#721c24', 'border': '1px solid #f5c6cb'})
+                    .text('Compilare tutti i campi obbligatori.').show();
+                return;
+            }
+            
+            $submitBtn.prop('disabled', true).text('Salvataggio...');
+            $msg.hide();
+            
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: $('#fg_ep_action').val(),
+                    nonce: $('#fg_ep_nonce').val(),
+                    evento_id: $('#fg_ep_evento_id').val(),
+                    socio_id: socio_id,
+                    importo: importo,
+                    data_pagamento: data_pagamento,
+                    metodo_pagamento: $('#fg_ep_metodo_pagamento').val(),
+                    note: $('#fg_ep_note').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $msg.css({'background': '#d4edda', 'color': '#155724', 'border': '1px solid #c3e6cb'})
+                            .text(response.data.message).show();
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        $msg.css({'background': '#f8d7da', 'color': '#721c24', 'border': '1px solid #f5c6cb'})
+                            .text(response.data.message).show();
+                        $submitBtn.prop('disabled', false).text('Salva Donazione');
+                    }
+                },
+                error: function() {
+                    $msg.css({'background': '#f8d7da', 'color': '#721c24', 'border': '1px solid #f5c6cb'})
+                        .text('Errore nella comunicazione con il server.').show();
+                    $submitBtn.prop('disabled', false).text('Salva Donazione');
+                }
+            });
+        });
+        
     });
     
 })(jQuery);
